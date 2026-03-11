@@ -1,0 +1,16 @@
+{
+  "name": "hitech-software-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "web"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=web",
+    "build": "npm run build --workspace=web",
+    "web": "npm run dev --workspace=web"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}
