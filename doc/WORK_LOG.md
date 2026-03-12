@@ -3,6 +3,44 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-13 00:45:19 +05:30] Push Latest Fixes to GitHub Main
+
+- Summary: Pushed the latest dashboard build-fix changes to `main` with complete documentation and issue tracking.
+- Work done:
+  - Verified current branch and pending changes before push.
+  - Ensured work-log documentation is complete and up to date for this push action.
+  - Prepared a focused commit containing only relevant tracked files.
+- Files changed:
+  - doc/WORK_LOG.md
+  - web/app/dashboard/layout.tsx
+- Verification:
+  - Git status reviewed before commit/push.
+  - Push result captured after publishing to `origin/main`.
+- Issues/Bugs/Mistakes:
+  - Unrelated crash/replay logs (`hs_err_pid*.log`, `replay_pid*.log`) remain untracked locally and were intentionally excluded from commit.
+  - No additional code issues identified during this push task.
+- Next:
+  - Keep excluding runtime crash artifacts from versioned commits unless explicitly needed for incident analysis.
+
+## [2026-03-13 00:44:03 +05:30] Fix Web Build Error in Dashboard Header
+
+- Summary: Resolved production build failure caused by a TypeScript nullability issue in the dashboard header layout.
+- Work done:
+  - Reproduced the failure with `npm run build` in `web` and captured the exact compiler error.
+  - Fixed `app/dashboard/layout.tsx` by moving user-dependent identity/role/initials computations below the authenticated-user guard (`if (isLoading || !user) return ...`).
+  - Re-ran diagnostics and full web production build to verify end-to-end success.
+- Files changed:
+  - web/app/dashboard/layout.tsx
+  - doc/WORK_LOG.md
+- Verification:
+  - TypeScript diagnostics: no errors in `web/app/dashboard/layout.tsx`.
+  - Build verification: `npm run build` completed successfully with all routes generated.
+- Issues/Bugs/Mistakes:
+  - Root cause: `user`-derived values were computed before null-guard flow narrowing, triggering `TS18047: 'user' is possibly 'null'` during `next build` type check.
+  - Additional issues found: none.
+- Next:
+  - If desired, add a small typed helper for auth-safe user display metadata to prevent similar nullability regressions in future header changes.
+
 ## [2026-03-13 00:41:52 +05:30] Push to Main + Enforce Bug/Issue Logging Discipline
 
 - Summary: Prepared dashboard improvements for push to `main` and strengthened work-log quality by explicitly capturing mistakes, bugs, and issues for each completed item.

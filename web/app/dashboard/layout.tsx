@@ -54,11 +54,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           : pathname === item.href || pathname.startsWith(`${item.href}/`)),
     ) ?? NAV_ITEMS[0];
 
-  const roleLabel = userRole ? userRole.replace('_', ' ') : 'team member';
-  const identity = user.email ?? 'user';
-  const identityParts = identity.split('@')[0]?.split(/[._-]/).filter(Boolean) ?? [];
-  const initials = (identityParts[0]?.[0] ?? 'U') + (identityParts[1]?.[0] ?? 'S');
-
   const handleLogout = async () => {
     const result = await signOut();
     if (result.ok) {
@@ -73,6 +68,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       </div>
     );
   }
+
+  const roleLabel = userRole ? userRole.replace('_', ' ') : 'team member';
+  const identity = user.email ?? 'user';
+  const identityParts = identity.split('@')[0]?.split(/[._-]/).filter(Boolean) ?? [];
+  const initials = (identityParts[0]?.[0] ?? 'U') + (identityParts[1]?.[0] ?? 'S');
 
   return (
     <div className="min-h-screen bg-ht-page">
