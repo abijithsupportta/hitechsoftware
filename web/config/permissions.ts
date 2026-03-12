@@ -25,7 +25,7 @@ export type Permission = {
 }[ModuleName];
 
 export const PERMISSIONS: Record<Permission, UserRole[]> = {
-  'customer:view': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF, ROLES.STOCK_MANAGER],
+  'customer:view': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF],
   'customer:create': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF],
   'customer:edit': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF],
   'customer:delete': [ROLES.SUPER_ADMIN],
@@ -36,18 +36,18 @@ export const PERMISSIONS: Record<Permission, UserRole[]> = {
   'subject:delete': [ROLES.SUPER_ADMIN],
 
   'inventory:view': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF, ROLES.STOCK_MANAGER, ROLES.TECHNICIAN],
-  'inventory:create': [ROLES.SUPER_ADMIN, ROLES.STOCK_MANAGER],
-  'inventory:edit': [ROLES.SUPER_ADMIN, ROLES.STOCK_MANAGER],
+  'inventory:create': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF, ROLES.STOCK_MANAGER],
+  'inventory:edit': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF, ROLES.STOCK_MANAGER],
   'inventory:delete': [ROLES.SUPER_ADMIN],
 
   'stock:view': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF, ROLES.STOCK_MANAGER, ROLES.TECHNICIAN],
-  'stock:create': [ROLES.SUPER_ADMIN, ROLES.STOCK_MANAGER],
-  'stock:edit': [ROLES.SUPER_ADMIN, ROLES.STOCK_MANAGER],
+  'stock:create': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF, ROLES.STOCK_MANAGER],
+  'stock:edit': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF, ROLES.STOCK_MANAGER],
   'stock:delete': [ROLES.SUPER_ADMIN],
 
-  'digital-bag:view': [ROLES.SUPER_ADMIN, ROLES.STOCK_MANAGER, ROLES.TECHNICIAN],
-  'digital-bag:create': [ROLES.SUPER_ADMIN, ROLES.STOCK_MANAGER],
-  'digital-bag:edit': [ROLES.SUPER_ADMIN, ROLES.STOCK_MANAGER, ROLES.TECHNICIAN],
+  'digital-bag:view': [ROLES.SUPER_ADMIN, ROLES.TECHNICIAN],
+  'digital-bag:create': [ROLES.SUPER_ADMIN],
+  'digital-bag:edit': [ROLES.SUPER_ADMIN, ROLES.TECHNICIAN],
   'digital-bag:delete': [ROLES.SUPER_ADMIN],
 
   'billing:view': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF],
@@ -55,14 +55,14 @@ export const PERMISSIONS: Record<Permission, UserRole[]> = {
   'billing:edit': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF],
   'billing:delete': [ROLES.SUPER_ADMIN],
 
-  'amc:view': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF, ROLES.STOCK_MANAGER],
+  'amc:view': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF],
   'amc:create': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF],
   'amc:edit': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF],
   'amc:delete': [ROLES.SUPER_ADMIN],
 
   'technician:view': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF],
-  'technician:create': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF],
-  'technician:edit': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF],
+  'technician:create': [ROLES.SUPER_ADMIN],
+  'technician:edit': [ROLES.SUPER_ADMIN],
   'technician:delete': [ROLES.SUPER_ADMIN],
 
   'payout:view': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF],
@@ -70,7 +70,7 @@ export const PERMISSIONS: Record<Permission, UserRole[]> = {
   'payout:edit': [ROLES.SUPER_ADMIN],
   'payout:delete': [ROLES.SUPER_ADMIN],
 
-  'reports:view': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF, ROLES.STOCK_MANAGER],
+  'reports:view': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF],
 
   'settings:view': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF],
   'settings:edit': [ROLES.SUPER_ADMIN],
@@ -80,12 +80,12 @@ export const PERMISSIONS: Record<Permission, UserRole[]> = {
   'attendance:edit': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF, ROLES.TECHNICIAN],
   'attendance:delete': [ROLES.SUPER_ADMIN],
 
-  'notifications:view': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF, ROLES.STOCK_MANAGER, ROLES.TECHNICIAN],
+  'notifications:view': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF, ROLES.TECHNICIAN],
   'notifications:create': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF],
   'notifications:edit': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF],
   'notifications:delete': [ROLES.SUPER_ADMIN],
 
-  'auth:view': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF, ROLES.STOCK_MANAGER, ROLES.TECHNICIAN],
+  'auth:view': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF, ROLES.TECHNICIAN],
   'auth:create': [ROLES.SUPER_ADMIN],
   'auth:edit': [ROLES.SUPER_ADMIN],
   'auth:delete': [ROLES.SUPER_ADMIN],

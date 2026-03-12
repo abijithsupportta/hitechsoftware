@@ -1,28 +1,72 @@
 @import "tailwindcss";
 
+/* ============================================================
+   Hitech Software – Global Design Tokens
+   Primary surface : premium white
+   Brand accent    : deep navy blue
+   ============================================================ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Surfaces */
+  --ht-page-bg:  #f7f9ff;   /* app / page background – barely blue-white */
+  --ht-card-bg:  #ffffff;   /* cards, panels, modals */
+
+  /* Brand navy palette */
+  --ht-navy-950: #0d1f5c;   /* deepest brand navy – sidebar bg */
+  --ht-navy-900: #172554;   /* tailwind blue-950 – secondary navy */
+  --ht-navy-800: #1e3a8a;   /* tailwind blue-900 – accents */
+  --ht-blue-600: #2563eb;   /* tailwind blue-600 – interactive / CTA */
+  --ht-blue-400: #60a5fa;   /* tailwind blue-400 – active indicator on dark */
+  --ht-blue-100: #dbeafe;   /* tailwind blue-100 – light tint */
+  --ht-blue-50:  #eff6ff;   /* tailwind blue-50  – subtle bg */
+
+  /* Text */
+  --ht-text-900: #0c1445;   /* headings, primary dark text */
+  --ht-text-700: #1e293b;   /* body text – tailwind slate-800 */
+  --ht-text-500: #64748b;   /* muted – tailwind slate-500 */
+  --ht-text-400: #94a3b8;   /* placeholder / disabled – slate-400 */
+  --ht-text-on-dark: #e8eeff; /* text on navy surfaces */
+
+  /* Borders */
+  --ht-border:      #e2e8f0;   /* default border – slate-200 */
+  --ht-border-blue: #bfdbfe;   /* blue-tinted border – blue-200 */
+
+  /* Legacy compatibility (body still references these) */
+  --background: var(--ht-card-bg);
+  --foreground: var(--ht-text-700);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background:   var(--background);
+  --color-foreground:   var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Expose brand tokens as Tailwind utility classes */
+  --color-ht-page:       var(--ht-page-bg);
+  --color-ht-card:       var(--ht-card-bg);
+  --color-ht-navy-950:   var(--ht-navy-950);
+  --color-ht-navy-900:   var(--ht-navy-900);
+  --color-ht-navy-800:   var(--ht-navy-800);
+  --color-ht-blue-600:   var(--ht-blue-600);
+  --color-ht-blue-400:   var(--ht-blue-400);
+  --color-ht-blue-100:   var(--ht-blue-100);
+  --color-ht-blue-50:    var(--ht-blue-50);
+  --color-ht-text-900:   var(--ht-text-900);
+  --color-ht-text-700:   var(--ht-text-700);
+  --color-ht-text-500:   var(--ht-text-500);
+  --color-ht-text-on-dark: var(--ht-text-on-dark);
+  --color-ht-border:     var(--ht-border);
+  --color-ht-border-blue: var(--ht-border-blue);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* The app is always light-themed. No dark-mode color-scheme override. */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--ht-page-bg);
+  color: var(--ht-text-700);
+  font-family: var(--font-sans, 'Geist', Arial, Helvetica, sans-serif);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Animation styles for blob effects */
@@ -48,4 +92,11 @@ body {
 
 .animation-delay-4000 {
   animation-delay: 4s;
+}
+
+/* Form controls always use the primary dark text token. */
+input,
+select,
+textarea {
+  color: var(--ht-text-900);
 }

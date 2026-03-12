@@ -4,7 +4,7 @@ import { createMiddlewareClient } from '@/lib/supabase/middleware';
 const PROTECTED_PREFIXES = ['/dashboard'];
 const PUBLIC_ONLY_ROUTES = ['/login'];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const isProtectedRoute = PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
   const isPublicOnlyRoute = PUBLIC_ONLY_ROUTES.some((route) => pathname.startsWith(route));
@@ -26,8 +26,6 @@ export async function middleware(request: NextRequest) {
 
   return response;
 }
-
-export default middleware;
 
 export const config = {
   matcher: ['/dashboard/:path*', '/login'],
