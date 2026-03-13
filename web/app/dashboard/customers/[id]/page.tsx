@@ -29,13 +29,13 @@ export default function CustomerDetailPage() {
         <div className="flex items-center gap-2">
           <Link
             href="/dashboard/customers"
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            className="ht-btn ht-btn-secondary"
           >
             Back
           </Link>
           <Link
             href={`/dashboard/customers/${customer.id}/edit`}
-            className="rounded-lg bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700"
+            className="ht-btn ht-btn-primary"
           >
             Edit
           </Link>

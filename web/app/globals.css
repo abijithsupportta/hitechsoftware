@@ -16,6 +16,7 @@
   --ht-navy-900: #172554;   /* tailwind blue-950 – secondary navy */
   --ht-navy-800: #1e3a8a;   /* tailwind blue-900 – accents */
   --ht-blue-600: #2563eb;   /* tailwind blue-600 – interactive / CTA */
+  --ht-blue-700: #1d4ed8;   /* deeper CTA hover tone */
   --ht-blue-400: #60a5fa;   /* tailwind blue-400 – active indicator on dark */
   --ht-blue-100: #dbeafe;   /* tailwind blue-100 – light tint */
   --ht-blue-50:  #eff6ff;   /* tailwind blue-50  – subtle bg */
@@ -49,6 +50,7 @@
   --color-ht-navy-900:   var(--ht-navy-900);
   --color-ht-navy-800:   var(--ht-navy-800);
   --color-ht-blue-600:   var(--ht-blue-600);
+  --color-ht-blue-700:   var(--ht-blue-700);
   --color-ht-blue-400:   var(--ht-blue-400);
   --color-ht-blue-100:   var(--ht-blue-100);
   --color-ht-blue-50:    var(--ht-blue-50);
@@ -99,4 +101,87 @@ input,
 select,
 textarea {
   color: var(--ht-text-900);
+}
+
+/* Shared button system for consistent controls across modules. */
+.ht-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+}
+
+.ht-btn:disabled,
+.ht-btn[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.ht-btn-primary {
+  background: var(--ht-blue-600);
+  border-color: var(--ht-blue-600);
+  color: #fff;
+}
+
+.ht-btn-primary:hover {
+  background: var(--ht-blue-700);
+  border-color: var(--ht-blue-700);
+}
+
+.ht-btn-secondary {
+  background: #fff;
+  border-color: var(--ht-border);
+  color: var(--ht-text-700);
+}
+
+.ht-btn-secondary:hover {
+  background: var(--ht-blue-50);
+  border-color: var(--ht-border-blue);
+}
+
+.ht-btn-outline-accent {
+  background: #fff;
+  border-color: var(--ht-border-blue);
+  color: var(--ht-blue-600);
+}
+
+.ht-btn-outline-accent:hover {
+  background: var(--ht-blue-50);
+  border-color: var(--ht-blue-600);
+}
+
+.ht-btn-danger {
+  background: var(--color-rose-600);
+  border-color: var(--color-rose-600);
+  color: #fff;
+}
+
+.ht-btn-danger:hover {
+  background: var(--color-rose-700);
+  border-color: var(--color-rose-700);
+}
+
+.ht-btn-outline-danger {
+  background: #fff;
+  border-color: var(--color-rose-300);
+  color: var(--color-rose-700);
+}
+
+.ht-btn-outline-danger:hover {
+  background: var(--color-rose-50);
+}
+
+.ht-btn-sm {
+  border-radius: 0.375rem;
+  padding: 0.375rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 600;
 }

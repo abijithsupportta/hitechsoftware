@@ -1,41 +1,33 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import {
-  createSubjectTicket,
-  getAssignableTechnicians,
-  getProductsCatalog,
-  getSubjects,
-  lookupCustomerContextByPhone,
-} from '@/modules/subjects/subject.service';
+import { createSubjectTicket, getSubjectDetails, getSubjects, removeSubject, updateSubjectRecord } from '@/modules/subjects/subject.service';
 import { SUBJECT_DEFAULT_PAGE_SIZE, SUBJECT_QUERY_KEYS } from '@/modules/subjects/subject.constants';
-import type { SmartCreateSubjectInput } from '@/modules/subjects/subject.types';
-
-function useDebouncedValue<T>(value: T, delayMs: number) {
-  const [debounced, setDebounced] = useState(value);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebounced(value), delayMs);
-    return () => clearTimeout(timer);
-  }, [value, delayMs]);
-
-  return debounced;
-}
+import type { CreateSubjectInput, SubjectListFilters, UpdateSubjectInput } from '@/modules/subjects/subject.types';
+import { getAssignableTechnicians } from '@/modules/technicians/technician.service';
 
 export function useSubjects() {
   const queryClient = useQueryClient();
   const [searchInput, setSearchInput] = useState('');
   const [page, setPage] = useState(1);
-  const debouncedSearch = useDebouncedValue(searchInput, 350);
+  const [sourceType, setSourceType] = useState<'all' | 'brand' | 'dealer'>('all');
+  const [priority, setPriority] = useState<'all' | 'critical' | 'high' | 'medium' | 'low'>('all');
+  const [status, setStatus] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
 
-  const filters = useMemo(
-    () => ({
-      search: debouncedSearch || undefined,
+  const filters: SubjectListFilters = useMemo(() => {
+    return {
+      search: searchInput.trim() || undefined,
+      source_type: sourceType,
+      priority,
+      status: status.trim() || undefined,
+      from_date: fromDate || undefined,
+      to_date: toDate || undefined,
       page,
       page_size: SUBJECT_DEFAULT_PAGE_SIZE,
-    }),
-    [debouncedSearch, page],
-  );
+    };
+  }, [searchInput, sourceType, priority, status, fromDate, toDate, page]);
 
   const query = useQuery({
     queryKey: [...SUBJECT_QUERY_KEYS.list, filters],
@@ -43,10 +35,35 @@ export function useSubjects() {
   });
 
   const createSubjectMutation = useMutation({
-    mutationFn: (input: SmartCreateSubjectInput) => createSubjectTicket(input),
+    mutationFn: (input: CreateSubjectInput) => createSubjectTicket(input),
     onSuccess: (result) => {
       if (result.ok) {
-        toast.success(`Ticket ${result.data.subject_number} created successfully`);
+        toast.success('Subject created successfully');
+        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.all });
+      } else {
+        toast.error(result.error.message);
+      }
+    },
+  });
+
+  const updateSubjectMutation = useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdateSubjectInput }) => updateSubjectRecord(id, input),
+    onSuccess: (result, variables) => {
+      if (result.ok) {
+        toast.success('Subject updated successfully');
+        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.all });
+        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(variables.id) });
+      } else {
+        toast.error(result.error.message);
+      }
+    },
+  });
+
+  const deleteSubjectMutation = useMutation({
+    mutationFn: (id: string) => removeSubject(id),
+    onSuccess: (result) => {
+      if (result.ok) {
+        toast.success('Subject deleted successfully');
         queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.all });
       } else {
         toast.error(result.error.message);
@@ -70,55 +87,59 @@ export function useSubjects() {
           totalPages: 1,
         },
     searchInput,
+    sourceType,
+    priority,
+    status,
+    fromDate,
+    toDate,
     isLoading: query.isLoading,
     isCreating: createSubjectMutation.isPending,
     error:
       (query.data && !query.data.ok && query.data.error.message) ||
       (query.error instanceof Error ? query.error.message : null),
     createSubjectMutation,
+    updateSubjectMutation,
+    deleteSubjectMutation,
     setSearch: (value: string) => {
       setSearchInput(value);
+      setPage(1);
+    },
+    setSourceType: (value: 'all' | 'brand' | 'dealer') => {
+      setSourceType(value);
+      setPage(1);
+    },
+    setPriority: (value: 'all' | 'critical' | 'high' | 'medium' | 'low') => {
+      setPriority(value);
+      setPage(1);
+    },
+    setStatus: (value: string) => {
+      setStatus(value);
+      setPage(1);
+    },
+    setFromDate: (value: string) => {
+      setFromDate(value);
+      setPage(1);
+    },
+    setToDate: (value: string) => {
+      setToDate(value);
       setPage(1);
     },
     setPage: (value: number) => setPage(Math.max(1, value)),
   };
 }
 
-export function useSmartSubjectLookup(phoneNumber: string) {
-  const normalized = phoneNumber.trim();
-
-  const phoneLookupQuery = useQuery({
-    queryKey: SUBJECT_QUERY_KEYS.phoneLookup(normalized),
-    queryFn: () => lookupCustomerContextByPhone(normalized),
-    enabled: normalized.length >= 10,
+export function useSubjectDetail(id: string) {
+  return useQuery({
+    queryKey: SUBJECT_QUERY_KEYS.detail(id),
+    queryFn: () => getSubjectDetails(id),
+    enabled: Boolean(id),
   });
+}
 
-  const techniciansQuery = useQuery({
-    queryKey: SUBJECT_QUERY_KEYS.technicians,
+export function useAssignableTechnicians() {
+  return useQuery({
+    queryKey: SUBJECT_QUERY_KEYS.assignableTechnicians,
     queryFn: getAssignableTechnicians,
     staleTime: 60 * 1000,
   });
-
-  const productsQuery = useQuery({
-    queryKey: SUBJECT_QUERY_KEYS.products,
-    queryFn: getProductsCatalog,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  return {
-    phoneLookup: phoneLookupQuery.data?.ok ? phoneLookupQuery.data.data : null,
-    phoneLookupError:
-      (phoneLookupQuery.data && !phoneLookupQuery.data.ok && phoneLookupQuery.data.error.message) ||
-      (phoneLookupQuery.error instanceof Error ? phoneLookupQuery.error.message : null),
-    isPhoneLookupLoading: phoneLookupQuery.isFetching,
-    technicians: techniciansQuery.data?.ok ? techniciansQuery.data.data : [],
-    techniciansError:
-      (techniciansQuery.data && !techniciansQuery.data.ok && techniciansQuery.data.error.message) ||
-      (techniciansQuery.error instanceof Error ? techniciansQuery.error.message : null),
-    products: productsQuery.data?.ok ? productsQuery.data.data : [],
-    productsError:
-      (productsQuery.data && !productsQuery.data.ok && productsQuery.data.error.message) ||
-      (productsQuery.error instanceof Error ? productsQuery.error.message : null),
-    isReferenceLoading: techniciansQuery.isLoading || productsQuery.isLoading,
-  };
 }

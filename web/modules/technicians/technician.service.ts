@@ -1,5 +1,11 @@
 import type { ServiceResult } from '@/types/common.types';
-import type { TeamMember, TeamFilters, CreateTeamMemberInput, UpdateTeamMemberInput } from '@/modules/technicians/technician.types';
+import type {
+  AssignableTechnicianOption,
+  TeamMember,
+  TeamFilters,
+  CreateTeamMemberInput,
+  UpdateTeamMemberInput,
+} from '@/modules/technicians/technician.types';
 import { createTeamMemberSchema, updateTeamMemberSchema } from '@/modules/technicians/technician.validation';
 import {
   deactivateTechnician,
@@ -69,6 +75,25 @@ export async function getTeamMembers(filters: TeamFilters = {}): Promise<Service
       ...profile,
       technician: profile.role === 'technician' ? technicianById.get(profile.id) ?? null : null,
     })),
+  };
+}
+
+export async function getAssignableTechnicians(): Promise<ServiceResult<AssignableTechnicianOption[]>> {
+  const result = await getTeamMembers({ role: 'technician' });
+
+  if (!result.ok) {
+    return result;
+  }
+
+  return {
+    ok: true,
+    data: result.data
+      .filter((member) => member.is_active && !member.is_deleted && member.technician?.is_active && !member.technician?.is_deleted)
+      .map((member) => ({
+        id: member.id,
+        display_name: member.display_name,
+        technician_code: member.technician?.technician_code ?? member.id,
+      })),
   };
 }
 

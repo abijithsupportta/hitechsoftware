@@ -1,112 +1,98 @@
-import { createCustomer } from '@/modules/customers/customer.service';
-import {
-  createSubject,
-  findCustomerByPhone,
-  listAssignableTechnicians,
-  listCustomerSubjectHistory,
-  listProductsCatalog,
-  listSubjects,
-} from '@/repositories/subject.repository';
+import { createSubject, deleteSubject, getSubjectById, getSubjectTimeline, listSubjects, updateSubject } from '@/repositories/subject.repository';
+import { getAssignableTechnicians } from '@/modules/technicians/technician.service';
 import type { ServiceResult } from '@/types/common.types';
 import type {
-  AssignableTechnician,
-  PhoneLookupResult,
-  PreviousProductOption,
-  ProductOption,
-  SmartCreateSubjectInput,
-  Subject,
-  SubjectHistoryItem,
-  SubjectListFilters,
+  CreateSubjectInput,
+  SubjectDetail,
+  SubjectFormValues,
+  SubjectListItem,
   SubjectListResponse,
+  SubjectListFilters,
+  UpdateSubjectInput,
 } from '@/modules/subjects/subject.types';
-import { createSubjectSchema, smartCreateSubjectSchema, subjectLookupPhoneSchema } from '@/modules/subjects/subject.validation';
+import { createSubjectSchema, updateSubjectSchema } from '@/modules/subjects/subject.validation';
 import { SUBJECT_DEFAULT_PAGE_SIZE } from '@/modules/subjects/subject.constants';
-
-function normalizePhoneNumber(phoneNumber: string) {
-  const digits = phoneNumber.replace(/\D/g, '');
-
-  if (digits.length === 12 && digits.startsWith('91')) {
-    return digits.slice(2);
-  }
-
-  if (digits.length === 10) {
-    return digits;
-  }
-
-  return digits;
-}
 
 function normalizeOptional(value?: string) {
   const trimmed = value?.trim();
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
 }
 
-function normalizeTicketNumber(value: string) {
+function normalizeSubjectNumber(value: string) {
   return value.trim().toUpperCase();
 }
 
-function formatProductDisplay(product?: { brand_name?: string | null; product_name?: string | null; model_number?: string | null }) {
-  if (!product) {
-    return null;
-  }
-
-  return [product.brand_name, product.product_name, product.model_number].filter(Boolean).join(' ');
+function normalizeSubjectPayload(input: SubjectFormValues) {
+  return {
+    subject_number: normalizeSubjectNumber(input.subject_number),
+    source_type: input.source_type,
+    brand_id: normalizeOptional(input.brand_id),
+    dealer_id: normalizeOptional(input.dealer_id),
+    assigned_technician_id: normalizeOptional(input.assigned_technician_id),
+    priority: input.priority,
+    priority_reason: input.priority_reason.trim(),
+    allocated_date: input.allocated_date,
+    type_of_service: input.type_of_service,
+    category_id: input.category_id,
+    customer_phone: normalizeOptional(input.customer_phone),
+    customer_name: normalizeOptional(input.customer_name),
+    customer_address: normalizeOptional(input.customer_address),
+    product_name: normalizeOptional(input.product_name),
+    serial_number: normalizeOptional(input.serial_number),
+    product_description: normalizeOptional(input.product_description),
+    purchase_date: normalizeOptional(input.purchase_date),
+    warranty_end_date: normalizeOptional(input.warranty_end_date),
+    amc_end_date: normalizeOptional(input.amc_end_date),
+  };
 }
 
 function mapRepositoryError(message?: string, code?: string) {
-  const safeMessage = message?.trim() ?? 'Failed to process subject request';
+  const safeMessage = message?.trim() ?? 'Failed to process subject';
 
   if (code === '23505' || /duplicate key.*subject_number/i.test(safeMessage)) {
-    return 'Ticket ID already exists. Use a different ticket ID.';
+    return 'Subject number already exists for this source.';
   }
 
-  if (/violates foreign key constraint/i.test(safeMessage) && /assigned_technician_id/i.test(safeMessage)) {
-    return 'Selected technician is invalid or inactive.';
+  if (code === '23514' || /violates check constraint/i.test(safeMessage)) {
+    return 'Subject data violates business rules (source, priority, or service type).';
   }
 
   return safeMessage;
 }
 
-function buildComplaintDetails(priority: string, complaintDetails?: string) {
-  const details = complaintDetails?.trim();
-  return details ? `Priority: ${priority}\n${details}` : `Priority: ${priority}`;
-}
-
-function mapRawSubjectList(data: unknown[]): Subject[] {
+function mapRawSubjectList(data: unknown[]): SubjectListItem[] {
   return data.map((row) => {
     const typed = row as {
       id: string;
       subject_number: string;
-      customer_id: string;
-      product_id: string | null;
+      source_type: 'brand' | 'dealer';
       assigned_technician_id: string | null;
-      status: Subject['status'];
-      job_type: Subject['job_type'];
-      description: string;
-      complaint_details: string | null;
-      serial_number: string | null;
-      schedule_date: string | null;
+      priority: 'critical' | 'high' | 'medium' | 'low';
+      status: string;
+      allocated_date: string;
+      customer_phone: string | null;
+      type_of_service: 'installation' | 'service';
       created_at: string;
-      customers?: { customer_name?: string; phone_number?: string } | null;
-      products?: { brand_name?: string | null; product_name?: string | null; model_number?: string | null } | null;
+      brands?: { name?: string | null } | null;
+      dealers?: { name?: string | null } | null;
+      service_categories?: { name?: string | null } | null;
     };
 
     return {
       id: typed.id,
       subject_number: typed.subject_number,
-      customer_id: typed.customer_id,
-      product_id: typed.product_id,
+      source_type: typed.source_type,
+      source_name: typed.source_type === 'brand' ? typed.brands?.name ?? '-' : typed.dealers?.name ?? '-',
       assigned_technician_id: typed.assigned_technician_id,
+      assigned_technician_name: null,
+      assigned_technician_code: null,
+      priority: typed.priority,
       status: typed.status,
-      job_type: typed.job_type,
-      description: typed.description,
-      complaint_details: typed.complaint_details,
-      serial_number: typed.serial_number,
-      schedule_date: typed.schedule_date,
+      allocated_date: typed.allocated_date,
+      customer_phone: typed.customer_phone,
+      category_name: typed.service_categories?.name ?? null,
+      type_of_service: typed.type_of_service,
       created_at: typed.created_at,
-      customer_name: typed.customers?.customer_name,
-      customer_phone: typed.customers?.phone_number,
-      product_display: formatProductDisplay(typed.products ?? undefined) ?? undefined,
     };
   });
 }
@@ -125,11 +111,26 @@ export async function getSubjects(filters: SubjectListFilters = {}): Promise<Ser
   }
 
   const subjects = mapRawSubjectList((data ?? []) as unknown[]);
+  const technicianResult = await getAssignableTechnicians();
+
+  const technicianById = technicianResult.ok
+    ? new Map(technicianResult.data.map((technician) => [technician.id, technician]))
+    : new Map();
+
+  const subjectsWithAssignment = subjects.map((subject) => {
+    const technician = subject.assigned_technician_id ? technicianById.get(subject.assigned_technician_id) : undefined;
+
+    return {
+      ...subject,
+      assigned_technician_name: technician?.display_name ?? null,
+      assigned_technician_code: technician?.technician_code ?? null,
+    };
+  });
 
   return {
     ok: true,
     data: {
-      data: subjects,
+      data: subjectsWithAssignment,
       total: count,
       page,
       page_size: pageSize,
@@ -138,179 +139,38 @@ export async function getSubjects(filters: SubjectListFilters = {}): Promise<Ser
   };
 }
 
-export async function lookupCustomerContextByPhone(phoneNumber: string): Promise<ServiceResult<PhoneLookupResult>> {
-  const parsedPhone = subjectLookupPhoneSchema.safeParse(phoneNumber);
-  if (!parsedPhone.success) {
-    return {
-      ok: false,
-      error: { message: parsedPhone.error.issues[0]?.message ?? 'Invalid phone number' },
-    };
-  }
-
-  const normalizedPhone = normalizePhoneNumber(parsedPhone.data);
-  const customerResult = await findCustomerByPhone(normalizedPhone);
-
-  if (customerResult.error) {
-    return { ok: false, error: { message: customerResult.error.message, code: customerResult.error.code } };
-  }
-
-  if (!customerResult.data) {
-    return {
-      ok: true,
-      data: {
-        phone_number: normalizedPhone,
-        customer: null,
-        previous_products: [],
-        service_history: [],
-      },
-    };
-  }
-
-  const historyResult = await listCustomerSubjectHistory(customerResult.data.id, 8);
-  if (historyResult.error) {
-    return { ok: false, error: { message: historyResult.error.message, code: historyResult.error.code } };
-  }
-
-  const historyRows = (historyResult.data ?? []) as Array<{
-    id: string;
-    subject_number: string;
-    status: SubjectHistoryItem['status'];
-    description: string;
-    created_at: string;
-    schedule_date: string | null;
-    serial_number: string | null;
-    product_id: string | null;
-    products?: { brand_name?: string | null; product_name?: string | null; model_number?: string | null } | null;
-  }>;
-
-  const serviceHistory: SubjectHistoryItem[] = historyRows.map((row) => ({
-    id: row.id,
-    subject_number: row.subject_number,
-    status: row.status,
-    description: row.description,
-    created_at: row.created_at,
-    schedule_date: row.schedule_date,
-    product_display: formatProductDisplay(row.products ?? undefined),
-  }));
-
-  const seen = new Set<string>();
-  const previousProducts: PreviousProductOption[] = [];
-
-  for (const row of historyRows) {
-    const productDisplay = row.products ?? {};
-    const key = `${row.product_id ?? 'none'}:${row.serial_number ?? 'none'}`;
-    if (seen.has(key)) {
-      continue;
-    }
-    seen.add(key);
-
-    const productName = productDisplay.product_name ?? 'Unknown Product';
-    const brandName = productDisplay.brand_name ?? 'Unknown Brand';
-
-    previousProducts.push({
-      product_id: row.product_id,
-      product_name: productName,
-      brand_name: brandName,
-      model_number: productDisplay.model_number ?? null,
-      serial_number: row.serial_number ?? null,
-      last_service_at: row.created_at,
-    });
-  }
-
-  return {
-    ok: true,
-    data: {
-      phone_number: normalizedPhone,
-      customer: {
-        id: customerResult.data.id,
-        customer_name: customerResult.data.customer_name,
-        phone_number: customerResult.data.phone_number,
-        primary_address_line1: customerResult.data.primary_address_line1,
-        primary_address_line2: customerResult.data.primary_address_line2,
-        primary_area: customerResult.data.primary_area,
-        primary_city: customerResult.data.primary_city,
-        primary_postal_code: customerResult.data.primary_postal_code,
-      },
-      previous_products: previousProducts,
-      service_history: serviceHistory,
-    },
-  };
-}
-
-export async function getAssignableTechnicians(): Promise<ServiceResult<AssignableTechnician[]>> {
-  const { data, error } = await listAssignableTechnicians();
-
-  if (error) {
-    return { ok: false, error: { message: error.message, code: error.code } };
-  }
-
-  return { ok: true, data: data as AssignableTechnician[] };
-}
-
-export async function getProductsCatalog(): Promise<ServiceResult<ProductOption[]>> {
-  const { data, error } = await listProductsCatalog(120);
-
-  if (error) {
-    return { ok: false, error: { message: error.message, code: error.code } };
-  }
-
-  return { ok: true, data: (data ?? []) as ProductOption[] };
-}
-
-export async function createSubjectTicket(input: SmartCreateSubjectInput): Promise<ServiceResult<Subject>> {
-  const parsed = smartCreateSubjectSchema.safeParse(input);
+export async function createSubjectTicket(input: CreateSubjectInput): Promise<ServiceResult<{ id: string }>> {
+  const parsed = createSubjectSchema.safeParse(input);
 
   if (!parsed.success) {
-    return { ok: false, error: { message: parsed.error.issues[0]?.message ?? 'Invalid ticket data' } };
-  }
-
-  const normalizedPhone = normalizePhoneNumber(parsed.data.phone_number);
-  let customerId = parsed.data.customer_id;
-
-  if (!customerId) {
-    if (!parsed.data.new_customer) {
-      return { ok: false, error: { message: 'Customer details are required for new phone number.' } };
-    }
-
-    const createCustomerResult = await createCustomer({
-      customer_name: parsed.data.new_customer.customer_name,
-      phone_number: normalizedPhone,
-      email: normalizeOptional(parsed.data.new_customer.email),
-      primary_address_line1: parsed.data.new_customer.primary_address_line1,
-      primary_address_line2: normalizeOptional(parsed.data.new_customer.primary_address_line2),
-      primary_area: parsed.data.new_customer.primary_area,
-      primary_city: parsed.data.new_customer.primary_city,
-      primary_postal_code: parsed.data.new_customer.primary_postal_code,
-      is_active: true,
-    });
-
-    if (!createCustomerResult.ok) {
-      return { ok: false, error: { message: createCustomerResult.error.message, code: createCustomerResult.error.code } };
-    }
-
-    customerId = createCustomerResult.data.id;
+    return { ok: false, error: { message: parsed.error.issues[0]?.message ?? 'Invalid subject data' } };
   }
 
   const createPayload = {
-    subject_number: normalizeTicketNumber(parsed.data.subject_number),
-    customer_id: customerId,
-    product_id: normalizeOptional(parsed.data.product_id),
-    assigned_technician_id: normalizeOptional(parsed.data.assigned_technician_id),
-    job_type: parsed.data.job_type,
-    description: parsed.data.description.trim(),
-    priority: parsed.data.priority,
-    complaint_details: buildComplaintDetails(parsed.data.priority, parsed.data.complaint_details),
-    serial_number: normalizeOptional(parsed.data.serial_number),
-    schedule_date: normalizeOptional(parsed.data.schedule_date),
+    ...normalizeSubjectPayload(parsed.data),
     created_by: parsed.data.created_by,
   };
 
-  const payloadValidation = createSubjectSchema.safeParse(createPayload);
-  if (!payloadValidation.success) {
-    return { ok: false, error: { message: payloadValidation.error.issues[0]?.message ?? 'Invalid ticket data' } };
+  const result = await createSubject(createPayload);
+
+  if (result.error || !result.data || typeof result.data !== 'string') {
+    return {
+      ok: false,
+      error: { message: mapRepositoryError(result.error?.message, result.error?.code), code: result.error?.code },
+    };
   }
 
-  const result = await createSubject(payloadValidation.data);
+  return { ok: true, data: { id: result.data } };
+}
+
+export async function updateSubjectRecord(id: string, input: UpdateSubjectInput): Promise<ServiceResult<{ id: string }>> {
+  const parsed = updateSubjectSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return { ok: false, error: { message: parsed.error.issues[0]?.message ?? 'Invalid subject data' } };
+  }
+
+  const result = await updateSubject(id, normalizeSubjectPayload(parsed.data));
 
   if (result.error || !result.data) {
     return {
@@ -319,13 +179,119 @@ export async function createSubjectTicket(input: SmartCreateSubjectInput): Promi
     };
   }
 
+  return { ok: true, data: result.data };
+}
+
+export async function getSubjectDetails(id: string): Promise<ServiceResult<SubjectDetail>> {
+  const subjectResult = await getSubjectById(id);
+  if (subjectResult.error || !subjectResult.data) {
+    return {
+      ok: false,
+      error: { message: subjectResult.error?.message ?? 'Subject not found', code: subjectResult.error?.code },
+    };
+  }
+
+  const timelineResult = await getSubjectTimeline(id);
+  if (timelineResult.error) {
+    return { ok: false, error: { message: timelineResult.error.message, code: timelineResult.error.code } };
+  }
+
+  const typed = subjectResult.data as {
+    id: string;
+    subject_number: string;
+    source_type: 'brand' | 'dealer';
+    brand_id: string | null;
+    dealer_id: string | null;
+    assigned_technician_id: string | null;
+    priority: 'critical' | 'high' | 'medium' | 'low';
+    priority_reason: string;
+    status: string;
+    allocated_date: string;
+    customer_phone: string | null;
+    customer_name: string | null;
+    customer_address: string | null;
+    type_of_service: 'installation' | 'service';
+    category_id: string | null;
+    product_name: string | null;
+    serial_number: string | null;
+    product_description: string | null;
+    purchase_date: string | null;
+    warranty_end_date: string | null;
+    amc_end_date: string | null;
+    service_charge_type: 'customer' | 'brand_dealer';
+    is_amc_service: boolean;
+    is_warranty_service: boolean;
+    billing_status: 'not_applicable' | 'due' | 'partially_paid' | 'paid' | 'waived';
+    created_at: string;
+    created_by: string | null;
+    assigned_by: string | null;
+    brands?: { name?: string | null } | null;
+    dealers?: { name?: string | null } | null;
+    service_categories?: { name?: string | null } | null;
+  };
+
+  const technicianResult = await getAssignableTechnicians();
+  const assignedTechnician =
+    technicianResult.ok && typed.assigned_technician_id
+      ? technicianResult.data.find((technician) => technician.id === typed.assigned_technician_id) ?? null
+      : null;
+
   return {
     ok: true,
     data: {
-      ...result.data,
-      customer_name: undefined,
-      customer_phone: undefined,
-      product_display: undefined,
-    } as Subject,
+      id: typed.id,
+      subject_number: typed.subject_number,
+      source_type: typed.source_type,
+      source_name: typed.source_type === 'brand' ? typed.brands?.name ?? '-' : typed.dealers?.name ?? '-',
+      brand_id: typed.brand_id,
+      dealer_id: typed.dealer_id,
+      assigned_technician_id: typed.assigned_technician_id,
+      assigned_technician_name: assignedTechnician?.display_name ?? null,
+      assigned_technician_code: assignedTechnician?.technician_code ?? null,
+      priority: typed.priority,
+      priority_reason: typed.priority_reason,
+      status: typed.status,
+      allocated_date: typed.allocated_date,
+      customer_phone: typed.customer_phone,
+      customer_name: typed.customer_name,
+      customer_address: typed.customer_address,
+      type_of_service: typed.type_of_service,
+      category_id: typed.category_id,
+      category_name: typed.service_categories?.name ?? null,
+      product_name: typed.product_name,
+      serial_number: typed.serial_number,
+      product_description: typed.product_description,
+      purchase_date: typed.purchase_date,
+      warranty_end_date: typed.warranty_end_date,
+      amc_end_date: typed.amc_end_date,
+      service_charge_type: typed.service_charge_type,
+      is_amc_service: typed.is_amc_service,
+      is_warranty_service: typed.is_warranty_service,
+      billing_status: typed.billing_status,
+      created_at: typed.created_at,
+      created_by: typed.created_by,
+      assigned_by: typed.assigned_by,
+      timeline: ((timelineResult.data ?? []) as Array<{ id: string; status: string; changed_at: string; note: string | null }>).map(
+        (item) => ({
+          id: item.id,
+          status: item.status,
+          changed_at: item.changed_at,
+          note: item.note,
+        }),
+      ),
+    },
   };
+}
+
+export async function removeSubject(id: string): Promise<ServiceResult<{ id: string }>> {
+  const result = await deleteSubject(id);
+
+  if (result.error || !result.data) {
+    return {
+      ok: false,
+      error: { message: result.error?.message ?? 'Failed to delete subject', code: result.error?.code },
+    };
+  }
+
+  return { ok: true, data: result.data };
 }

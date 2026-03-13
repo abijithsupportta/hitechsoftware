@@ -34,7 +34,7 @@ export function DeleteConfirmModal({
             type="button"
             onClick={onCancel}
             disabled={isSubmitting}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+            className="ht-btn ht-btn-secondary"
           >
             {cancelLabel}
           </button>
@@ -42,7 +42,7 @@ export function DeleteConfirmModal({
             type="button"
             onClick={onConfirm}
             disabled={isSubmitting}
-            className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-60"
+            className="ht-btn ht-btn-danger"
           >
             {isSubmitting ? 'Please wait...' : confirmLabel}
           </button>

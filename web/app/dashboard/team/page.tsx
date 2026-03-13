@@ -98,7 +98,7 @@ export default function TeamManagementPage() {
           <button
             type="button"
             onClick={() => setShowAddForm((prev) => !prev)}
-            className="rounded-lg bg-ht-navy-950 px-4 py-2 text-sm font-medium text-white hover:bg-blue-900"
+            className="ht-btn ht-btn-primary"
           >
             {showAddForm ? 'Close Add Member' : 'Add Member'}
           </button>
@@ -208,7 +208,7 @@ export default function TeamManagementPage() {
                   setShowAddForm(false);
                   setShowPassword(false);
                 }}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                className="ht-btn ht-btn-secondary"
               >
                 Cancel
               </button>
@@ -226,7 +226,7 @@ export default function TeamManagementPage() {
                   });
                 }}
                 disabled={createMutation.isPending}
-                className="rounded-lg bg-ht-navy-950 px-4 py-2 text-sm font-medium text-white hover:bg-blue-900 disabled:opacity-60"
+                className="ht-btn ht-btn-primary"
               >
                 {createMutation.isPending ? 'Adding...' : 'Add member'}
               </button>
@@ -325,7 +325,7 @@ export default function TeamManagementPage() {
                                 },
                               });
                             }}
-                            className="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50"
+                            className="ht-btn ht-btn-secondary ht-btn-sm"
                           >
                             {member.is_active ? 'Deactivate' : 'Activate'}
                           </button>
@@ -347,7 +347,7 @@ export default function TeamManagementPage() {
                                 },
                               });
                             }}
-                            className="rounded bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-700"
+                            className="ht-btn ht-btn-primary ht-btn-sm"
                           >
                             Save
                           </button>
@@ -357,7 +357,7 @@ export default function TeamManagementPage() {
                               onClick={() => {
                                 setSelectedDeleteMember({ id: member.id, name: member.display_name });
                               }}
-                              className="rounded bg-rose-600 px-2 py-1 text-xs font-medium text-white hover:bg-rose-700"
+                              className="ht-btn ht-btn-danger ht-btn-sm"
                             >
                               Delete
                             </button>

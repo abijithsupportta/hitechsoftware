@@ -36,7 +36,7 @@ export default function CustomersListPage() {
 
         <Link
           href="/dashboard/customers/new"
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="ht-btn ht-btn-primary"
         >
           New customer
         </Link>
@@ -122,13 +122,13 @@ export default function CustomersListPage() {
                     <div className="flex justify-end gap-2">
                       <Link
                         href={`/dashboard/customers/${customer.id}`}
-                        className="rounded-md border border-slate-300 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50"
+                        className="ht-btn ht-btn-secondary ht-btn-sm"
                       >
                         View
                       </Link>
                       <Link
                         href={`/dashboard/customers/${customer.id}/edit`}
-                        className="rounded-md border border-blue-300 px-2.5 py-1 text-xs text-blue-700 hover:bg-blue-50"
+                        className="ht-btn ht-btn-outline-accent ht-btn-sm"
                       >
                         Edit
                       </Link>
@@ -136,7 +136,7 @@ export default function CustomersListPage() {
                         <button
                           type="button"
                           onClick={() => setSelectedCustomerId(customer.id)}
-                          className="rounded-md border border-rose-300 px-2.5 py-1 text-xs text-rose-700 hover:bg-rose-50"
+                          className="ht-btn ht-btn-outline-danger ht-btn-sm"
                         >
                           Delete
                         </button>
@@ -162,7 +162,7 @@ export default function CustomersListPage() {
             type="button"
             disabled={pagination.page <= 1}
             onClick={() => setPage(pagination.page - 1)}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-50"
+            className="ht-btn ht-btn-secondary ht-btn-sm"
           >
             Previous
           </button>
@@ -170,7 +170,7 @@ export default function CustomersListPage() {
             type="button"
             disabled={pagination.page >= pagination.totalPages}
             onClick={() => setPage(pagination.page + 1)}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-50"
+            className="ht-btn ht-btn-secondary ht-btn-sm"
           >
             Next
           </button>

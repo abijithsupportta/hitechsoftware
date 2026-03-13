@@ -103,19 +103,20 @@ This document is the single source of truth for endpoint paths, request/response
 
 ## 5. User Roles & Permissions
 
-| Feature | Office Staff | Technician |
-|---|---|---|
-| Toggle Availability (Attendance) | View Only | Yes — self-manage |
-| Mark Advance Leave | No | Yes |
-| Add Subject | Yes | No |
-| Allocate Technician | Yes | No |
-| Reassign Subject | Yes | No |
-| Accept / Reject Subject | No | Yes |
-| Mark Incomplete Visit Reason | No | Yes |
-| Check Warranty Status | Yes | Yes |
-| Upload Service Documents | No | Yes |
-| Collect Charges | Yes / System | Yes |
-| View Attendance Dashboard | Yes | Self only |
+| Feature | Super Admin | Office Staff | Stock Manager | Technician |
+|---|---|---|---|---|
+| Toggle Availability (Attendance) | View Only | View Only | View Only | Yes — self-manage |
+| Mark Advance Leave | No | No | No | Yes |
+| Add Subject | Yes | Yes | No | No |
+| Subject List Page | View, Edit, Delete any subject | View and Edit subjects | View only | View only — assigned subjects only |
+| Allocate Technician | Yes | Yes | No | No |
+| Reassign Subject | Yes | Yes | No | No |
+| Accept / Reject Subject | No | No | No | Yes |
+| Mark Incomplete Visit Reason | No | No | No | Yes |
+| Check Warranty Status | Yes | Yes | Yes | Yes |
+| Upload Service Documents | No | No | No | Yes |
+| Collect Charges | Yes / System | Yes / System | No | Yes |
+| View Attendance Dashboard | Yes | Yes | View only | Self only |
 
 ---
 
@@ -133,11 +134,19 @@ Office staff manually log service requests (called **Subjects**) into the system
 | 4 | Category | Product category (e.g., AC, Washing Machine, Refrigerator) | Yes | Dropdown |
 | 5 | Customer Details | Full name, contact number, address, notes | Yes | Form Group |
 | 6 | Brand / Dealer | Name of the brand or dealer providing service | Yes | Dropdown / Text |
-| 7 | Product Details | Product name, model number, material code (auto-filled from Inventory) | Yes | Text / Auto-fill |
-| 8 | Serial Number | Serial number of the unit at customer site | Yes | Text |
-| 9 | Purchase Date | Date the customer purchased the product | Yes | Date Picker |
-| 10 | Warranty Period | Duration in months (auto-filled from Inventory; editable) | Yes | Number / Auto-fill |
-| 11 | Warranty Expiry Date | Auto-calculated: Purchase Date + Warranty Period | Auto | Read-only |
+
+### Field 12 — Product Details Section
+
+All Product Details fields are optional.
+
+| Field | Input Type |
+|---|---|
+| Product Name | Text input |
+| Serial Number | Text input |
+| Product Description | Text area |
+| Purchase Date | Date picker |
+| Warranty End Date | Date picker |
+| AMC End Date | Date picker |
 
 ### Priority Levels
 
@@ -560,7 +569,7 @@ Manages how products and spare parts are issued from central stock to individual
 
 ## 18. Business Rules & Constraints
 
-1. All fields in the Subject Entry Form are mandatory; system prevents submission if any field is empty.
+1. Core Subject Entry fields are mandatory; Product Details section fields are optional.
 2. Availability Toggle defaults to **OFF** at midnight every day; technicians must manually toggle ON each working day.
 3. A technician who has not toggled ON by the configured cut-off time is automatically marked **Absent**.
 4. Staff may only assign a subject to a technician who is **Available** (toggle ON) or confirmed available for the scheduled date.
@@ -583,7 +592,14 @@ Manages how products and spare parts are issued from central stock to individual
 21. Product usage during a service must be **linked to a specific Subject**; unlinked consumption is not permitted.
 22. Any variance between products issued and (products used + returned) must be **flagged for investigation**.
 23. WhatsApp notifications for AMC and warranty expiry must be sent at **30, 15, and 7 days** before expiry. No notification sent on or after expiry.
-24. In-warranty services generate a Brand/Dealer billing record automatically upon completion; payment status begins as **Pending**.
+24. In-warranty services generate a Brand/Dealer billing record automatically upon completion; payment status begins as **Due**.
+25. Technicians can only see subjects that are assigned to them. All other roles see all subjects.
+26. If `AMC End Date` is filled and greater than today, the subject is flagged as AMC Active.
+27. AMC Active subjects must show `Free Service — Under AMC` badge on subject detail and customer is not charged.
+28. For AMC Active subjects, invoice is generated against Brand/Dealer, payment status starts as **Due**, and remains Due until office staff marks it as received.
+29. If `Warranty End Date` is filled and greater than today (and AMC is not active), the subject is flagged as Under Warranty.
+30. Under Warranty subjects must show `Under Warranty` badge on subject detail and follow Brand/Dealer billing with payment due until received.
+31. If neither AMC nor Warranty is active, subject is Out of Warranty and customer is charged through normal billing flow.
 
 ---
 

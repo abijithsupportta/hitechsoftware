@@ -1,7 +1,7 @@
 import { ROLES } from '@/lib/constants/roles';
 import type { UserRole } from '@/types/database.types';
 
-const MODULE_ACTIONS = {
+export const MODULE_ACTIONS = {
   customer: ['view', 'create', 'edit', 'delete'],
   subject: ['view', 'create', 'edit', 'delete'],
   inventory: ['view', 'create', 'edit', 'delete'],
@@ -16,6 +16,7 @@ const MODULE_ACTIONS = {
   attendance: ['view', 'create', 'edit', 'delete'],
   notifications: ['view', 'create', 'edit', 'delete'],
   auth: ['view', 'create', 'edit', 'delete'],
+  'service-settings': ['view', 'edit'],
 } as const;
 
 type ModuleName = keyof typeof MODULE_ACTIONS;
@@ -30,9 +31,9 @@ export const PERMISSIONS: Record<Permission, UserRole[]> = {
   'customer:edit': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF],
   'customer:delete': [ROLES.SUPER_ADMIN],
 
-  'subject:view': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF, ROLES.TECHNICIAN],
+  'subject:view': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF, ROLES.STOCK_MANAGER, ROLES.TECHNICIAN],
   'subject:create': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF],
-  'subject:edit': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF, ROLES.TECHNICIAN],
+  'subject:edit': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF],
   'subject:delete': [ROLES.SUPER_ADMIN],
 
   'inventory:view': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF, ROLES.STOCK_MANAGER, ROLES.TECHNICIAN],
@@ -89,6 +90,9 @@ export const PERMISSIONS: Record<Permission, UserRole[]> = {
   'auth:create': [ROLES.SUPER_ADMIN],
   'auth:edit': [ROLES.SUPER_ADMIN],
   'auth:delete': [ROLES.SUPER_ADMIN],
+
+  'service-settings:view': [ROLES.SUPER_ADMIN],
+  'service-settings:edit': [ROLES.SUPER_ADMIN],
 };
 
 export function hasPermission(role: UserRole | null, permission: Permission): boolean {

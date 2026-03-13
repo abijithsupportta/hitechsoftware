@@ -11,6 +11,12 @@ export interface TechnicianDetail {
   is_deleted: boolean;
 }
 
+export interface AssignableTechnicianOption {
+  id: string;
+  display_name: string;
+  technician_code: string;
+}
+
 export interface TeamMember {
   id: string;
   email: string;

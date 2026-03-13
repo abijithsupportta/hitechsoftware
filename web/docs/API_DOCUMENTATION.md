@@ -5,6 +5,18 @@ Base API for the Service Management System consumed by:
 - `hitech_admin` (Flutter)
 - `hitech_technician` (Flutter)
 
+## Current Implementation Status (Source of Truth)
+
+This document previously contained a planned `/api/v1` contract. The currently implemented backend routes in this repository are under Next.js route handlers at `web/app/api/**`.
+
+As of now, implemented routes are:
+- `POST /api/team/members`
+- `DELETE /api/team/members/{id}`
+
+Important notes:
+- Most read/list/create/update operations in the web app are currently executed directly via Supabase client/repository services (not through REST route handlers).
+- Any `/api/v1/...` sections below should be treated as target/planned architecture unless explicitly marked implemented.
+
 ## Auth & Permission Modules (MNC Standard)
 
 For the full implementation guide, see `web/docs/AUTH_MODULE_MNC_IMPLEMENTATION.md`.
@@ -35,15 +47,86 @@ Key integration points:
 
 - API style: REST (JSON)
 - Backend location: Next.js Route Handlers under `web/app/api/**`
-- Versioning: `/api/v1/...`
-- Auth: Supabase JWT bearer token
+- Versioning: currently unversioned (`/api/...`) for implemented handlers
+- Auth: Supabase session/cookie auth (server-side validation with Supabase `auth.getUser()`)
 - Time format: ISO 8601 (UTC)
-- Idempotency: supported for selected create/update endpoints using `Idempotency-Key`
+- Idempotency: not currently implemented in existing route handlers
 
 ### Base URLs
 
-- Local: `http://localhost:3000/api/v1`
-- Production: `https://<your-domain>/api/v1`
+- Local: `http://localhost:3000/api`
+- Production: `https://<your-domain>/api`
+
+## 1.1 Implemented Endpoints (Accurate)
+
+### Create Team Member
+
+- Method/Path: `POST /api/team/members`
+- AuthZ: `super_admin` only
+- Behavior:
+  - Validates payload using `createTeamMemberSchema`.
+  - Creates Supabase Auth user (`email_confirm: true`).
+  - Inserts `profiles` row.
+  - If role is `technician`, inserts `technicians` row.
+  - Rolls back auth user if profile/technician insert fails.
+
+Response shape:
+
+```json
+{
+  "ok": true,
+  "data": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "display_name": "Name",
+    "phone_number": "9999999999",
+    "role": "technician",
+    "is_active": true,
+    "is_deleted": false,
+    "created_at": "2026-03-13T09:00:00.000Z",
+    "updated_at": "2026-03-13T09:00:00.000Z",
+    "technician": {
+      "id": "uuid",
+      "technician_code": "TECH-001",
+      "qualification": null,
+      "experience_years": null,
+      "daily_subject_limit": 10,
+      "digital_bag_capacity": 50,
+      "is_active": true,
+      "is_deleted": false
+    }
+  }
+}
+```
+
+### Delete Team Member
+
+- Method/Path: `DELETE /api/team/members/{id}`
+- AuthZ: `super_admin` only
+- Behavior:
+  - Verifies target exists and role is one of `technician | office_staff | stock_manager`.
+  - Deletes user from Supabase Auth admin API.
+  - Linked rows are removed via DB constraints/cascade as configured.
+
+Response shape:
+
+```json
+{
+  "ok": true,
+  "data": null
+}
+```
+
+Common error shape for implemented handlers:
+
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "Forbidden"
+  }
+}
+```
 
 ## 2. Common Conventions
 

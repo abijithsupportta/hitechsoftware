@@ -3,6 +3,522 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-13 18:04:50 +05:30] Add Product Details Fields and AMC/Warranty Auto-Billing Rules
+
+- Summary: Implemented the new optional Product Details section fields in the service subject form, added AMC/Warranty badge and billing visibility in subject detail, updated migration schema with requested columns and auto-calculation trigger logic, and updated README business rules.
+- Work done:
+  - Replaced single `product_details` form input with clean optional Product Details fields:
+    - Product Name
+    - Serial Number
+    - Product Description
+    - Purchase Date
+    - Warranty End Date
+    - AMC End Date
+  - Updated subject types and validation schemas to persist the new optional fields.
+  - Updated create/edit flows, repository RPC payload, subject update payload, and subject detail mapping to use the new product and date fields.
+  - Added subject detail badges and billing metadata display:
+    - `Free Service - Under AMC` (green)
+    - `Under Warranty` (blue)
+    - `Out of Warranty` fallback state
+  - Updated migration `20260314_006_service_module.sql`:
+    - Added requested subject columns: `product_name`, `serial_number`, `product_description`, `purchase_date`, `warranty_end_date`, `amc_end_date`, `service_charge_type`, `is_amc_service`, `is_warranty_service`, `billing_status`.
+    - Added check constraints for `service_charge_type` and `billing_status`.
+    - Added trigger function `apply_subject_warranty_amc_logic()` to auto-calculate AMC/Warranty and billing defaults on insert/update.
+    - Updated `create_subject_with_customer` RPC signature and insert logic to accept/store new product/date fields.
+  - Updated README:
+    - Added `Field 12 — Product Details Section` with all optional fields.
+    - Added AMC/Warranty billing logic into Business Rules and adjusted in-warranty default payment wording to `Due`.
+- Files changed:
+  - web/modules/subjects/subject.types.ts
+  - web/modules/subjects/subject.validation.ts
+  - web/components/subjects/SubjectForm.tsx
+  - web/repositories/subject.repository.ts
+  - web/modules/subjects/subject.service.ts
+  - web/app/dashboard/subjects/new/page.tsx
+  - web/app/dashboard/subjects/[id]/edit/page.tsx
+  - web/app/dashboard/subjects/[id]/page.tsx
+  - supabase/migrations/20260314_006_service_module.sql
+  - README.md
+  - doc/WORK_LOG.md
+- Verification:
+  - Ran diagnostics on all updated subject/module/migration/document files.
+  - Ran `npm run lint` in `web` and it passed.
+  - Ran `npm run build` in `web` and it passed.
+- Issues/Bugs/Mistakes:
+  - None observed during implementation.
+- Next:
+  - If you want, I can add these AMC/Warranty/Billing columns to the subject list table with filter chips for faster operations tracking.
+
+## [2026-03-13 17:59:40 +05:30] Restrict Service Module Subitems to Super Admin Only
+
+- Summary: Updated sidebar behavior so only super admins can see and control Service Module subitems; all other roles are limited to the Service List destination only.
+- Work done:
+  - Restricted Service Module submenu/toggle rendering to `super_admin` only.
+  - Kept the Service Module top-level link visible so staff/technician/other users can still open Service List.
+  - Ensured non-super-admin users no longer see nested items (`Service Categories`, `Brands`, `Dealers`, or submenu controls).
+- Files changed:
+  - web/app/dashboard/layout.tsx
+  - doc/WORK_LOG.md
+- Verification:
+  - Ran diagnostics on the updated dashboard layout file.
+  - Ran `npm run lint` in `web` and it passed.
+- Issues/Bugs/Mistakes:
+  - None observed during this role-visibility restriction update.
+- Next:
+  - If needed, I can also enforce the same distinction with an explicit `Service List` label for non-super-admin users in the sidebar text.
+
+## [2026-03-13 17:58:36 +05:30] Add Collapse/Minimize Toggle for Service Module Subitems
+
+- Summary: Added a dedicated collapse/expand control so Service Module subitems can be minimized in the sidebar while preserving parent navigation.
+- Work done:
+  - Added a toggle button on the `Service Module` row in the expanded sidebar.
+  - Implemented local sidebar state to collapse or expand all Service Module subitems.
+  - Kept parent `Service Module` link behavior unchanged (still navigates to Service List).
+  - Kept submenu visibility rules unchanged (super admin sees all service submenu pages; others see only allowed items).
+  - Updated the service submenu rendering to show only when both sidebar and service submenu are expanded.
+- Files changed:
+  - web/app/dashboard/layout.tsx
+  - doc/WORK_LOG.md
+- Verification:
+  - Ran diagnostics on the updated sidebar layout file.
+  - Ran `npm run lint` in `web` and it passed.
+- Issues/Bugs/Mistakes:
+  - None observed during this sidebar collapse/minimize enhancement.
+- Next:
+  - If needed, I can also persist the Service Module collapsed state in local storage so it stays the same across page refreshes.
+
+## [2026-03-13 17:55:15 +05:30] Move Service Module Next to Dashboard With Nested Super Admin Menu
+
+- Summary: Restructured the dashboard sidebar so Service Module appears directly under Dashboard as a top-level item, opens the Service List page, and shows nested service pages under it for super admins.
+- Work done:
+  - Moved `Service Module` into the main sidebar navigation as the second top-level item, immediately after `Dashboard`.
+  - Set the parent `Service Module` link target to the Service List page.
+  - Removed the old separate lower Service section from the sidebar.
+  - Added nested service navigation under the parent Service Module item when the sidebar is expanded.
+  - Kept submenu order as:
+    - `Service List`
+    - `Service Categories`
+    - `Brands`
+    - `Dealers`
+  - Kept `Service Categories`, `Brands`, and `Dealers` visible only for `super_admin` while other roles see only the parent Service Module entry and Service List destination.
+  - Updated active-state handling so all service routes correctly highlight the Service Module parent item.
+- Files changed:
+  - web/app/dashboard/layout.tsx
+  - doc/WORK_LOG.md
+- Verification:
+  - Ran diagnostics on the updated dashboard layout file.
+  - Ran `npm run lint` in `web` and it passed.
+- Issues/Bugs/Mistakes:
+  - None observed during this sidebar navigation update.
+- Next:
+  - If you want, I can make the Service Module submenu collapsible instead of always expanded while the sidebar is open.
+
+## [2026-03-13 17:50:51 +05:30] Add Technician Assignment to Service Creation and Show Assigned State
+
+- Summary: Extended the Service Module so new subjects can be assigned to a technician during creation, remain in `PENDING` status when created, and show assigned technician or `Unassigned` state in subject views.
+- Work done:
+  - Added optional `assigned_technician_id` support to subject form values, validation, create payloads, and update payloads.
+  - Added a technician picker to the shared subject create/edit form using active technicians from the existing team module.
+  - Kept subject creation status behavior unchanged at database level so all newly created subjects still start in `PENDING`.
+  - Updated subject repository create logic to attach technician assignment after subject creation without changing the initial `PENDING` status.
+  - Updated subject list and subject detail mappings to include assigned technician name/code when available.
+  - Updated subject list UI and subject detail UI to display assigned technician information or `Unassigned` when no technician is attached.
+- Files changed:
+  - web/modules/technicians/technician.types.ts
+  - web/modules/technicians/technician.service.ts
+  - web/modules/subjects/subject.constants.ts
+  - web/modules/subjects/subject.types.ts
+  - web/modules/subjects/subject.validation.ts
+  - web/repositories/subject.repository.ts
+  - web/modules/subjects/subject.service.ts
+  - web/hooks/useSubjects.ts
+  - web/components/subjects/SubjectForm.tsx
+  - web/app/dashboard/subjects/new/page.tsx
+  - web/app/dashboard/subjects/[id]/edit/page.tsx
+  - web/app/dashboard/subjects/page.tsx
+  - web/app/dashboard/subjects/[id]/page.tsx
+  - doc/WORK_LOG.md
+- Verification:
+  - Ran `npm run lint` in `web` and it passed.
+  - Ran `npm run build` in `web` and it passed.
+- Issues/Bugs/Mistakes:
+  - None observed during this technician-assignment update.
+- Next:
+  - If you want, I can also surface assigned technician details directly inside technician-facing dashboards or add a dedicated assignment badge/filter in the subject list.
+
+## [2026-03-13 17:44:17 +05:30] Fix Web Runtime Validation Bug and Clear Lint/Build Failures
+
+- Summary: Fixed the active web quality failures by resolving lint errors, correcting a subject edit runtime validation bug, and re-verifying the production build.
+- Work done:
+  - Fixed the subject validation schema so `created_by` is required only for create operations and no longer incorrectly required during subject updates.
+  - Replaced the empty `UpdateSubjectInput` interface with a type alias to satisfy strict linting.
+  - Refactored customer form secondary-address state syncing to avoid the React lint rule against synchronous state updates inside effects.
+  - Exported permission module metadata to remove the unused-variable lint warning.
+  - Updated Supabase middleware response initialization from `let` to `const`.
+- Files changed:
+  - web/modules/subjects/subject.validation.ts
+  - web/modules/subjects/subject.types.ts
+  - web/components/customers/CustomerForm.tsx
+  - web/config/permissions.ts
+  - web/lib/supabase/middleware.ts
+  - doc/WORK_LOG.md
+- Verification:
+  - Ran `npm run lint` in `web` and it passed.
+  - Ran `npm run build` in `web` and it passed.
+- Issues/Bugs/Mistakes:
+  - Issue found: subject edit/update flow could fail at runtime because the shared subject form schema incorrectly required `created_by` for updates.
+  - Issue found: lint failed on customer form effect state sync, middleware `prefer-const`, and subject type definitions.
+- Next:
+  - If you still see a runtime error in the browser, capture the exact route and message so I can trace the remaining failure path directly.
+
+## [2026-03-13 17:38:23 +05:30] Regroup Service Sidebar Navigation Under One Service Module
+
+- Summary: Updated the dashboard sidebar so all service-related pages sit under one Service Module group, with Service List first and service master pages visible only to super admins.
+- Work done:
+  - Removed the standalone top-level `Service` sidebar item.
+  - Replaced the separate `Service Settings` block with a unified `Service Module` group.
+  - Ordered the Service group items as:
+    - `Service List`
+    - `Service Categories`
+    - `Brands`
+    - `Dealers`
+  - Limited `Service Categories`, `Brands`, and `Dealers` sidebar visibility to `super_admin` only.
+  - Kept `Service List` visible for all roles that can access subjects.
+- Files changed:
+  - web/app/dashboard/layout.tsx
+  - doc/WORK_LOG.md
+- Verification:
+  - Diagnostics check run on updated dashboard layout file.
+  - No errors found.
+- Issues/Bugs/Mistakes:
+  - None observed during this sidebar restructuring.
+- Next:
+  - If you want, I can also make the Service Module group collapsible/expandable in the sidebar for super admins.
+
+## [2026-03-13 17:37:13 +05:30] Add Dedicated Subject Edit Page with Shared Service Form Component
+
+- Summary: Added a true editable subject page and refactored create/edit to use the same reusable Service Module form component instead of routing Edit actions to the detail page.
+- Work done:
+  - Added a reusable subject form component for the Service Module and moved the shared create/edit UI into it.
+  - Refactored the create subject page to use the shared component.
+  - Added a dedicated edit route and page for subjects.
+  - Added subject update types, validation, repository update logic, service update flow, and hook mutation support.
+  - Updated subject list and detail pages so Edit now routes to the dedicated edit page.
+- Files changed:
+  - web/components/subjects/SubjectForm.tsx
+  - web/app/dashboard/subjects/new/page.tsx
+  - web/app/dashboard/subjects/[id]/edit/page.tsx
+  - web/app/dashboard/subjects/page.tsx
+  - web/app/dashboard/subjects/[id]/page.tsx
+  - web/modules/subjects/subject.types.ts
+  - web/modules/subjects/subject.validation.ts
+  - web/modules/subjects/subject.service.ts
+  - web/repositories/subject.repository.ts
+  - web/hooks/useSubjects.ts
+  - web/lib/constants/routes.ts
+  - doc/WORK_LOG.md
+- Verification:
+  - Diagnostics check run on all touched subject form, page, hook, service, and repository files.
+  - No errors found.
+- Issues/Bugs/Mistakes:
+  - None observed during the create/edit form refactor.
+- Next:
+  - If you want, I can add field-level inline validation messages inside the shared subject form instead of relying only on mutation/toast errors.
+
+## [2026-03-13 15:36:13 +05:30] Refine Subject Role Visibility and Technician-Only Assignment Access
+
+- Summary: Updated the Service Module access rules so subject visibility and actions now match the requested role matrix, including technician access restricted to assigned subjects only.
+- Work done:
+  - Updated the main project specification in `README.md`:
+    - Expanded Part 5 role matrix to include Super Admin, Office Staff, Stock Manager, and Technician.
+    - Added explicit subject list visibility and action rules per role.
+    - Added a Business Rules item stating technicians can only see subjects assigned to them while all other roles see all subjects.
+  - Updated web permission rules so:
+    - `subject:view` includes stock managers.
+    - `subject:edit` is restricted to super admins and office staff.
+    - `subject:create` remains limited to super admins and office staff.
+  - Updated the service-module migration RLS policies so:
+    - Super admins, office staff, and stock managers can read all subjects.
+    - Technicians can only read subjects where `assigned_technician_id = auth.uid()`.
+  - Updated the subject list UI so:
+    - `Create subject` button is visible only to super admins and office staff.
+    - All roles can see the list if permitted.
+    - Super admins see `View`, `Edit`, and `Delete` actions.
+    - Office staff see `View` and `Edit` actions.
+    - Stock managers and technicians see `View` only.
+  - Added subject delete mutation flow to support the super-admin delete action.
+- Files changed:
+  - README.md
+  - supabase/migrations/20260314_006_service_module.sql
+  - web/config/permissions.ts
+  - web/repositories/subject.repository.ts
+  - web/modules/subjects/subject.service.ts
+  - web/hooks/useSubjects.ts
+  - web/app/dashboard/subjects/page.tsx
+  - doc/WORK_LOG.md
+- Verification:
+  - Diagnostics check run on updated README and migration files.
+  - No errors found in checked files.
+- Issues/Bugs/Mistakes:
+  - No new issues found during this access-control update.
+- Next:
+  - If you want, I can add a dedicated subject edit page so the `Edit` action is routed to a real edit form instead of sharing the detail route.
+
+## [2026-03-13 15:32:50 +05:30] Complete Service Module Implementation (Schema, Layers, Pages, Rules)
+
+- Summary: Implemented the full Service Module foundation across database migration, architecture layers, hooks, dashboard pages, and role-based Service Settings navigation with required business-rule enforcement.
+- Work done:
+  - Added migration `20260314_006_service_module.sql` with:
+    - New master tables: `service_categories`, `brands`, `dealers` (with indexes, triggers, seed categories, and RLS policies).
+    - Subject schema enhancements: source type, brand/dealer/category linkage, priority fields, allocated date, service type, customer/product context fields.
+    - Business constraints and unique indexes for subject number uniqueness per brand/dealer.
+    - Status timeline table `subject_status_history` + insert/update trigger logging.
+    - Transactional RPC `create_subject_with_customer(...)` for smart create with optional customer auto-save.
+    - Updated subject RLS to match requested permissions (all-auth read, staff/admin create-update, super-admin delete).
+  - Implemented repository/service/hook architecture for new master modules:
+    - Service categories, brands, dealers CRUD with usage guards to prevent deleting referenced records.
+  - Refactored subjects module to the requested model:
+    - New types/validation/constants for source-based subject creation and advanced filtering.
+    - Subject repository updated for list filters, detail fetch, timeline fetch, and transactional create via RPC.
+    - Subject service updated for mapping, validation, and business-rule-aware error handling.
+    - Subjects hook updated for filter state, create mutation, and detail query.
+  - Implemented requested dashboard pages:
+    - Master pages: Service Categories, Brands, Dealers.
+    - Subjects list with filters (source, priority, status, date range, search).
+    - Subject create flow with required source-dependent selection and required priority reason.
+    - Subject detail page with overview and status timeline.
+  - Updated dashboard sidebar to include super-admin-only Service Settings links.
+  - Added/updated route constants and permissions for Service Settings module access.
+- Files changed:
+  - supabase/migrations/20260314_006_service_module.sql
+  - web/repositories/service-categories.repository.ts
+  - web/repositories/brands.repository.ts
+  - web/repositories/dealers.repository.ts
+  - web/repositories/subject.repository.ts
+  - web/modules/service-categories/service-category.types.ts
+  - web/modules/service-categories/service-category.validation.ts
+  - web/modules/service-categories/service-category.service.ts
+  - web/modules/brands/brand.types.ts
+  - web/modules/brands/brand.validation.ts
+  - web/modules/brands/brand.service.ts
+  - web/modules/dealers/dealer.types.ts
+  - web/modules/dealers/dealer.validation.ts
+  - web/modules/dealers/dealer.service.ts
+  - web/modules/subjects/subject.types.ts
+  - web/modules/subjects/subject.validation.ts
+  - web/modules/subjects/subject.constants.ts
+  - web/modules/subjects/subject.service.ts
+  - web/hooks/useServiceCategories.ts
+  - web/hooks/useBrands.ts
+  - web/hooks/useDealers.ts
+  - web/hooks/useSubjects.ts
+  - web/app/dashboard/subjects/page.tsx
+  - web/app/dashboard/subjects/new/page.tsx
+  - web/app/dashboard/subjects/[id]/page.tsx
+  - web/app/dashboard/service/categories/page.tsx
+  - web/app/dashboard/service/brands/page.tsx
+  - web/app/dashboard/service/dealers/page.tsx
+  - web/app/dashboard/layout.tsx
+  - web/lib/constants/routes.ts
+  - web/config/permissions.ts
+  - doc/WORK_LOG.md
+- Verification:
+  - Ran diagnostics check for the `web` workspace after implementation.
+  - No TypeScript/diagnostics errors reported.
+- Issues/Bugs/Mistakes:
+  - Encountered one temporary merge corruption while replacing `web/app/dashboard/subjects/new/page.tsx`.
+  - Resolved by fully rewriting the page file cleanly and re-validating diagnostics.
+- Next:
+  - Run migration in Supabase environment and verify policy/function behavior with role-based test accounts.
+  - If desired, I can add API route handlers for master-data management to mirror this client-side repository/service architecture server-side.
+
+## [2026-03-13 15:00:14 +05:30] Rename Service Action Label from Ticket to Subject
+
+- Summary: Updated service module action text to use “subject” terminology instead of “ticket” for consistency with your requested naming.
+- Work done:
+  - Changed service list CTA label from `Create ticket` to `Create subject`.
+  - Changed submit button text on new service form from `Create ticket` to `Create subject`.
+  - Changed pending submit text from `Creating ticket...` to `Creating subject...`.
+- Files changed:
+  - web/app/dashboard/subjects/page.tsx
+  - web/app/dashboard/subjects/new/page.tsx
+  - doc/WORK_LOG.md
+- Verification:
+  - TypeScript diagnostics run on updated subject pages.
+  - No errors found.
+- Issues/Bugs/Mistakes:
+  - None observed during this text update.
+- Next:
+  - If needed, I can also rename any remaining “ticket” references in headings/messages to “subject” across the full module.
+
+## [2026-03-13 14:59:29 +05:30] Audit and Correct API Documentation + Work Log Compliance Check
+
+- Summary: Audited documentation quality for API docs and work log, then corrected API documentation to reflect currently implemented endpoints and conventions.
+- Work done:
+  - Reviewed API documentation and validated implemented route handlers in `web/app/api/**`.
+  - Updated API doc to explicitly distinguish current implemented APIs from planned `/api/v1` architecture.
+  - Added accurate implemented endpoint documentation for:
+    - `POST /api/team/members`
+    - `DELETE /api/team/members/{id}`
+  - Updated base URL/versioning/auth notes to match current implementation behavior.
+  - Verified ongoing work-log entries include required fields (summary, work done, files changed, verification, issues/mistakes, next).
+- Files changed:
+  - web/docs/API_DOCUMENTATION.md
+  - doc/WORK_LOG.md
+- Verification:
+  - Documentation diagnostics check completed for updated API documentation file.
+  - No errors found.
+- Issues/Bugs/Mistakes:
+  - Issue found: API documentation contained legacy/planned `/api/v1` framing that could mislead implementers about currently available endpoints.
+  - Resolved by adding an explicit "Current Implementation Status" and accurate implemented endpoint section.
+- Next:
+  - If desired, I can continue by splitting the API doc into two clear files: `CURRENT_API.md` (implemented) and `API_V1_TARGET.md` (planned roadmap) to avoid future confusion.
+
+## [2026-03-13 14:58:07 +05:30] Standardize System Buttons and Color Consistency Across Modules
+
+- Summary: Implemented a shared button style system and migrated major dashboard/service/customer/team controls to use the same component patterns and software color palette.
+- Work done:
+  - Added global reusable button classes (`ht-btn` family) in design tokens layer for primary, secondary, accent-outline, danger, danger-outline, and small-size variants.
+  - Added brand hover token `--ht-blue-700` to keep CTA hover color consistent with system palette.
+  - Replaced ad-hoc button/link class strings with shared button classes in:
+    - Service ticket list page
+    - Service ticket create page
+    - Customer list and customer detail pages
+    - Team management page actions
+    - Delete confirmation modal
+    - Customer form footer actions
+  - Verified no remaining legacy button patterns for the previously inconsistent blue/rose button class signatures.
+- Files changed:
+  - web/app/globals.css
+  - web/app/dashboard/subjects/page.tsx
+  - web/app/dashboard/subjects/new/page.tsx
+  - web/app/dashboard/customers/page.tsx
+  - web/app/dashboard/customers/[id]/page.tsx
+  - web/app/dashboard/team/page.tsx
+  - web/components/customers/DeleteConfirmModal.tsx
+  - web/components/customers/CustomerForm.tsx
+  - doc/WORK_LOG.md
+- Verification:
+  - TypeScript/diagnostics checks run on all modified files.
+  - No errors found.
+- Issues/Bugs/Mistakes:
+  - None observed during implementation.
+- Next:
+  - Optionally migrate remaining non-critical icon-only controls to a shared `ht-icon-btn` class for full interaction consistency.
+
+## [2026-03-13 14:54:52 +05:30] Promote Service as Second Core Sidebar Module
+
+- Summary: Updated dashboard navigation so Service appears directly after Dashboard, reflecting its role as the core business module.
+- Work done:
+  - Added `Service` as the second sidebar item.
+  - Mapped `Service` to the existing subjects/service route.
+  - Removed old `Subjects` label entry to avoid duplicate navigation item.
+- Files changed:
+  - web/app/dashboard/layout.tsx
+  - doc/WORK_LOG.md
+- Verification:
+  - TypeScript diagnostics run for updated dashboard layout file.
+  - No errors found.
+- Issues/Bugs/Mistakes:
+  - None observed during this navigation update.
+- Next:
+  - Align page titles and module headings from “Subjects” to “Service” if you want full naming consistency across the app.
+
+## [2026-03-13 14:50:02 +05:30] Make Sidebar Toggle Logo Secondary in Header
+
+- Summary: Adjusted the top-left sidebar toggle logo to feel more secondary by reducing visual prominence.
+- Work done:
+  - Reduced toggle button dimensions from `h-9 w-9` to `h-8 w-8`.
+  - Reduced icon size from `18` to `16`.
+  - Applied lower default icon opacity via `text-ht-text-700/65` and preserved stronger hover state.
+- Files changed:
+  - web/app/dashboard/layout.tsx
+  - doc/WORK_LOG.md
+- Verification:
+  - TypeScript diagnostics run on dashboard layout file.
+  - No errors found.
+- Issues/Bugs/Mistakes:
+  - None observed during this UI change.
+- Next:
+  - Optionally tune secondary opacity further (for example `60%` or `55%`) based on visual preference.
+
+## [2026-03-13 14:48:21 +05:30] Modern-Classical Branding Refresh for Hitech ERP Suite Header
+
+- Summary: Refined the dashboard top brand area to feel more modern and classical while preserving a professional enterprise style.
+- Work done:
+  - Upgraded header surface to a subtle premium gradient with a light shadow for depth.
+  - Redesigned the Hitech brand lockup with a cleaner icon tile and stronger visual hierarchy.
+  - Added a refined secondary line (Operations Console) for classical enterprise character.
+  - Improved user profile chip visuals with subtle depth and gradient avatar background.
+- Files changed:
+  - web/app/dashboard/layout.tsx
+  - doc/WORK_LOG.md
+- Verification:
+  - TypeScript diagnostics run for updated dashboard layout file.
+  - No errors found.
+- Issues/Bugs/Mistakes:
+  - None observed during implementation.
+- Next:
+  - Optionally align sidebar typography with the same uppercase tracking style for full branding consistency.
+
+## [2026-03-13 14:46:27 +05:30] Remove Header Search and Simplify Top Navbar
+
+- Summary: Removed the top Search control and refined dashboard header styling to a cleaner, simpler, and more professional appearance.
+- Work done:
+  - Removed Search button and Search icon import from dashboard layout header.
+  - Simplified header container style (solid white, cleaner spacing, reduced visual noise).
+  - Standardized icon button sizing for sidebar toggle, notifications, and logout.
+  - Simplified branding row by removing extra enterprise badge.
+  - Refined account section and divider for cleaner right-side hierarchy.
+- Files changed:
+  - web/app/dashboard/layout.tsx
+  - doc/WORK_LOG.md
+- Verification:
+  - TypeScript diagnostics run on updated dashboard layout file.
+  - No errors found.
+- Issues/Bugs/Mistakes:
+  - None observed during implementation.
+- Next:
+  - Optionally wire notification button to a dropdown/panel or hide it until notifications are implemented.
+
+## [2026-03-13 14:44:08 +05:30] Simplify Dashboard Header Toggle and Remove Breadcrumb
+
+- Summary: Simplified the dashboard top-left header controls by using a clear collapse/expand symbol and removing the redundant "Dashboard > Dashboard" breadcrumb row.
+- Work done:
+  - Replaced close/menu toggle icons with dedicated sidebar collapse/expand icons.
+  - Removed breadcrumb line beneath the product title in the dashboard header.
+  - Removed now-unused breadcrumb/nav icon imports and related computed variable.
+- Files changed:
+  - web/app/dashboard/layout.tsx
+  - doc/WORK_LOG.md
+- Verification:
+  - TypeScript diagnostics check run for updated dashboard layout file.
+  - No errors found.
+- Issues/Bugs/Mistakes:
+  - None observed during this UI update.
+- Next:
+  - If desired, align icon style with your preferred glyph set across all header controls for visual consistency.
+
+## [2026-03-13 14:40:06 +05:30] Diagnose Slow Website Loading and Data Display
+
+- Summary: Investigated why the web app feels slow while loading pages and rendering data, and identified concrete bottlenecks in auth checks and query patterns.
+- Work done:
+  - Reviewed dashboard, customer, team, subject, auth, and middleware flows in the Next.js web app.
+  - Identified repeated auth round-trips (middleware getUser plus client getSession/profile fetch) before dashboard render.
+  - Identified expensive data patterns including full-list fetches for counts and multi-step team/technician fetch composition.
+  - Confirmed current caching behavior and query defaults for React Query.
+- Files changed:
+  - doc/WORK_LOG.md
+- Verification:
+  - Static code-path analysis completed across affected files.
+  - No runtime code changes made in this task.
+- Issues/Bugs/Mistakes:
+  - Issue found: dashboard waits on client auth hydration even after middleware auth check, adding visible spinner delay.
+  - Issue found: count widgets perform full or count-heavy list queries instead of lightweight dedicated count endpoints.
+  - Issue found: team list combines separate profile and technician queries, increasing latency on larger datasets.
+- Next:
+  - If approved, implement targeted optimizations (server-side auth bootstrapping, lightweight count endpoints, paginated team listing, and tuned query stale/cache timings).
+
 ## [2026-03-13 00:48:29 +05:30] Push Cleanup Documentation to GitHub Main
 
 - Summary: Pushed latest documentation updates to GitHub `main` branch.

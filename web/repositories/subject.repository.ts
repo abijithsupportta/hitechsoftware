@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import type { CreateSubjectInput, SubjectListFilters } from '@/modules/subjects/subject.types';
-import type { Customer } from '@/modules/customers/customer.types';
+import type { CreateSubjectInput, SubjectListFilters, UpdateSubjectInput } from '@/modules/subjects/subject.types';
 
 const supabase = createClient();
 
@@ -16,18 +15,20 @@ export async function listSubjects(filters: SubjectListFilters) {
       `
       id,
       subject_number,
-      customer_id,
-      product_id,
+      source_type,
+      brand_id,
+      dealer_id,
       assigned_technician_id,
+      priority,
       status,
-      job_type,
-      description,
-      complaint_details,
-      serial_number,
-      schedule_date,
+      allocated_date,
+      customer_phone,
+      type_of_service,
+      category_id,
       created_at,
-      customers:customer_id(customer_name,phone_number),
-      products:product_id(product_name,brand_name,model_number)
+      brands:brand_id(name),
+      dealers:dealer_id(name),
+      service_categories:category_id(name)
       `,
       { count: 'exact' },
     )
@@ -36,7 +37,27 @@ export async function listSubjects(filters: SubjectListFilters) {
 
   if (filters.search?.trim()) {
     const escaped = filters.search.trim().replaceAll(',', ' ');
-    query = query.or(`subject_number.ilike.%${escaped}%,description.ilike.%${escaped}%`);
+    query = query.or(`subject_number.ilike.%${escaped}%,customer_phone.ilike.%${escaped}%`);
+  }
+
+  if (filters.source_type && filters.source_type !== 'all') {
+    query = query.eq('source_type', filters.source_type);
+  }
+
+  if (filters.priority && filters.priority !== 'all') {
+    query = query.eq('priority', filters.priority);
+  }
+
+  if (filters.status?.trim()) {
+    query = query.eq('status', filters.status.trim().toUpperCase());
+  }
+
+  if (filters.from_date) {
+    query = query.gte('allocated_date', filters.from_date);
+  }
+
+  if (filters.to_date) {
+    query = query.lte('allocated_date', filters.to_date);
   }
 
   const result = await query.range(from, to);
@@ -51,103 +72,139 @@ export async function listSubjects(filters: SubjectListFilters) {
 }
 
 export async function createSubject(input: CreateSubjectInput) {
+  const createResult = await supabase.rpc('create_subject_with_customer', {
+    p_subject_number: input.subject_number,
+    p_source_type: input.source_type,
+    p_brand_id: input.brand_id ?? null,
+    p_dealer_id: input.dealer_id ?? null,
+    p_priority: input.priority,
+    p_priority_reason: input.priority_reason,
+    p_allocated_date: input.allocated_date,
+    p_type_of_service: input.type_of_service,
+    p_category_id: input.category_id,
+    p_customer_phone: input.customer_phone ?? null,
+    p_customer_name: input.customer_name ?? null,
+    p_customer_address: input.customer_address ?? null,
+    p_product_name: input.product_name ?? null,
+    p_serial_number: input.serial_number ?? null,
+    p_product_description: input.product_description ?? null,
+    p_purchase_date: input.purchase_date ?? null,
+    p_warranty_end_date: input.warranty_end_date ?? null,
+    p_amc_end_date: input.amc_end_date ?? null,
+    p_created_by: input.created_by,
+  });
+
+  if (createResult.error || !createResult.data || typeof createResult.data !== 'string' || !input.assigned_technician_id) {
+    return createResult;
+  }
+
+  const assignmentResult = await supabase
+    .from('subjects')
+    .update({
+      assigned_technician_id: input.assigned_technician_id,
+      assigned_by: input.created_by,
+    })
+    .eq('id', createResult.data)
+    .eq('is_deleted', false)
+    .select('id')
+    .single<{ id: string }>();
+
+  if (assignmentResult.error) {
+    return {
+      data: createResult.data,
+      error: assignmentResult.error,
+    };
+  }
+
+  return createResult;
+}
+
+export async function updateSubject(id: string, input: UpdateSubjectInput) {
   return supabase
     .from('subjects')
-    .insert({
+    .update({
       subject_number: input.subject_number,
-      customer_id: input.customer_id,
-      product_id: input.product_id ?? null,
+      source_type: input.source_type,
+      brand_id: input.brand_id ?? null,
+      dealer_id: input.dealer_id ?? null,
       assigned_technician_id: input.assigned_technician_id ?? null,
-      status: 'PENDING',
-      job_type: input.job_type,
-      description: input.description,
-      complaint_details: input.complaint_details ?? null,
+      priority: input.priority,
+      priority_reason: input.priority_reason,
+      allocated_date: input.allocated_date,
+      type_of_service: input.type_of_service,
+      category_id: input.category_id,
+      customer_phone: input.customer_phone ?? null,
+      customer_name: input.customer_name ?? null,
+      customer_address: input.customer_address ?? null,
+      product_name: input.product_name ?? null,
       serial_number: input.serial_number ?? null,
-      schedule_date: input.schedule_date ?? null,
-      created_by: input.created_by,
-      is_active: true,
-      is_deleted: false,
+      product_description: input.product_description ?? null,
+      purchase_date: input.purchase_date ?? null,
+      warranty_end_date: input.warranty_end_date ?? null,
+      amc_end_date: input.amc_end_date ?? null,
     })
+    .eq('id', id)
+    .eq('is_deleted', false)
+    .select('id')
+    .single<{ id: string }>();
+}
+
+export async function getSubjectById(id: string) {
+  return supabase
+    .from('subjects')
     .select(
-      'id,subject_number,customer_id,product_id,assigned_technician_id,status,job_type,description,complaint_details,serial_number,schedule_date,created_at',
+      `
+      id,
+      subject_number,
+      source_type,
+      brand_id,
+      dealer_id,
+      assigned_technician_id,
+      priority,
+      priority_reason,
+      status,
+      allocated_date,
+      type_of_service,
+      category_id,
+      customer_phone,
+      customer_name,
+      customer_address,
+      product_name,
+      serial_number,
+      product_description,
+      purchase_date,
+      warranty_end_date,
+      amc_end_date,
+      service_charge_type,
+      is_amc_service,
+      is_warranty_service,
+      billing_status,
+      created_by,
+      assigned_by,
+      created_at,
+      brands:brand_id(name),
+      dealers:dealer_id(name),
+      service_categories:category_id(name)
+      `,
     )
+    .eq('id', id)
+    .eq('is_deleted', false)
     .single();
 }
 
-export async function findCustomerByPhone(phoneNumber: string) {
+export async function getSubjectTimeline(subjectId: string) {
   return supabase
-    .from('customers')
-    .select(
-      'id,customer_name,phone_number,email,is_active,is_deleted,created_at,updated_at,deleted_at,primary_address_line1,primary_address_line2,primary_area,primary_city,primary_postal_code,secondary_address_label,secondary_address_line1,secondary_address_line2,secondary_area,secondary_city,secondary_postal_code',
-    )
-    .eq('phone_number', phoneNumber)
-    .eq('is_deleted', false)
-    .maybeSingle<Customer>();
+    .from('subject_status_history')
+    .select('id,status,changed_at,note')
+    .eq('subject_id', subjectId)
+    .order('changed_at', { ascending: false });
 }
 
-export async function listCustomerSubjectHistory(customerId: string, limit = 10) {
+export async function deleteSubject(id: string) {
   return supabase
     .from('subjects')
-    .select(
-      'id,subject_number,status,description,created_at,schedule_date,serial_number,product_id,products:product_id(product_name,brand_name,model_number)',
-    )
-    .eq('customer_id', customerId)
-    .eq('is_deleted', false)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-}
-
-export async function listProductsCatalog(limit = 100) {
-  return supabase
-    .from('products')
-    .select('id,product_name,brand_name,model_number')
-    .eq('is_active', true)
-    .eq('is_deleted', false)
-    .order('brand_name', { ascending: true })
-    .limit(limit);
-}
-
-export async function listAssignableTechnicians() {
-  const technicians = await supabase
-    .from('technicians')
-    .select('id,technician_code')
-    .eq('is_active', true)
-    .eq('is_deleted', false);
-
-  if (technicians.error || !technicians.data || technicians.data.length === 0) {
-    return {
-      data: [],
-      error: technicians.error,
-    };
-  }
-
-  const profileIds = technicians.data.map((row) => row.id);
-
-  const profiles = await supabase
-    .from('profiles')
-    .select('id,display_name,role,is_active,is_deleted')
-    .in('id', profileIds)
-    .eq('role', 'technician')
-    .eq('is_active', true)
-    .eq('is_deleted', false);
-
-  if (profiles.error || !profiles.data) {
-    return {
-      data: [],
-      error: profiles.error,
-    };
-  }
-
-  const displayNameById = new Map(profiles.data.map((row) => [row.id, row.display_name]));
-
-  return {
-    data: technicians.data
-      .filter((row) => displayNameById.has(row.id))
-      .map((row) => ({
-        id: row.id,
-        technician_code: row.technician_code,
-        display_name: displayNameById.get(row.id) ?? row.technician_code,
-      })),
-    error: null,
-  };
+    .update({ is_deleted: true, is_active: false, deleted_at: new Date().toISOString() })
+    .eq('id', id)
+    .select('id')
+    .single<{ id: string }>();
 }

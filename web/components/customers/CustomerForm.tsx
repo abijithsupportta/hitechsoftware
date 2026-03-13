@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useReducer } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Building2, MapPinned, Phone, Plus, UserRound } from 'lucide-react';
@@ -74,28 +74,29 @@ export function CustomerForm({ initialValues, submitLabel, isSubmitting = false,
     defaultValues: resolvedDefaults,
   });
 
-  const [hasSecondaryAddress, setHasSecondaryAddress] = useState(
-    Boolean(
-      resolvedDefaults.secondary_address_label ||
-        resolvedDefaults.secondary_address_line1 ||
-        resolvedDefaults.secondary_area ||
-        resolvedDefaults.secondary_city ||
-        resolvedDefaults.secondary_postal_code,
-    ),
+  const hasSecondaryAddressByDefault = Boolean(
+    resolvedDefaults.secondary_address_label ||
+      resolvedDefaults.secondary_address_line1 ||
+      resolvedDefaults.secondary_area ||
+      resolvedDefaults.secondary_city ||
+      resolvedDefaults.secondary_postal_code,
+  );
+
+  const [hasSecondaryAddress, dispatchSecondaryAddress] = useReducer(
+    (state: boolean, action: { type: 'toggle' } | { type: 'reset'; value: boolean }) => {
+      if (action.type === 'toggle') {
+        return !state;
+      }
+
+      return action.value;
+    },
+    hasSecondaryAddressByDefault,
   );
 
   useEffect(() => {
     reset(resolvedDefaults);
-    setHasSecondaryAddress(
-      Boolean(
-        resolvedDefaults.secondary_address_label ||
-          resolvedDefaults.secondary_address_line1 ||
-          resolvedDefaults.secondary_area ||
-          resolvedDefaults.secondary_city ||
-          resolvedDefaults.secondary_postal_code,
-      ),
-    );
-  }, [reset, resolvedDefaults]);
+    dispatchSecondaryAddress({ type: 'reset', value: hasSecondaryAddressByDefault });
+  }, [reset, resolvedDefaults, hasSecondaryAddressByDefault]);
 
   useEffect(() => {
     if (!hasSecondaryAddress) {
@@ -278,7 +279,7 @@ export function CustomerForm({ initialValues, submitLabel, isSubmitting = false,
 
               <button
                 type="button"
-                onClick={() => setHasSecondaryAddress((prev) => !prev)}
+                onClick={() => dispatchSecondaryAddress({ type: 'toggle' })}
                 className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
               >
                 <Plus size={16} />
@@ -399,14 +400,14 @@ export function CustomerForm({ initialValues, submitLabel, isSubmitting = false,
       <div className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-end">
         <Link
           href="/dashboard/customers"
-          className="inline-flex items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+          className="ht-btn ht-btn-secondary"
         >
           Cancel
         </Link>
         <button
           type="submit"
           disabled={isSubmitting}
-          className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+          className="ht-btn ht-btn-primary"
         >
           {isSubmitting ? 'Saving...' : submitLabel}
         </button>

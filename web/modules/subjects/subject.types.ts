@@ -1,133 +1,96 @@
-export type SubjectStatus =
-  | 'PENDING'
-  | 'ALLOCATED'
-  | 'ACCEPTED'
-  | 'IN_PROGRESS'
-  | 'COMPLETED'
-  | 'INCOMPLETE'
-  | 'AWAITING_PARTS'
-  | 'RESCHEDULED';
+export type SubjectSourceType = 'brand' | 'dealer';
+export type SubjectPriority = 'critical' | 'high' | 'medium' | 'low';
+export type SubjectTypeOfService = 'installation' | 'service';
 
-export type SubjectJobType = 'IN_WARRANTY' | 'OUT_OF_WARRANTY' | 'AMC';
-
-export type SubjectPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
-
-export interface Subject {
+export interface SubjectListItem {
   id: string;
   subject_number: string;
-  customer_id: string;
-  product_id: string | null;
+  source_type: SubjectSourceType;
+  source_name: string;
   assigned_technician_id: string | null;
-  status: SubjectStatus;
-  job_type: SubjectJobType;
-  description: string;
-  complaint_details: string | null;
-  serial_number: string | null;
-  schedule_date: string | null;
+  assigned_technician_name: string | null;
+  assigned_technician_code: string | null;
+  priority: SubjectPriority;
+  status: string;
+  allocated_date: string;
+  customer_phone: string | null;
+  category_name: string | null;
+  type_of_service: SubjectTypeOfService;
   created_at: string;
-  customer_name?: string;
-  customer_phone?: string;
-  product_display?: string;
+}
+
+export interface SubjectDetail extends SubjectListItem {
+  brand_id: string | null;
+  dealer_id: string | null;
+  category_id: string | null;
+  priority_reason: string;
+  customer_name: string | null;
+  customer_address: string | null;
+  product_name: string | null;
+  serial_number: string | null;
+  product_description: string | null;
+  purchase_date: string | null;
+  warranty_end_date: string | null;
+  amc_end_date: string | null;
+  service_charge_type: 'customer' | 'brand_dealer';
+  is_amc_service: boolean;
+  is_warranty_service: boolean;
+  billing_status: 'not_applicable' | 'due' | 'partially_paid' | 'paid' | 'waived';
+  created_by: string | null;
+  assigned_by: string | null;
+  timeline: SubjectTimelineItem[];
+}
+
+export interface SubjectTimelineItem {
+  id: string;
+  status: string;
+  changed_at: string;
+  note: string | null;
 }
 
 export interface SubjectListFilters {
   search?: string;
+  source_type?: SubjectSourceType | 'all';
+  priority?: SubjectPriority | 'all';
+  status?: string;
+  from_date?: string;
+  to_date?: string;
   page?: number;
   page_size?: number;
 }
 
 export interface SubjectListResponse {
-  data: Subject[];
+  data: SubjectListItem[];
   total: number;
   page: number;
   page_size: number;
   total_pages: number;
 }
 
-export interface CreateSubjectInput {
+export interface SubjectFormValues {
   subject_number: string;
-  customer_id: string;
-  product_id?: string;
+  source_type: SubjectSourceType;
+  brand_id?: string;
+  dealer_id?: string;
   assigned_technician_id?: string;
-  job_type: SubjectJobType;
-  description: string;
   priority: SubjectPriority;
-  complaint_details?: string;
+  priority_reason: string;
+  allocated_date: string;
+  type_of_service: SubjectTypeOfService;
+  category_id: string;
+  customer_phone?: string;
+  customer_name?: string;
+  customer_address?: string;
+  product_name?: string;
   serial_number?: string;
-  schedule_date?: string;
+  product_description?: string;
+  purchase_date?: string;
+  warranty_end_date?: string;
+  amc_end_date?: string;
+}
+
+export interface CreateSubjectInput extends SubjectFormValues {
   created_by: string;
 }
 
-export interface SmartCreateSubjectInput {
-  subject_number: string;
-  phone_number: string;
-  customer_id?: string;
-  new_customer?: {
-    customer_name: string;
-    email?: string;
-    primary_address_line1: string;
-    primary_address_line2?: string;
-    primary_area: string;
-    primary_city: string;
-    primary_postal_code: string;
-  };
-  product_id?: string;
-  assigned_technician_id: string;
-  job_type: SubjectJobType;
-  description: string;
-  priority: SubjectPriority;
-  complaint_details?: string;
-  serial_number?: string;
-  schedule_date?: string;
-  created_by: string;
-}
-
-export interface SubjectHistoryItem {
-  id: string;
-  subject_number: string;
-  status: SubjectStatus;
-  description: string;
-  created_at: string;
-  schedule_date: string | null;
-  product_display: string | null;
-}
-
-export interface PreviousProductOption {
-  product_id: string | null;
-  product_name: string;
-  brand_name: string;
-  model_number: string | null;
-  serial_number: string | null;
-  last_service_at: string;
-}
-
-export interface CustomerLookupProfile {
-  id: string;
-  customer_name: string;
-  phone_number: string;
-  primary_address_line1: string;
-  primary_address_line2: string | null;
-  primary_area: string;
-  primary_city: string;
-  primary_postal_code: string;
-}
-
-export interface PhoneLookupResult {
-  phone_number: string;
-  customer: CustomerLookupProfile | null;
-  previous_products: PreviousProductOption[];
-  service_history: SubjectHistoryItem[];
-}
-
-export interface AssignableTechnician {
-  id: string;
-  technician_code: string;
-  display_name: string;
-}
-
-export interface ProductOption {
-  id: string;
-  product_name: string;
-  brand_name: string;
-  model_number: string | null;
-}
+export type UpdateSubjectInput = SubjectFormValues;
