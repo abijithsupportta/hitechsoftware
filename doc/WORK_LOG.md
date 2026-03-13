@@ -3,6 +3,34 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-13 18:38:14 +05:30] Subject Form UX Redesign
+
+- Summary: Completely rewrote the Add/Edit Subject form (SubjectForm.tsx) for a significantly cleaner, simpler, and more guided user experience. Replaced the cluttered flat form with a stepped, section-based layout.
+- Work done:
+  - **Stepped sections**: Form now has 4 numbered sections (Service Info, Priority, Customer, Product) with visual step indicators (numbered circle badges).
+  - **Source toggle**: Replaced "Source type" dropdown + separate brand/dealer dropdown with a single inline segmented control (Brand | Dealer toggle) + one select underneath — cleaner mental model.
+  - **Type of service toggle**: Replaced dropdown with a two-button segmented control (Service | Installation).
+  - **Priority pills**: Replaced priority dropdown with 4 color-coded clickable pill buttons (Critical=red, High=orange, Medium=yellow, Low=green) — visually communicates urgency at a glance.
+  - **Required field markers**: Added red asterisk (*) to Subject Number, Category, Source, Type of Service, Allocated Date, Priority, and Reason fields.
+  - **Optional field handling**: Customer and Product sections labeled "Optional" with badge. Product Details section is collapsible (chevron toggle) and auto-expands on edit if data exists.
+  - **Phone auto-fill**: Retained debounced phone lookup with improved hint copy and a green checkmark icon on success.
+  - **Coverage dates**: Grouped purchase date + warranty end + AMC end in a 3-column row with a clarifying note that status is calculated automatically.
+  - **Sticky footer**: Submit/Cancel buttons are now in a sticky bottom bar — no more scrolling to the bottom to submit.
+  - **Inline submit hint**: When submit is disabled, shows "Fill in all required fields to continue." inline next to the buttons.
+  - **Better layout constraints**: Form is max-w-3xl centered with consistent padding and shadow-sm cards.
+  - **Label improvements**: Replaced tiny uppercase tracking labels with normal `text-sm font-medium` labels.
+  - **Removed unused imports**: Removed `SUBJECT_PRIORITY_OPTIONS`, `SUBJECT_SOURCE_OPTIONS`, `SUBJECT_TYPE_OF_SERVICE_OPTIONS` constants (no longer needed for render).
+- Files changed:
+  - web/components/subjects/SubjectForm.tsx
+- Verification:
+  - `get_errors` → zero TypeScript errors
+  - `npm run build` → all 18 routes compiled, TypeScript finished in 4.8s, no failures
+- Issues:
+  - None
+- Next:
+  - Browser QA: verify form renders and submits correctly in all modes (create + edit)
+  - Check mobile layout on narrow screens (grid collapses to 1-col correctly)
+
 ## [2026-03-13 18:27:55 +05:30] Full Service Module Audit — Code Layer Fixes
 
 - Summary: Performed a comprehensive audit of the service module across all 10 categories (database, architecture, business logic, UI/UX, permissions, management, form validation, code quality, performance, edge cases). Fixed all identified code-layer gaps.
