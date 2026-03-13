@@ -9,3 +9,8 @@ export interface Brand {
 export interface CreateBrandInput {
   name: string;
 }
+
+export interface UpdateBrandInput {
+  name?: string;
+  is_active?: boolean;
+}

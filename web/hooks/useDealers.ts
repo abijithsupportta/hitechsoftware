@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { addDealer, getDealers, removeDealer, setDealerActive } from '@/modules/dealers/dealer.service';
+import { addDealer, getDealers, renameDealer, removeDealer, setDealerActive } from '@/modules/dealers/dealer.service';
 
 const KEY = ['dealers'] as const;
 
@@ -20,6 +20,18 @@ export function useDealers() {
         return;
       }
       toast.success('Dealer added');
+      queryClient.invalidateQueries({ queryKey: KEY });
+    },
+  });
+
+  const renameMutation = useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) => renameDealer(id, { name }),
+    onSuccess: (result) => {
+      if (!result.ok) {
+        toast.error(result.error.message);
+        return;
+      }
+      toast.success('Dealer renamed');
       queryClient.invalidateQueries({ queryKey: KEY });
     },
   });
@@ -53,6 +65,7 @@ export function useDealers() {
     isLoading: query.isLoading,
     error: query.data && !query.data.ok ? query.data.error.message : null,
     createMutation,
+    renameMutation,
     toggleMutation,
     deleteMutation,
   };

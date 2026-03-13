@@ -3,6 +3,51 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-13 18:27:55 +05:30] Full Service Module Audit — Code Layer Fixes
+
+- Summary: Performed a comprehensive audit of the service module across all 10 categories (database, architecture, business logic, UI/UX, permissions, management, form validation, code quality, performance, edge cases). Fixed all identified code-layer gaps.
+- Work done:
+  - **Search**: Extended `listSubjects` repository query to search by `customer_name` in addition to subject number and phone.
+  - **Date cross-validation**: Added `superRefine` rules to `subjectFormSchema` — warranty and AMC end dates cannot be before purchase date; Zod now rejects them with clear messages.
+  - **Priority badge colors**: Added `getPriorityMeta()` helper in subjects list page — Critical=red, High=orange, Medium=yellow, Low=green badges.
+  - **Category/Brand/Dealer filters**: Added `category_id`, `brand_id`, `dealer_id` to `SubjectListFilters` type, applied them in repository query, exposed `categoryId`/`brandId`/`dealerId` states and setters in `useSubjects` hook, added Brand (or Dealer, context-aware) and Category dropdowns in subjects list filter panel.
+  - **Customer phone auto-fill**: Added `lookupCustomerByPhone()` to `customer.service.ts`, expanded `findByPhone()` repository to return address fields. SubjectForm now debounce-calls the lookup on phone change (500ms) and auto-fills `customer_name` + `customer_address` when a matching customer is found, with a green confirmation hint label.
+  - **Rename capability**: Added `renameBrand()` / `renameDealer()` service functions; added `renameMutation` to both hooks; added `UpdateBrandInput` / `UpdateDealerInput` types. All three management pages (categories, brands, dealers) now show inline Rename → editable input → Save/Cancel flow (Enter=save, Escape=cancel).
+  - **Constants files**: Created `service-category.constants.ts`, `brand.constants.ts`, `dealer.constants.ts` for complete module structure parity.
+- Files changed:
+  - web/repositories/subject.repository.ts
+  - web/modules/subjects/subject.validation.ts
+  - web/modules/subjects/subject.types.ts
+  - web/app/dashboard/subjects/page.tsx
+  - web/hooks/useSubjects.ts
+  - web/repositories/customer.repository.ts
+  - web/modules/customers/customer.service.ts
+  - web/components/subjects/SubjectForm.tsx
+  - web/modules/brands/brand.types.ts
+  - web/modules/brands/brand.service.ts
+  - web/modules/brands/brand.constants.ts (new)
+  - web/hooks/useBrands.ts
+  - web/app/dashboard/service/brands/page.tsx
+  - web/modules/dealers/dealer.types.ts
+  - web/modules/dealers/dealer.service.ts
+  - web/modules/dealers/dealer.constants.ts (new)
+  - web/hooks/useDealers.ts
+  - web/app/dashboard/service/dealers/page.tsx
+  - web/app/dashboard/service/categories/page.tsx
+  - web/modules/service-categories/service-category.constants.ts (new)
+  - doc/WORK_LOG.md
+- Verification:
+  - `get_errors` on all 10 modified TypeScript files → zero errors
+  - `npm run build` → passed, all 18 routes generated, zero TypeScript errors
+- Issues found during audit (manual browser checks still required by developer):
+  - Double-submit protection on create/edit subject form relies on `isSubmitting` prop being passed correctly from the page — confirm behavior in browser
+  - Supabase RLS and trigger verification must be done in Supabase dashboard (cannot be verified via code)
+  - Performance checks (load < 2s, search < 500ms) require real device testing
+- Next:
+  - Verify DB layer in Supabase dashboard (tables, constraints, RLS, triggers, seed data)
+  - Manual browser QA across all roles (super_admin, office_staff, stock_manager, technician)
+  - Consider adding form-level error message display for date validation failures (currently only Zod rejects via service layer, not shown inline in form)
+
 ## [2026-03-13 18:15:48 +05:30] Redesign Service List and Detail UX for Faster Understanding
 
 - Summary: Redesigned the Service List and Service Detail pages to make warranty/free-service status and billing responsibility clearer, removed the View button, enabled direct navigation by subject click, and moved delete into a 3-dots action menu.

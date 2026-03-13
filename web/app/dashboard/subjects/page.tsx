@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import { MoreHorizontal, PencilLine, Trash2 } from 'lucide-react';
 import { usePermission } from '@/hooks/usePermission';
 import { useSubjects } from '@/hooks/useSubjects';
+import { useBrands } from '@/hooks/useBrands';
+import { useDealers } from '@/hooks/useDealers';
+import { useServiceCategories } from '@/hooks/useServiceCategories';
 import { ROUTES } from '@/lib/constants/routes';
 import { SUBJECT_PRIORITY_OPTIONS, SUBJECT_SOURCE_OPTIONS, SUBJECT_STATUS_OPTIONS } from '@/modules/subjects/subject.constants';
 import type { SubjectListItem } from '@/modules/subjects/subject.types';
@@ -15,6 +18,19 @@ function formatDate(value: string) {
 
 function formatStatus(value: string) {
   return value.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function getPriorityMeta(priority: SubjectListItem['priority']) {
+  switch (priority) {
+    case 'critical':
+      return { label: 'Critical', className: 'bg-rose-100 text-rose-700' };
+    case 'high':
+      return { label: 'High', className: 'bg-orange-100 text-orange-700' };
+    case 'medium':
+      return { label: 'Medium', className: 'bg-yellow-100 text-yellow-700' };
+    case 'low':
+      return { label: 'Low', className: 'bg-green-100 text-green-700' };
+  }
 }
 
 function getCoverageMeta(subject: SubjectListItem) {
@@ -41,6 +57,9 @@ function getCoverageMeta(subject: SubjectListItem) {
 export default function SubjectsDashboardPage() {
   const router = useRouter();
   const { can, role } = usePermission();
+  const brands = useBrands();
+  const dealers = useDealers();
+  const categories = useServiceCategories();
   const {
     subjects,
     pagination,
@@ -48,6 +67,9 @@ export default function SubjectsDashboardPage() {
     sourceType,
     priority,
     status,
+    categoryId,
+    brandId,
+    dealerId,
     fromDate,
     toDate,
     isLoading,
@@ -56,6 +78,9 @@ export default function SubjectsDashboardPage() {
     setSourceType,
     setPriority,
     setStatus,
+    setCategoryId,
+    setBrandId,
+    setDealerId,
     setFromDate,
     setToDate,
     setPage,
@@ -84,7 +109,7 @@ export default function SubjectsDashboardPage() {
             <input
               value={searchInput}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Subject number or phone"
+              placeholder="Subject number, customer name or phone"
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
             />
           </div>
@@ -93,13 +118,66 @@ export default function SubjectsDashboardPage() {
             <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">Source</label>
             <select
               value={sourceType}
-              onChange={(event) => setSourceType(event.target.value as 'all' | 'brand' | 'dealer')}
+              onChange={(event) => {
+                setSourceType(event.target.value as 'all' | 'brand' | 'dealer');
+                setBrandId('');
+                setDealerId('');
+              }}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
             >
               <option value="all">All</option>
               {SUBJECT_SOURCE_OPTIONS.map((item) => (
                 <option key={item.value} value={item.value}>
                   {item.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+              {sourceType === 'dealer' ? 'Dealer' : 'Brand'}
+            </label>
+            {sourceType === 'dealer' ? (
+              <select
+                value={dealerId}
+                onChange={(event) => setDealerId(event.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              >
+                <option value="">All Dealers</option>
+                {dealers.data.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <select
+                value={brandId}
+                onChange={(event) => setBrandId(event.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              >
+                <option value="">All Brands</option>
+                {brands.data.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">Category</label>
+            <select
+              value={categoryId}
+              onChange={(event) => setCategoryId(event.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            >
+              <option value="">All Categories</option>
+              {categories.data.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
                 </option>
               ))}
             </select>
@@ -229,8 +307,15 @@ export default function SubjectsDashboardPage() {
                       {subject.assigned_technician_name ? `${subject.assigned_technician_name} (${subject.assigned_technician_code})` : 'Unassigned'}
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-700">
-                      <p className="capitalize">{subject.priority}</p>
-                      <p className="mt-0.5 text-xs text-slate-500">{formatStatus(subject.status)}</p>
+                      {(() => {
+                        const pm = getPriorityMeta(subject.priority);
+                        return (
+                          <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${pm.className}`}>
+                            {pm.label}
+                          </span>
+                        );
+                      })()}
+                      <p className="mt-1 text-xs text-slate-500">{formatStatus(subject.status)}</p>
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-700">
                       <p>{subject.service_charge_type === 'brand_dealer' ? 'Brand / Dealer' : 'Customer'}</p>

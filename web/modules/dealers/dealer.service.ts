@@ -1,6 +1,6 @@
 import type { ServiceResult } from '@/types/common.types';
 import { createDealer, deleteDealer, hasSubjectsByDealer, listDealers, updateDealer } from '@/repositories/dealers.repository';
-import type { CreateDealerInput, Dealer } from '@/modules/dealers/dealer.types';
+import type { CreateDealerInput, Dealer, UpdateDealerInput } from '@/modules/dealers/dealer.types';
 import { createDealerSchema } from '@/modules/dealers/dealer.validation';
 
 function mapError(message?: string) {
@@ -35,6 +35,18 @@ export async function addDealer(input: CreateDealerInput): Promise<ServiceResult
 
 export async function setDealerActive(id: string, isActive: boolean): Promise<ServiceResult<Dealer>> {
   const result = await updateDealer(id, { is_active: isActive });
+  if (result.error || !result.data) {
+    return { ok: false, error: { message: mapError(result.error?.message), code: result.error?.code } };
+  }
+  return { ok: true, data: result.data };
+}
+
+export async function renameDealer(id: string, input: UpdateDealerInput): Promise<ServiceResult<Dealer>> {
+  const name = input.name?.trim();
+  if (!name || name.length < 2) {
+    return { ok: false, error: { message: 'Dealer name must be at least 2 characters.' } };
+  }
+  const result = await updateDealer(id, { name });
   if (result.error || !result.data) {
     return { ok: false, error: { message: mapError(result.error?.message), code: result.error?.code } };
   }

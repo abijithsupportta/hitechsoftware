@@ -46,6 +46,22 @@ export const subjectFormSchema = z
         message: 'Dealer is required when source is dealer.',
       });
     }
+
+    if (value.purchase_date && value.warranty_end_date && value.warranty_end_date < value.purchase_date) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['warranty_end_date'],
+        message: 'Warranty end date cannot be before purchase date.',
+      });
+    }
+
+    if (value.purchase_date && value.amc_end_date && value.amc_end_date < value.purchase_date) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['amc_end_date'],
+        message: 'AMC end date cannot be before purchase date.',
+      });
+    }
   });
 
 export const createSubjectSchema = subjectFormSchema.extend({

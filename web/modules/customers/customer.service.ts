@@ -17,6 +17,7 @@ import {
   create,
   findAll,
   findById,
+  findByPhone,
   hasActiveSubjects,
   destroy,
   update,
@@ -226,4 +227,36 @@ export async function deleteCustomer(customerId: string): Promise<ServiceResult<
   }
 
   return { ok: true, data: { id: customerId } };
+}
+
+export async function lookupCustomerByPhone(
+  phone: string,
+): Promise<ServiceResult<{ id: string; customer_name: string; phone_number: string; customer_address: string } | null>> {
+  const normalizedPhone = normalizePhoneNumber(phone.trim());
+  if (!normalizedPhone) {
+    return { ok: true, data: null };
+  }
+
+  const result = await findByPhone(normalizedPhone);
+  if (result.error) {
+    return { ok: false, error: { message: result.error.message, code: result.error.code } };
+  }
+
+  if (!result.data) {
+    return { ok: true, data: null };
+  }
+
+  const addr = [result.data.primary_address_line1, result.data.primary_address_line2, result.data.primary_area, result.data.primary_city]
+    .filter(Boolean)
+    .join(', ');
+
+  return {
+    ok: true,
+    data: {
+      id: result.data.id,
+      customer_name: result.data.customer_name,
+      phone_number: result.data.phone_number,
+      customer_address: addr,
+    },
+  };
 }

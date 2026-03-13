@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useBrands } from '@/hooks/useBrands';
 import { useDealers } from '@/hooks/useDealers';
 import { useServiceCategories } from '@/hooks/useServiceCategories';
 import { useAssignableTechnicians } from '@/hooks/useSubjects';
+import { lookupCustomerByPhone } from '@/modules/customers/customer.service';
 import {
   SUBJECT_PRIORITY_OPTIONS,
   SUBJECT_SOURCE_OPTIONS,
@@ -38,9 +39,12 @@ export default function SubjectForm({
   const categories = useServiceCategories();
   const techniciansQuery = useAssignableTechnicians();
   const [values, setValues] = useState<SubjectFormValues>(initialValues);
+  const [phoneAutoFilled, setPhoneAutoFilled] = useState(false);
+  const phoneLookupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setValues(initialValues);
+    setPhoneAutoFilled(false);
   }, [initialValues]);
 
   const activeBrands = useMemo(() => brands.data.filter((item) => item.is_active), [brands.data]);
@@ -58,6 +62,31 @@ export default function SubjectForm({
 
   const setField = <K extends keyof SubjectFormValues>(field: K, value: SubjectFormValues[K]) => {
     setValues((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handlePhoneChange = (phone: string) => {
+    setField('customer_phone', phone || undefined);
+    setPhoneAutoFilled(false);
+
+    if (phoneLookupTimerRef.current) {
+      clearTimeout(phoneLookupTimerRef.current);
+    }
+
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length >= 10) {
+      phoneLookupTimerRef.current = setTimeout(async () => {
+        const result = await lookupCustomerByPhone(phone);
+        if (result.ok && result.data) {
+          setValues((prev) => ({
+            ...prev,
+            customer_phone: phone,
+            customer_name: result.data!.customer_name,
+            customer_address: result.data!.customer_address || prev.customer_address,
+          }));
+          setPhoneAutoFilled(true);
+        }
+      }, 500);
+    }
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -236,10 +265,13 @@ export default function SubjectForm({
               <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">Customer phone (optional)</label>
               <input
                 value={values.customer_phone ?? ''}
-                onChange={(event) => setField('customer_phone', event.target.value || undefined)}
+                onChange={(event) => handlePhoneChange(event.target.value)}
                 placeholder="9876543210"
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
               />
+              {phoneAutoFilled ? (
+                <p className="mt-1 text-xs text-emerald-600">Customer found — name and address auto-filled.</p>
+              ) : null}
             </div>
 
             <div>

@@ -1,6 +1,6 @@
 import type { ServiceResult } from '@/types/common.types';
 import { createBrand, deleteBrand, hasSubjectsByBrand, listBrands, updateBrand } from '@/repositories/brands.repository';
-import type { Brand, CreateBrandInput } from '@/modules/brands/brand.types';
+import type { Brand, CreateBrandInput, UpdateBrandInput } from '@/modules/brands/brand.types';
 import { createBrandSchema } from '@/modules/brands/brand.validation';
 
 function mapError(message?: string) {
@@ -35,6 +35,18 @@ export async function addBrand(input: CreateBrandInput): Promise<ServiceResult<B
 
 export async function setBrandActive(id: string, isActive: boolean): Promise<ServiceResult<Brand>> {
   const result = await updateBrand(id, { is_active: isActive });
+  if (result.error || !result.data) {
+    return { ok: false, error: { message: mapError(result.error?.message), code: result.error?.code } };
+  }
+  return { ok: true, data: result.data };
+}
+
+export async function renameBrand(id: string, input: UpdateBrandInput): Promise<ServiceResult<Brand>> {
+  const name = input.name?.trim();
+  if (!name || name.length < 2) {
+    return { ok: false, error: { message: 'Brand name must be at least 2 characters.' } };
+  }
+  const result = await updateBrand(id, { name });
   if (result.error || !result.data) {
     return { ok: false, error: { message: mapError(result.error?.message), code: result.error?.code } };
   }

@@ -9,3 +9,8 @@ export interface Dealer {
 export interface CreateDealerInput {
   name: string;
 }
+
+export interface UpdateDealerInput {
+  name?: string;
+  is_active?: boolean;
+}

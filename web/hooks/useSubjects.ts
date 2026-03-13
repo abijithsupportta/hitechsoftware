@@ -13,6 +13,9 @@ export function useSubjects() {
   const [sourceType, setSourceType] = useState<'all' | 'brand' | 'dealer'>('all');
   const [priority, setPriority] = useState<'all' | 'critical' | 'high' | 'medium' | 'low'>('all');
   const [status, setStatus] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [brandId, setBrandId] = useState('');
+  const [dealerId, setDealerId] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
 
@@ -22,12 +25,15 @@ export function useSubjects() {
       source_type: sourceType,
       priority,
       status: status.trim() || undefined,
+      category_id: categoryId || undefined,
+      brand_id: brandId || undefined,
+      dealer_id: dealerId || undefined,
       from_date: fromDate || undefined,
       to_date: toDate || undefined,
       page,
       page_size: SUBJECT_DEFAULT_PAGE_SIZE,
     };
-  }, [searchInput, sourceType, priority, status, fromDate, toDate, page]);
+  }, [searchInput, sourceType, priority, status, categoryId, brandId, dealerId, fromDate, toDate, page]);
 
   const query = useQuery({
     queryKey: [...SUBJECT_QUERY_KEYS.list, filters],
@@ -90,6 +96,9 @@ export function useSubjects() {
     sourceType,
     priority,
     status,
+    categoryId,
+    brandId,
+    dealerId,
     fromDate,
     toDate,
     isLoading: query.isLoading,
@@ -114,6 +123,18 @@ export function useSubjects() {
     },
     setStatus: (value: string) => {
       setStatus(value);
+      setPage(1);
+    },
+    setCategoryId: (value: string) => {
+      setCategoryId(value);
+      setPage(1);
+    },
+    setBrandId: (value: string) => {
+      setBrandId(value);
+      setPage(1);
+    },
+    setDealerId: (value: string) => {
+      setDealerId(value);
       setPage(1);
     },
     setFromDate: (value: string) => {

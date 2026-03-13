@@ -73,7 +73,7 @@ export async function findById(id: string) {
 export async function findByPhone(phoneNumber: string, excludeCustomerId?: string) {
   let query = supabase
     .from('customers')
-    .select('id,customer_name,phone_number')
+    .select('id,customer_name,phone_number,primary_address_line1,primary_address_line2,primary_area,primary_city')
     .eq('phone_number', phoneNumber)
     .eq('is_deleted', false);
 
@@ -81,7 +81,12 @@ export async function findByPhone(phoneNumber: string, excludeCustomerId?: strin
     query = query.neq('id', excludeCustomerId);
   }
 
-  return query.maybeSingle<Pick<Customer, 'id' | 'customer_name' | 'phone_number'>>();
+  return query.maybeSingle<Pick<Customer, 'id' | 'customer_name' | 'phone_number'> & {
+    primary_address_line1: string | null;
+    primary_address_line2: string | null;
+    primary_area: string | null;
+    primary_city: string | null;
+  }>();
 }
 
 export async function create(input: CreateCustomerInput) {

@@ -41,7 +41,7 @@ export async function listSubjects(filters: SubjectListFilters) {
 
   if (filters.search?.trim()) {
     const escaped = filters.search.trim().replaceAll(',', ' ');
-    query = query.or(`subject_number.ilike.%${escaped}%,customer_phone.ilike.%${escaped}%`);
+    query = query.or(`subject_number.ilike.%${escaped}%,customer_phone.ilike.%${escaped}%,customer_name.ilike.%${escaped}%`);
   }
 
   if (filters.source_type && filters.source_type !== 'all') {
@@ -54,6 +54,18 @@ export async function listSubjects(filters: SubjectListFilters) {
 
   if (filters.status?.trim()) {
     query = query.eq('status', filters.status.trim().toUpperCase());
+  }
+
+  if (filters.category_id) {
+    query = query.eq('category_id', filters.category_id);
+  }
+
+  if (filters.brand_id) {
+    query = query.eq('brand_id', filters.brand_id);
+  }
+
+  if (filters.dealer_id) {
+    query = query.eq('dealer_id', filters.dealer_id);
   }
 
   if (filters.from_date) {

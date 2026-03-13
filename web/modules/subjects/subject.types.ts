@@ -57,6 +57,9 @@ export interface SubjectListFilters {
   source_type?: SubjectSourceType | 'all';
   priority?: SubjectPriority | 'all';
   status?: string;
+  category_id?: string;
+  brand_id?: string;
+  dealer_id?: string;
   from_date?: string;
   to_date?: string;
   page?: number;
