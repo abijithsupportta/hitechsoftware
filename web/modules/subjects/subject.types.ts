@@ -16,6 +16,10 @@ export interface SubjectListItem {
   customer_phone: string | null;
   category_name: string | null;
   type_of_service: SubjectTypeOfService;
+  service_charge_type: 'customer' | 'brand_dealer';
+  is_amc_service: boolean;
+  is_warranty_service: boolean;
+  billing_status: 'not_applicable' | 'due' | 'partially_paid' | 'paid' | 'waived';
   created_at: string;
 }
 

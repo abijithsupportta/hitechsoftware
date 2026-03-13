@@ -3,6 +3,40 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-13 18:15:48 +05:30] Redesign Service List and Detail UX for Faster Understanding
+
+- Summary: Redesigned the Service List and Service Detail pages to make warranty/free-service status and billing responsibility clearer, removed the View button, enabled direct navigation by subject click, and moved delete into a 3-dots action menu.
+- Work done:
+  - Redesigned Service List columns and row content for clarity:
+    - Added a dedicated `Service Coverage` indicator per row (`Free Service - Under AMC`, `Under Warranty`, `Out of Warranty`).
+    - Consolidated key information into easier-to-scan columns (`Customer / Phone`, `Priority / Status`, `Billing`).
+  - Removed the explicit `View` button from list actions.
+  - Enabled direct navigation to service detail by clicking:
+    - the subject number
+    - anywhere on the service row.
+  - Replaced inline delete button with a 3-dots action menu.
+  - Limited delete action visibility to menu context for permitted role.
+  - Upgraded detail page UX with:
+    - top-level coverage/status badges
+    - summary cards for charge target, billing status, assignment, and allocated date
+    - cleaner grouped sections for service info, coverage dates, and product info.
+  - Extended subject list model/data mapping to include warranty/AMC and billing context for list rendering.
+- Files changed:
+  - web/app/dashboard/subjects/page.tsx
+  - web/app/dashboard/subjects/[id]/page.tsx
+  - web/modules/subjects/subject.types.ts
+  - web/modules/subjects/subject.service.ts
+  - web/repositories/subject.repository.ts
+  - doc/WORK_LOG.md
+- Verification:
+  - Ran diagnostics on all touched subject list/detail/type/repository/service files.
+  - Ran `npm run lint` in `web` and it passed.
+  - Ran `npm run build` in `web` and it passed.
+- Issues/Bugs/Mistakes:
+  - None observed during this UX redesign.
+- Next:
+  - If you want, I can add quick filter chips at top (`AMC Active`, `Under Warranty`, `Out of Warranty`) for one-click service coverage filtering.
+
 ## [2026-03-13 18:08:06 +05:30] Fix 006 Migration Duplicate Constraint Error for Re-runs
 
 - Summary: Fixed migration `20260314_006_service_module.sql` to be re-runnable by preventing duplicate-constraint failures on existing subjects check constraints.

@@ -72,6 +72,10 @@ function mapRawSubjectList(data: unknown[]): SubjectListItem[] {
       allocated_date: string;
       customer_phone: string | null;
       type_of_service: 'installation' | 'service';
+      service_charge_type: 'customer' | 'brand_dealer';
+      is_amc_service: boolean;
+      is_warranty_service: boolean;
+      billing_status: 'not_applicable' | 'due' | 'partially_paid' | 'paid' | 'waived';
       created_at: string;
       brands?: { name?: string | null } | null;
       dealers?: { name?: string | null } | null;
@@ -92,6 +96,10 @@ function mapRawSubjectList(data: unknown[]): SubjectListItem[] {
       customer_phone: typed.customer_phone,
       category_name: typed.service_categories?.name ?? null,
       type_of_service: typed.type_of_service,
+      service_charge_type: typed.service_charge_type,
+      is_amc_service: typed.is_amc_service,
+      is_warranty_service: typed.is_warranty_service,
+      billing_status: typed.billing_status,
       created_at: typed.created_at,
     };
   });

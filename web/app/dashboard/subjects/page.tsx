@@ -1,10 +1,13 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { MoreHorizontal, PencilLine, Trash2 } from 'lucide-react';
 import { usePermission } from '@/hooks/usePermission';
 import { useSubjects } from '@/hooks/useSubjects';
 import { ROUTES } from '@/lib/constants/routes';
 import { SUBJECT_PRIORITY_OPTIONS, SUBJECT_SOURCE_OPTIONS, SUBJECT_STATUS_OPTIONS } from '@/modules/subjects/subject.constants';
+import type { SubjectListItem } from '@/modules/subjects/subject.types';
 
 function formatDate(value: string) {
   return new Date(value).toLocaleDateString();
@@ -14,7 +17,29 @@ function formatStatus(value: string) {
   return value.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function getCoverageMeta(subject: SubjectListItem) {
+  if (subject.is_amc_service) {
+    return {
+      label: 'Free Service - Under AMC',
+      className: 'bg-emerald-100 text-emerald-700',
+    };
+  }
+
+  if (subject.is_warranty_service) {
+    return {
+      label: 'Under Warranty',
+      className: 'bg-blue-100 text-blue-700',
+    };
+  }
+
+  return {
+    label: 'Out of Warranty',
+    className: 'bg-slate-100 text-slate-700',
+  };
+}
+
 export default function SubjectsDashboardPage() {
+  const router = useRouter();
   const { can, role } = usePermission();
   const {
     subjects,
@@ -134,19 +159,18 @@ export default function SubjectsDashboardPage() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Subject</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Service Coverage</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Source</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Category</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Phone</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Customer / Phone</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Assigned To</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Type</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Priority</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Priority / Status</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Billing</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Allocated</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Action</th>
               </tr>
@@ -154,59 +178,96 @@ export default function SubjectsDashboardPage() {
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-8 text-center text-sm text-slate-500">
+                  <td colSpan={9} className="px-4 py-8 text-center text-sm text-slate-500">
                     Loading subjects...
                   </td>
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-8 text-center text-sm text-rose-600">
+                  <td colSpan={9} className="px-4 py-8 text-center text-sm text-rose-600">
                     {error}
                   </td>
                 </tr>
               ) : subjects.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-8 text-center text-sm text-slate-500">
+                  <td colSpan={9} className="px-4 py-8 text-center text-sm text-slate-500">
                     No subjects found.
                   </td>
                 </tr>
               ) : (
                 subjects.map((subject) => (
-                  <tr key={subject.id} className="hover:bg-slate-50/70">
-                    <td className="px-4 py-3 text-sm font-medium text-slate-900">{subject.subject_number}</td>
+                  <tr
+                    key={subject.id}
+                    className="cursor-pointer hover:bg-slate-50/70"
+                    onClick={() => router.push(ROUTES.DASHBOARD_SUBJECTS_DETAIL(subject.id))}
+                  >
+                    <td className="px-4 py-3 text-sm font-medium text-slate-900">
+                      <Link
+                        href={ROUTES.DASHBOARD_SUBJECTS_DETAIL(subject.id)}
+                        className="text-ht-blue-600 underline-offset-2 hover:underline"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        {subject.subject_number}
+                      </Link>
+                      <p className="mt-0.5 text-xs text-slate-500">{subject.category_name ?? '-'}</p>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-700">
+                      {(() => {
+                        const coverage = getCoverageMeta(subject);
+                        return (
+                          <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${coverage.className}`}>
+                            {coverage.label}
+                          </span>
+                        );
+                      })()}
+                    </td>
                     <td className="px-4 py-3 text-sm text-slate-700">{subject.source_name}</td>
-                    <td className="px-4 py-3 text-sm text-slate-700">{subject.category_name ?? '-'}</td>
-                    <td className="px-4 py-3 text-sm text-slate-700">{subject.customer_phone ?? '-'}</td>
+                    <td className="px-4 py-3 text-sm text-slate-700">
+                      <p>{subject.customer_phone ?? '-'}</p>
+                    </td>
                     <td className="px-4 py-3 text-sm text-slate-700">
                       {subject.assigned_technician_name ? `${subject.assigned_technician_name} (${subject.assigned_technician_code})` : 'Unassigned'}
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-700">{subject.type_of_service}</td>
-                    <td className="px-4 py-3 text-sm text-slate-700">{subject.priority}</td>
-                    <td className="px-4 py-3 text-sm text-slate-700">{formatStatus(subject.status)}</td>
+                    <td className="px-4 py-3 text-sm text-slate-700">
+                      <p className="capitalize">{subject.priority}</p>
+                      <p className="mt-0.5 text-xs text-slate-500">{formatStatus(subject.status)}</p>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-700">
+                      <p>{subject.service_charge_type === 'brand_dealer' ? 'Brand / Dealer' : 'Customer'}</p>
+                      <p className="mt-0.5 text-xs text-slate-500">{formatStatus(subject.billing_status)}</p>
+                    </td>
                     <td className="px-4 py-3 text-sm text-slate-700">{formatDate(subject.allocated_date)}</td>
                     <td className="px-4 py-3 text-sm">
-                      <div className="flex flex-wrap gap-2">
-                        <Link href={ROUTES.DASHBOARD_SUBJECTS_DETAIL(subject.id)} className="ht-btn ht-btn-secondary ht-btn-sm">
-                          View
-                        </Link>
+                      {can('subject:edit') || (role === 'super_admin' && can('subject:delete')) ? (
+                        <details className="relative" onClick={(event) => event.stopPropagation()}>
+                          <summary className="inline-flex h-8 w-8 cursor-pointer list-none items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:bg-slate-100">
+                            <MoreHorizontal size={16} />
+                          </summary>
+                          <div className="absolute right-0 z-10 mt-2 min-w-40 rounded-lg border border-slate-200 bg-white p-1 shadow-lg">
+                            {can('subject:edit') ? (
+                              <Link
+                                href={ROUTES.DASHBOARD_SUBJECTS_EDIT(subject.id)}
+                                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                              >
+                                <PencilLine size={14} />
+                                Edit
+                              </Link>
+                            ) : null}
 
-                        {can('subject:edit') ? (
-                          <Link href={ROUTES.DASHBOARD_SUBJECTS_EDIT(subject.id)} className="ht-btn ht-btn-secondary ht-btn-sm">
-                            Edit
-                          </Link>
-                        ) : null}
-
-                        {role === 'super_admin' && can('subject:delete') ? (
-                          <button
-                            type="button"
-                            className="ht-btn ht-btn-danger ht-btn-sm"
-                            onClick={() => deleteSubjectMutation.mutate(subject.id)}
-                            disabled={deleteSubjectMutation.isPending}
-                          >
-                            Delete
-                          </button>
-                        ) : null}
-                      </div>
+                            {role === 'super_admin' && can('subject:delete') ? (
+                              <button
+                                type="button"
+                                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-rose-700 hover:bg-rose-50"
+                                onClick={() => deleteSubjectMutation.mutate(subject.id)}
+                                disabled={deleteSubjectMutation.isPending}
+                              >
+                                <Trash2 size={14} />
+                                Delete
+                              </button>
+                            ) : null}
+                          </div>
+                        </details>
+                      ) : null}
                     </td>
                   </tr>
                 ))
