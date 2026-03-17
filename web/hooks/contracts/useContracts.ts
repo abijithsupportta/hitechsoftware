@@ -1,12 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { CONTRACT_QUERY_KEYS } from '@/modules/contracts/contract.constants';
+import { createContract, deleteContract, getContractsBySubject } from '@/modules/contracts/contract.service';
 import { SUBJECT_QUERY_KEYS } from '@/modules/subjects/subject.constants';
-import { createContract, deleteContract, getContractsBySubject } from '@/modules/subjects/subject-contract.service';
-import type { CreateContractInput } from '@/modules/subjects/subject.types';
+import type { CreateContractInput } from '@/modules/contracts/contract.types';
 
 export function useContractsBySubject(subjectId: string) {
   return useQuery({
-    queryKey: SUBJECT_QUERY_KEYS.contractsBySubject(subjectId),
+    queryKey: CONTRACT_QUERY_KEYS.bySubject(subjectId),
     queryFn: () => getContractsBySubject(subjectId),
     enabled: Boolean(subjectId),
   });
@@ -20,7 +21,7 @@ export function useCreateContract(subjectId: string) {
     onSuccess: (result) => {
       if (result.ok) {
         toast.success('Contract created successfully');
-        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.contractsBySubject(subjectId) });
+        queryClient.invalidateQueries({ queryKey: CONTRACT_QUERY_KEYS.bySubject(subjectId) });
         queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(subjectId) });
         queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.all });
       } else {
@@ -47,7 +48,7 @@ export function useDeleteContract(subjectId: string) {
     onSuccess: (result) => {
       if (result.ok) {
         toast.success('Contract deleted successfully');
-        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.contractsBySubject(subjectId) });
+        queryClient.invalidateQueries({ queryKey: CONTRACT_QUERY_KEYS.bySubject(subjectId) });
         queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(subjectId) });
         queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.all });
       } else if (result.error.message !== 'Deletion cancelled.') {

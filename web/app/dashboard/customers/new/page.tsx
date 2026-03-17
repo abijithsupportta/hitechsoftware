@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { CustomerForm } from '@/components/customers/CustomerForm';
-import { useCustomers } from '../../../../hooks/useCustomers';
+import { useCustomers } from '@/hooks/customers/useCustomers';
 
 export default function NewCustomerPage() {
   const router = useRouter();

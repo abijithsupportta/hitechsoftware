@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { Check, Pencil, Trash2, X } from 'lucide-react';
 import { ProtectedComponent } from '@/components/ui/ProtectedComponent';
-import { useServiceCategories } from '@/hooks/useServiceCategories';
-import { usePermission } from '@/hooks/usePermission';
+import { useServiceCategories } from '@/hooks/service-categories/useServiceCategories';
+import { usePermission } from '@/hooks/auth/usePermission';
 
 export default function ServiceCategoriesPage() {
   const { can } = usePermission();

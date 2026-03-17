@@ -1,8 +1,8 @@
-import { create, deleteById, findBySubjectId, getActiveContract, getLastContract, update } from '@/repositories/subject-contract.repository';
+import { create, deleteById, findBySubjectId, getActiveContract, getLastContract, update } from '@/repositories/contract.repository';
 import { getSubjectById, recalculateSubjectBillingType } from '@/repositories/subject.repository';
 import { WARRANTY_PERIODS } from '@/modules/subjects/subject.constants';
 import type { ServiceResult } from '@/types/common.types';
-import type { CreateContractInput, SubjectContract, UpdateContractInput, WarrantyPeriod } from '@/modules/subjects/subject.types';
+import type { CreateContractInput, SubjectContract, UpdateContractInput, WarrantyPeriod } from '@/modules/contracts/contract.types';
 
 function toIsoDate(value: string) {
   return new Date(value).toISOString().split('T')[0];

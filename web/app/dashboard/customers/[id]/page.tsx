@@ -10,7 +10,7 @@ import { ProtectedComponent } from '@/components/ui/ProtectedComponent';
 import { CUSTOMER_QUERY_KEYS } from '@/modules/customers/customer.constants';
 import { deleteCustomer } from '@/modules/customers/customer.service';
 import { CustomerStatusBadge } from '@/components/customers/CustomerStatusBadge';
-import { useCustomer } from '../../../../hooks/useCustomers';
+import { useCustomer } from '@/hooks/customers/useCustomers';
 
 export default function CustomerDetailPage() {
   const params = useParams<{ id: string }>();

@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { Check, Pencil, Trash2, X } from 'lucide-react';
 import { ProtectedComponent } from '@/components/ui/ProtectedComponent';
-import { useDealers } from '@/hooks/useDealers';
-import { usePermission } from '@/hooks/usePermission';
+import { useDealers } from '@/hooks/dealers/useDealers';
+import { usePermission } from '@/hooks/auth/usePermission';
 
 export default function ServiceDealersPage() {
   const { can } = usePermission();

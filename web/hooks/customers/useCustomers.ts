@@ -85,13 +85,10 @@ export function useCustomers() {
   const deleteCustomerMutation = useMutation({
     mutationFn: (customerId: string) => deleteCustomer(customerId),
     onMutate: async (customerId) => {
-      // Cancel any in-flight list refetches so they don't overwrite the optimistic update.
       await queryClient.cancelQueries({ queryKey: CUSTOMER_QUERY_KEYS.all });
 
-      // Snapshot all list caches for rollback.
       const previousData = queryClient.getQueriesData({ queryKey: CUSTOMER_QUERY_KEYS.list });
 
-      // Optimistically remove the customer from every cached list page.
       queryClient.setQueriesData(
         { queryKey: CUSTOMER_QUERY_KEYS.list },
         (old: unknown) => {
@@ -120,7 +117,6 @@ export function useCustomers() {
       }
     },
     onError: (_error, _customerId, context) => {
-      // Roll back optimistic update on network/server error.
       if (context?.previousData) {
         for (const [key, data] of context.previousData) {
           queryClient.setQueryData(key, data);

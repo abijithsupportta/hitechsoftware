@@ -1,8 +1,8 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
-import { useSubjects } from '@/hooks/useSubjects';
+import { useAuth } from '@/hooks/auth/useAuth';
+import { useSubjects } from '@/hooks/subjects/useSubjects';
 import SubjectForm from '@/components/subjects/SubjectForm';
 import { ROUTES } from '@/lib/constants/routes';
 import type { SubjectFormValues } from '@/modules/subjects/subject.types';

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { CustomerStatusBadge } from '@/components/customers/CustomerStatusBadge';
 import { KOTTAYAM_AREAS } from '@/modules/customers/customer.constants';
-import { useCustomers } from '../../../hooks/useCustomers';
+import { useCustomers } from '@/hooks/customers/useCustomers';
 
 export default function CustomersListPage() {
   const {

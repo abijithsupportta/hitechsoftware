@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { Check, Pencil, Trash2, X } from 'lucide-react';
 import { ProtectedComponent } from '@/components/ui/ProtectedComponent';
-import { useBrands } from '@/hooks/useBrands';
-import { usePermission } from '@/hooks/usePermission';
+import { useBrands } from '@/hooks/brands/useBrands';
+import { usePermission } from '@/hooks/auth/usePermission';
 
 export default function ServiceBrandsPage() {
   const { can } = usePermission();

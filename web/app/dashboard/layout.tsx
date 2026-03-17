@@ -24,7 +24,7 @@ import {
   ChevronDown,
   ChevronRight,
 } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/auth/useAuth';
 import { ROUTES } from '@/lib/constants/routes';
 
 interface DashboardLayoutProps {

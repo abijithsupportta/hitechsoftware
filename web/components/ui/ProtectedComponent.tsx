@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { usePermission } from '@/hooks/usePermission';
+import { usePermission } from '@/hooks/auth/usePermission';
 import type { Permission } from '@/config/permissions';
 
 interface ProtectedComponentProps {

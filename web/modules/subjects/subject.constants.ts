@@ -3,7 +3,6 @@ export const SUBJECT_QUERY_KEYS = {
   list: ['subjects', 'list'] as const,
   detail: (id: string) => ['subject', id] as const,
   assignableTechnicians: ['subjects', 'assignable-technicians'] as const,
-  contractsBySubject: (subjectId: string) => ['subject-contracts', subjectId] as const,
 };
 
 export const SUBJECT_DEFAULT_PAGE_SIZE = 10;

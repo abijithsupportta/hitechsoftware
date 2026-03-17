@@ -3,6 +3,54 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-18 14:30:00 +05:30] Full Architecture Cleanup — Domain Extraction, Hook Grouping, Component Decomposition
+
+- Summary: Complete architecture refactor of the web project. Extracted contracts into their own domain, grouped all hooks by domain, decomposed the 950-line subject detail page into ~120 lines using 7 extracted components, deleted empty stub module folders, updated all consumer imports, and verified clean production build.
+- Work done:
+  - Created `repositories/contract.repository.ts` (raw Supabase queries for subject_contracts table)
+  - Created `modules/contracts/contract.types.ts`, `contract.constants.ts`, `contract.service.ts` (contracts domain)
+  - Removed `SubjectContract`, `CreateContractInput`, `UpdateContractInput` types from `modules/subjects/subject.types.ts` and `contractsBySubject` key from `subject.constants.ts`
+  - Deleted 7 empty stub module folders: amc, attendance, billing, digital-bag, notifications, payouts, stock
+  - Created 10 domain-grouped hook files under `hooks/{auth,brands,contracts,customers,dealers,inventory,service-categories,subjects,team}/`
+  - Created extracted components: `SubjectPriorityBadge`, `SubjectStatusBadge`, `SubjectInfoCard`, `ProductInfoCard`, `ActivityTimeline`, `AssignTechnicianForm`, `ContractCard`, `WarrantyAndContractsSection`
+  - Rewrote `app/dashboard/subjects/[id]/page.tsx` from ~950 lines to ~120 lines using extracted components
+  - Updated all hook imports in 16 consumer files (pages and components) to new domain-grouped paths
+  - Fixed `app/dashboard/customers/[id]/edit/page.tsx` relative import (missed in first grep pass)
+  - Deleted old flat hook files and old `subject-contract.service.ts` / `subject-contract.repository.ts`
+- Files changed:
+  - repositories/contract.repository.ts (new)
+  - modules/contracts/contract.types.ts (new)
+  - modules/contracts/contract.constants.ts (new)
+  - modules/contracts/contract.service.ts (new)
+  - modules/subjects/subject.types.ts (removed contract types)
+  - modules/subjects/subject.constants.ts (removed contractsBySubject key)
+  - hooks/auth/useAuth.ts, hooks/auth/usePermission.ts (new)
+  - hooks/brands/useBrands.ts, hooks/dealers/useDealers.ts, hooks/customers/useCustomers.ts (new)
+  - hooks/contracts/useContracts.ts, hooks/subjects/useSubjects.ts, hooks/team/useTeam.ts (new)
+  - hooks/inventory/useInventory.ts, hooks/service-categories/useServiceCategories.ts (new)
+  - hooks/useAuth.ts … hooks/useTeam.ts (deleted — 10 flat files)
+  - modules/subjects/subject-contract.service.ts (deleted)
+  - repositories/subject-contract.repository.ts (deleted)
+  - components/subjects/SubjectPriorityBadge.tsx, SubjectStatusBadge.tsx (new)
+  - components/subjects/SubjectInfoCard.tsx, ProductInfoCard.tsx, ActivityTimeline.tsx (new)
+  - components/assignment/AssignTechnicianForm.tsx (new)
+  - components/contracts/ContractCard.tsx (new)
+  - components/warranty/WarrantyAndContractsSection.tsx (new)
+  - app/dashboard/subjects/[id]/page.tsx (rewritten)
+  - app/dashboard/subjects/page.tsx, new/page.tsx, [id]/edit/page.tsx (import updates)
+  - app/dashboard/service/brands, categories, dealers page.tsx (import updates)
+  - app/dashboard/team/page.tsx, [id]/page.tsx (import updates)
+  - app/dashboard/layout.tsx, app/login/page.tsx, app/page.tsx (import updates)
+  - components/subjects/SubjectForm.tsx (import updates)
+  - components/ui/ProtectedComponent.tsx (import updates)
+  - app/dashboard/customers/[id]/page.tsx, page.tsx, new/page.tsx, [id]/edit/page.tsx (import updates)
+- Verification:
+  - `npm run build` in web/ — Compiled successfully in 8.3s, TypeScript passed in 7.3s, all 19 routes built with zero errors
+- Bugs/issues encountered:
+  - Missed `app/dashboard/customers/[id]/edit/page.tsx` in the first grep pass; caught by build error, fixed immediately
+- Next:
+  - Continue feature development on warranty/AMC module (service reporting, billing integration)
+
 ## [2026-03-17 16:10:00 +05:30] Redesign Service and Product Information Cards on Subject Detail Page
 
 - Summary: Replaced flat inline-label-colon-value layout with a professional stacked label-above-value design. Service Information card uses a two-column layout with a vertical divider. Colored badges added for Priority, Source Type, and Type of Service. Product Information card uses a distinct bg-gray-50 background with "Not provided" fallbacks.

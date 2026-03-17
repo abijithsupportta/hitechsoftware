@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useBrands } from '@/hooks/useBrands';
-import { useDealers } from '@/hooks/useDealers';
-import { useServiceCategories } from '@/hooks/useServiceCategories';
-import { useAssignableTechnicians } from '@/hooks/useSubjects';
+import { useBrands } from '@/hooks/brands/useBrands';
+import { useDealers } from '@/hooks/dealers/useDealers';
+import { useServiceCategories } from '@/hooks/service-categories/useServiceCategories';
+import { useAssignableTechnicians } from '@/hooks/subjects/useSubjects';
 import { lookupCustomerByPhone } from '@/modules/customers/customer.service';
 import type { SubjectFormValues, SubjectPriority, SubjectSourceType, SubjectTypeOfService } from '@/modules/subjects/subject.types';
 

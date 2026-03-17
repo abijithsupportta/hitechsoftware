@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { DeleteConfirmModal } from '@/components/customers/DeleteConfirmModal';
 import { ProtectedComponent } from '@/components/ui/ProtectedComponent';
-import { useTeam } from '@/hooks/useTeam';
+import { useTeam } from '@/hooks/team/useTeam';
 import { ROUTES } from '@/lib/constants/routes';
 import type { UserRole } from '@/types/database.types';
 

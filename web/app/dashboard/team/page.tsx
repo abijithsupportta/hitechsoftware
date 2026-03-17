@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { Eye, EyeOff, ShieldCheck, UserPlus, X } from 'lucide-react';
-import { usePermission } from '@/hooks/usePermission';
-import { useTeam } from '@/hooks/useTeam';
+import { usePermission } from '@/hooks/auth/usePermission';
+import { useTeam } from '@/hooks/team/useTeam';
 import { ROUTES } from '@/lib/constants/routes';
 import type { CreateTeamMemberInput } from '@/modules/technicians/technician.types';
 import type { UserRole } from '@/types/database.types';
