@@ -32,6 +32,17 @@ function truncateText(value: string, limit: number) {
   return `${value.slice(0, limit)}...`;
 }
 
+function formatSubjectPreview(value: string) {
+  if (value.length <= 24) {
+    return value;
+  }
+
+  const parts = value.split('-').filter(Boolean);
+  const prefix = parts.length >= 2 ? `${parts[0]}-${parts[1]}` : value.slice(0, 8);
+
+  return `${prefix}-...${value.slice(-7)}`;
+}
+
 function getPriorityMeta(priority: SubjectListItem['priority']) {
   switch (priority) {
     case 'critical':
@@ -362,18 +373,18 @@ export default function SubjectsDashboardPage() {
 
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full table-fixed divide-y divide-slate-200">
+          <table className="min-w-[1180px] w-full table-fixed divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>
-                <th className="min-w-[280px] w-[24%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Subject</th>
-                <th className="w-[20%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Customer</th>
-                <th className="w-[14%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Source</th>
-                <th className="w-[9%] px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">Priority</th>
-                <th className="w-[11%] px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">Status</th>
-                <th className="w-[13%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Assigned To</th>
-                <th className="w-[11%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Service Type</th>
-                <th className="w-[9%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Date</th>
-                <th className="w-[9%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Actions</th>
+                <th className="w-[220px] whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Subject</th>
+                <th className="w-[180px] whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Customer</th>
+                <th className="w-[120px] whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Source</th>
+                <th className="w-[100px] whitespace-nowrap px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">Priority</th>
+                <th className="w-[110px] whitespace-nowrap px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">Status</th>
+                <th className="w-[130px] whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Assigned To</th>
+                <th className="w-[130px] whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Service Type</th>
+                <th className="w-[110px] whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Date</th>
+                <th className="w-[80px] whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -437,22 +448,23 @@ export default function SubjectsDashboardPage() {
                       key={subject.id}
                       className={`hover:bg-slate-50/70${needsAttentionBorder ? ' border-l-4 border-l-rose-400' : ''}`}
                     >
-                      <td className="min-w-[280px] px-4 py-3 text-sm">
-                        <Link
-                          href={ROUTES.DASHBOARD_SUBJECTS_DETAIL(subject.id)}
-                          className="block whitespace-nowrap font-bold text-blue-600 hover:underline"
-                          title={subject.subject_number}
-                        >
-                          {subject.subject_number}
+                      <td className="w-[220px] overflow-hidden px-4 py-3 text-sm">
+                        <Link href={ROUTES.DASHBOARD_SUBJECTS_DETAIL(subject.id)} className="group relative block hover:underline">
+                          <span className="block truncate whitespace-nowrap font-bold text-blue-600" title={subject.subject_number}>
+                            {formatSubjectPreview(subject.subject_number)}
+                          </span>
+                          <span className="pointer-events-none absolute bottom-full left-0 z-20 mb-1 hidden max-w-[260px] truncate whitespace-nowrap rounded bg-slate-900 px-2 py-1 text-[11px] font-medium text-white group-hover:block">
+                            {subject.subject_number}
+                          </span>
                         </Link>
                         <p
-                          className="max-w-[130px] truncate text-xs text-slate-500"
+                          className="max-w-[180px] truncate whitespace-nowrap text-xs text-slate-500"
                           title={subject.category_name ?? '-'}
                         >
                           {subject.category_name ?? '-'}
                         </p>
                       </td>
-                      <td className="px-4 py-3 text-sm">
+                      <td className="w-[180px] overflow-hidden px-4 py-3 text-sm">
                         {subject.customer_name ? (
                           <>
                             <p
@@ -469,7 +481,7 @@ export default function SubjectsDashboardPage() {
                           <span className="max-w-[210px] truncate whitespace-nowrap italic text-slate-400" title="Walk-in">Walk-in</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-sm">
+                      <td className="w-[120px] overflow-hidden px-4 py-3 text-sm">
                         <p
                           className="max-w-[120px] truncate whitespace-nowrap font-medium text-slate-900"
                           title={subject.source_name}
@@ -483,39 +495,28 @@ export default function SubjectsDashboardPage() {
                           {subject.source_type === 'brand' ? 'Brand' : 'Dealer'}
                         </p>
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="w-[100px] overflow-hidden px-4 py-3 text-center">
                         <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${priorityMeta.className}`}>
                           {priorityMeta.label}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="w-[110px] overflow-hidden px-4 py-3 text-center">
                         <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${statusMeta.className}`}>
                           {statusMeta.label}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-sm">
+                      <td className="w-[130px] overflow-hidden px-4 py-3 text-sm">
                         {subject.assigned_technician_name ? (
-                          <>
-                            <p
-                              className="max-w-[120px] truncate whitespace-nowrap font-medium text-slate-900"
-                              title={subject.assigned_technician_name}
-                            >
-                              {truncateText(subject.assigned_technician_name, 12)}
-                            </p>
-                            <p
-                              className="max-w-[120px] truncate whitespace-nowrap text-xs text-slate-500"
-                              title={subject.assigned_technician_code ?? 'Assigned technician'}
-                            >
-                              {subject.assigned_technician_code ?? 'Assigned technician'}
-                            </p>
-                          </>
+                          <p className="max-w-[110px] truncate whitespace-nowrap font-medium text-slate-900" title={subject.assigned_technician_name}>
+                            {subject.assigned_technician_name}
+                          </p>
                         ) : (
                           <span className="inline-flex whitespace-nowrap rounded-full bg-rose-100 px-2.5 py-1 text-xs font-semibold text-rose-600">
                             Unassigned
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="w-[130px] overflow-hidden px-4 py-3">
                         <span
                           className={`inline-flex max-w-[120px] truncate whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${serviceTypeMeta.className}`}
                           title={serviceTypeMeta.label}
@@ -523,12 +524,12 @@ export default function SubjectsDashboardPage() {
                           {serviceTypeMeta.label}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-600">
+                      <td className="w-[110px] overflow-hidden px-4 py-3 text-sm text-slate-600">
                         <span className="max-w-[90px] truncate whitespace-nowrap" title={formatDate(subject.allocated_date)}>
                           {formatDate(subject.allocated_date)}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="w-[80px] overflow-hidden px-4 py-3">
                         <Link
                           href={ROUTES.DASHBOARD_SUBJECTS_DETAIL(subject.id)}
                           onMouseEnter={() => handlePrefetch(subject.id)}

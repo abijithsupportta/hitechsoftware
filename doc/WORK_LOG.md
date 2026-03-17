@@ -3,6 +3,39 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-17 09:31:23 +05:30] Stabilize Subjects Table Layout and Sidebar Disabled-Item Rendering
+
+- Summary: Applied a full subjects table layout reset (fixed widths + table-fixed + overflow handling), removed remaining assignment noise from list, restored disabled sidebar item structure/icons, and hardened avatar initials derivation.
+- Work done:
+  - Subjects table:
+    - Implemented fixed-width column layout with `table-fixed` and horizontal scroll fallback via `overflow-x-auto` wrapper.
+    - Set explicit widths: Subject 220, Customer 180, Source 120, Priority 100, Status 110, Assigned To 130, Service Type 130, Date 110, Actions 80.
+    - Added `whitespace-nowrap` to all table headers to prevent header wrapping.
+    - Reworked Subject display to smart preview format (`prefix-...suffix`) with full value hover tooltip shown above row.
+    - Ensured subject column no longer bleeds into adjacent columns.
+    - Removed technician code/ID from Assigned To display; now shows technician name only or `Unassigned` badge.
+    - Increased customer visible text to 20 characters before truncation, phone shown below.
+    - Preserved row breathing room with `py-3` cell padding.
+  - Sidebar:
+    - Restored icon + label structure for disabled items (Inventory/Billing/Reports/Settings).
+    - Kept them muted and non-clickable using `opacity-40` and `pointer-events-none`.
+  - Avatar initials:
+    - Updated initials logic to derive from `first_name` + `last_name` when available, with fallback to full name/email parts.
+  - API documentation review:
+    - Confirmed this change is UI/layout-only with no API contract/endpoint/auth/schema changes.
+- Files changed:
+  - web/app/dashboard/subjects/page.tsx
+  - web/app/dashboard/layout.tsx
+  - doc/WORK_LOG.md
+- Verification:
+  - `get_errors` returned no issues for modified files.
+  - `npm run build` passed for the web workspace.
+- Issues:
+  - Native browser `title` tooltip position is browser-controlled; added custom above-row hover tooltip for subject full number to avoid row overlap.
+- Next:
+  - Browser QA: confirm final table readability at desktop and smaller widths with horizontal scroll fallback.
+  - Browser QA: verify avatar initials for users with and without `first_name`/`last_name` metadata.
+
 ## [2026-03-17 09:27:20 +05:30] Refine Sidebar UX and Revert Subjects List Assignment to Read-Only
 
 - Summary: Improved dashboard sidebar readability/spacing and simplified subjects list by removing inline assignment controls, restoring Assigned To as display-only.

@@ -73,12 +73,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const roleLabel = userRole ? userRole.replace('_', ' ') : 'team member';
   const identity = user.email ?? 'user';
-  const displayName =
-    String(user.user_metadata?.full_name ?? user.user_metadata?.name ?? '').trim() ||
-    identity.split('@')[0] ||
-    'User';
-  const nameParts = displayName.split(/\s+/).filter(Boolean);
-  const initials = `${nameParts[0]?.[0] ?? 'U'}${nameParts[nameParts.length - 1]?.[0] ?? 'U'}`.toUpperCase();
+  const firstNameMeta = String(user.user_metadata?.first_name ?? '').trim();
+  const lastNameMeta = String(user.user_metadata?.last_name ?? '').trim();
+  const fullNameMeta = String(user.user_metadata?.full_name ?? user.user_metadata?.name ?? '').trim();
+  const emailParts = identity.split('@')[0]?.split(/[._-]/).filter(Boolean) ?? [];
+  const fullNameParts = fullNameMeta.split(/\s+/).filter(Boolean);
+  const firstInitial = (firstNameMeta[0] ?? fullNameParts[0]?.[0] ?? emailParts[0]?.[0] ?? 'U').toUpperCase();
+  const lastInitial = (lastNameMeta[0] ?? fullNameParts[1]?.[0] ?? emailParts[1]?.[0] ?? firstInitial).toUpperCase();
+  const initials = `${firstInitial}${lastInitial}`;
   const visibleServiceItems = SERVICE_MODULE_ITEMS.filter((item) => !item.superAdminOnly || userRole === 'super_admin');
   const isSuperAdmin = userRole === 'super_admin';
   const isServiceModuleActive =
@@ -213,11 +215,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       title={!sidebarExpanded ? item.label : undefined}
                       className={`relative flex rounded-xl border border-transparent text-sm ${
                         sidebarExpanded ? 'items-center gap-3 px-3.5 py-3' : 'justify-center px-0 py-3.5'
-                      } pointer-events-none opacity-40`}
+                      } pointer-events-none opacity-40 text-blue-200/80`}
                     >
                       <item.icon size={18} />
                       {sidebarExpanded ? (
-                        <span className="whitespace-nowrap text-[13px] text-blue-200/70">{item.label}</span>
+                        <span className="whitespace-nowrap text-[13px]">{item.label}</span>
                       ) : (
                         <span className="sr-only">{item.label}</span>
                       )}
