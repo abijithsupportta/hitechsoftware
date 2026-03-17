@@ -3,6 +3,30 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-17 08:06:22 +05:30] Web Project Analysis and Workflow Review
+
+- Summary: Reviewed the `web` project structure, key documentation, current work-log history, and repository Git configuration to establish the expected coding workflow: analyze against the documented architecture, record every completed task in `doc/WORK_LOG.md`, and push completed work to GitHub `main`.
+- Work done:
+  - Reviewed the mandatory documentation rule in `.github/instructions/documentation rule.instructions.md`.
+  - Reviewed the latest entries in `doc/WORK_LOG.md` to understand the current daily work pattern and verification style.
+  - Analyzed the `web` app structure across `app`, `components`, `modules`, `repositories`, `hooks`, `stores`, `config`, `types`, and `docs`.
+  - Reviewed core project documentation including root `README.md`, `web/docs/API_DOCUMENTATION.md`, `web/docs/ARCHITECTURE_COMPLIANCE_REPORT.md`, and `web/docs/AUTH_MODULE_MNC_IMPLEMENTATION.md`.
+  - Verified repository Git state: current branch is `main`, remote `origin` points to `git@github.com:abijithsupportta/hitechsoftware.git`, and there were no pre-existing uncommitted changes.
+  - Identified key implementation shape: Next.js App Router frontend, React Query + Zustand client state, layered modules/services/repositories pattern, and Supabase as the primary backend integration.
+  - Identified documentation gap: `web/README.md` is still the default Next.js scaffold and does not yet reflect the actual project architecture or workflow.
+- Files changed:
+  - doc/WORK_LOG.md
+- Verification:
+  - Reviewed project and web documentation files successfully.
+  - Confirmed Git branch and remote configuration.
+  - Confirmed working tree was clean before this entry was added.
+- Issues:
+  - `web/README.md` is outdated and should be replaced with project-specific setup and architecture guidance.
+  - `web/config/navigation.ts` does not match the permission naming used in `web/config/permissions.ts` and should be reviewed before being relied on.
+- Next:
+  - Replace the scaffolded `web/README.md` with project-specific documentation.
+  - Continue logging each completed work item at the top of this file and push completed changes to GitHub `main` after coding.
+
 ## [2026-03-13 20:30:00 +05:30] Subjects List Table Redesign — 12-Point Spec + Quick Assign
 
 - Summary: Full redesign of the subjects list (`/dashboard/subjects`) table per a detailed 12-point specification for daily office-staff use. Added `customer_name` to the data pipeline (type → repository → service mapper). Replaced the old `...` dropdown action pattern with inline View/Edit buttons. Added a contextual "Quick Assign" button on the subject detail page.
