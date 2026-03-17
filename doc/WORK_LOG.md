@@ -3,6 +3,29 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-17 08:14:31 +05:30] Restore Super Admin Service Delete Action via 3-Dot Menu
+
+- Summary: Added the service deletion action back to the service subjects list as a 3-dot row menu, visible only to super admins, with a confirmation step before deletion.
+- Work done:
+  - Updated the service list page to use the existing `deleteSubjectMutation` from `useSubjects`.
+  - Added a per-row 3-dot action button to the Actions column on the service subjects list.
+  - Restricted the 3-dot delete menu to users with `subject:delete`, which maps to super admin only.
+  - Added a contextual dropdown with a single `Delete` action for each service row.
+  - Added confirmation before deletion and row-level deleting state feedback (`Deleting...`).
+  - Added menu-close behavior on outside click and `Escape` key.
+  - Left API documentation unchanged because this task did not modify routes, payloads, auth contracts, or backend response shapes.
+- Files changed:
+  - web/app/dashboard/subjects/page.tsx
+  - doc/WORK_LOG.md
+- Verification:
+  - `get_errors` on `web/app/dashboard/subjects/page.tsx` returned no errors.
+  - `npm run build` passed for the monorepo web workspace and compiled `/dashboard/subjects` successfully.
+- Issues:
+  - None
+- Next:
+  - Browser QA: verify the 3-dot menu appears only for super admin.
+  - Browser QA: verify delete removes the service row and closes the menu correctly.
+
 ## [2026-03-17 08:07:51 +05:30] Elevate API Documentation as Mandatory Workflow
 
 - Summary: Updated the project documentation workflow so API documentation is explicitly treated as mandatory and high-priority for every backend or contract-affecting change.

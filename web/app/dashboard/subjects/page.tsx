@@ -1,6 +1,9 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { MoreHorizontal, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { usePermission } from '@/hooks/usePermission';
 import { useSubjects } from '@/hooks/useSubjects';
 import { useBrands } from '@/hooks/useBrands';
@@ -68,6 +71,8 @@ function getServiceTypeMeta(subject: SubjectListItem) {
 
 export default function SubjectsDashboardPage() {
   const { can } = usePermission();
+  const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
+  const [deletingSubjectId, setDeletingSubjectId] = useState<string | null>(null);
   const brands = useBrands();
   const dealers = useDealers();
   const categories = useServiceCategories();
@@ -95,10 +100,49 @@ export default function SubjectsDashboardPage() {
     setFromDate,
     setToDate,
     setPage,
+    deleteSubjectMutation,
   } = useSubjects();
 
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setOpenActionMenuId(null);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, []);
+
+  async function handleDeleteSubject(subjectId: string, subjectNumber: string) {
+    const confirmed = window.confirm(`Delete service ${subjectNumber}? This action will hide it from the service list.`);
+
+    if (!confirmed) {
+      return;
+    }
+
+    setOpenActionMenuId(null);
+    setDeletingSubjectId(subjectId);
+
+    try {
+      await deleteSubjectMutation.mutateAsync(subjectId);
+    } catch {
+      toast.error('Failed to delete subject');
+    } finally {
+      setDeletingSubjectId(null);
+    }
+  }
+
   return (
-    <div className="p-6">
+    <div
+      className="p-6"
+      onClick={() => {
+        setOpenActionMenuId(null);
+      }}
+    >
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Service Subjects</h1>
@@ -343,7 +387,7 @@ export default function SubjectsDashboardPage() {
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-600">{formatDate(subject.allocated_date)}</td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
                           <Link
                             href={ROUTES.DASHBOARD_SUBJECTS_DETAIL(subject.id)}
                             className="inline-flex items-center rounded-md bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
@@ -357,6 +401,36 @@ export default function SubjectsDashboardPage() {
                             >
                               Edit
                             </Link>
+                          ) : null}
+                          {can('subject:delete') ? (
+                            <div className="relative">
+                              <button
+                                type="button"
+                                aria-label={`Open actions for ${subject.subject_number}`}
+                                aria-expanded={openActionMenuId === subject.id}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setOpenActionMenuId((current) => (current === subject.id ? null : subject.id));
+                                }}
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-slate-100"
+                              >
+                                <MoreHorizontal size={16} />
+                              </button>
+
+                              {openActionMenuId === subject.id ? (
+                                <div className="absolute right-0 top-10 z-20 min-w-36 rounded-lg border border-slate-200 bg-white p-1 shadow-lg">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteSubject(subject.id, subject.subject_number)}
+                                    disabled={deletingSubjectId === subject.id}
+                                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs font-medium text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                  >
+                                    <Trash2 size={14} />
+                                    {deletingSubjectId === subject.id ? 'Deleting...' : 'Delete'}
+                                  </button>
+                                </div>
+                              ) : null}
+                            </div>
                           ) : null}
                         </div>
                       </td>
