@@ -3,6 +3,28 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-17 08:52:34 +05:30] Move Subjects View/Edit/Delete Back Under 3-Dot Menu
+
+- Summary: Updated the subjects list actions column to use a 3-dot dropdown menu again, with View, Edit, and Delete options contained in the menu.
+- Work done:
+  - Added row-level action-menu state (`openActionMenuId`) to subjects list page.
+  - Added `Escape` key handler and outside-click behavior to close action menus.
+  - Replaced inline action buttons with a `MoreHorizontal` 3-dot trigger per row.
+  - Added menu options: View (always), Edit (when `subject:edit` permission is available), Delete (inside `ProtectedComponent permission="subject:delete"`).
+  - Preserved delete confirmation and deleting state feedback inside the menu.
+  - Left API documentation unchanged because this is a UI interaction change only.
+- Files changed:
+  - web/app/dashboard/subjects/page.tsx
+  - doc/WORK_LOG.md
+- Verification:
+  - `get_errors` on `web/app/dashboard/subjects/page.tsx` returned no errors.
+  - `npm run build` passed for the web workspace.
+- Issues:
+  - None
+- Next:
+  - Browser QA: verify only one row menu stays open at a time and closes on outside click.
+  - Browser QA: verify delete item is visible only for super admin role.
+
 ## [2026-03-17 08:50:56 +05:30] Add Subjects Rows-Per-Page Pagination Selector
 
 - Summary: Added a user-selectable rows-per-page option on the subjects list so pagination is no longer fixed to 10 items and can be switched to 20, 50, or 100.
