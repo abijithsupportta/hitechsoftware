@@ -151,11 +151,18 @@ export default function SubjectsDashboardPage() {
   const technicianOptions = techniciansQuery.data?.ok ? techniciansQuery.data.data : [];
 
   async function handleQuickAssign(subjectId: string, technicianId: string) {
+    const normalizedTechnicianId = technicianId || '';
+
+    setAssignmentDraftById((prev) => ({
+      ...prev,
+      [subjectId]: normalizedTechnicianId,
+    }));
+
     setAssigningSubjectId(subjectId);
     try {
       await quickAssignSubjectMutation.mutateAsync({
         subjectId,
-        technicianId: technicianId || undefined,
+        technicianId: normalizedTechnicianId || undefined,
       });
       setAssignmentDraftById((prev) => {
         const next = { ...prev };
@@ -524,7 +531,13 @@ export default function SubjectsDashboardPage() {
                               value={assignmentDraftById[subject.id] ?? subject.assigned_technician_id ?? ''}
                               onChange={(event) => {
                                 const selectedId = event.target.value;
-                                setAssignmentDraftById((prev) => ({ ...prev, [subject.id]: selectedId }));
+                                const currentAssignedId = subject.assigned_technician_id ?? '';
+
+                                if (selectedId === currentAssignedId) {
+                                  return;
+                                }
+
+                                void handleQuickAssign(subject.id, selectedId);
                               }}
                               className="w-40 rounded-md border border-slate-300 px-2 py-1.5 text-xs text-slate-700 focus:border-blue-500 focus:outline-none"
                               disabled={assigningSubjectId === subject.id || techniciansQuery.isLoading}
@@ -536,18 +549,7 @@ export default function SubjectsDashboardPage() {
                                 </option>
                               ))}
                             </select>
-                            <button
-                              type="button"
-                              onClick={() => handleQuickAssign(subject.id, assignmentDraftById[subject.id] ?? subject.assigned_technician_id ?? '')}
-                              disabled={
-                                assigningSubjectId === subject.id ||
-                                techniciansQuery.isLoading ||
-                                (assignmentDraftById[subject.id] ?? subject.assigned_technician_id ?? '') === (subject.assigned_technician_id ?? '')
-                              }
-                              className="inline-flex whitespace-nowrap rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                              {assigningSubjectId === subject.id ? 'Saving...' : 'Assign'}
-                            </button>
+                            {assigningSubjectId === subject.id ? <span className="text-xs text-blue-600">Updating...</span> : null}
                           </div>
                         ) : subject.assigned_technician_name ? (
                           <>

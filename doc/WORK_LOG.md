@@ -3,6 +3,26 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-17 09:23:20 +05:30] Make Technician Assignment Auto-Save on Selection
+
+- Summary: Simplified subjects list assignment UX by removing the Assign button and auto-updating assignment immediately when a technician is selected.
+- Work done:
+  - Removed row-level Assign button from subjects list.
+  - Updated assignment dropdown behavior to call quick-assign mutation directly on selection change.
+  - Added in-row `Updating...` state indicator while assignment mutation is in progress.
+  - Kept unchanged-selection guard so no unnecessary update request is sent.
+  - Reviewed API documentation impact: no API contract/endpoint/schema/auth behavior changes were required for this UI interaction update.
+- Files changed:
+  - web/app/dashboard/subjects/page.tsx
+  - doc/WORK_LOG.md
+- Verification:
+  - `get_errors` returned no issues for modified file.
+  - `npm run build` passed for the web workspace.
+- Issues:
+  - None
+- Next:
+  - Browser QA: verify selecting technician updates immediately without extra click for assign and unassign cases.
+
 ## [2026-03-17 09:22:11 +05:30] Enforce Mandatory API Documentation Compliance Workflow
 
 - Summary: Strengthened project documentation rules so API documentation impact is explicitly required and auditable for every completed task.
