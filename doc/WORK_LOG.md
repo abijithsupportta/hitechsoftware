@@ -3,6 +3,30 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-17 16:10:00 +05:30] Redesign Service and Product Information Cards on Subject Detail Page
+
+- Summary: Replaced flat inline-label-colon-value layout with a professional stacked label-above-value design. Service Information card uses a two-column layout with a vertical divider. Colored badges added for Priority, Source Type, and Type of Service. Product Information card uses a distinct bg-gray-50 background with "Not provided" fallbacks.
+- Work done:
+  - Replaced Service Information card with two-column (left/right) layout separated by a vertical divide-x divider.
+  - Each field now shows a small uppercase gray label above the value in darker text.
+  - Priority renders as a colored badge: Critical=red, High=orange, Medium=yellow, Low=green.
+  - Source Type renders as a badge: Brand=blue, Dealer=purple.
+  - Type of Service renders as a badge: Installation=indigo, Service=teal.
+  - Horizontal dividers between field rows using divide-y divide-gray-100.
+  - Priority Reason renders in a full-width row below the two columns, only if present.
+  - Replaced Product Information card with same stacked label/value layout.
+  - Product Information card uses bg-gray-50 to visually distinguish from Service card.
+  - Product Name, Serial Number, and Description show gray italic "Not provided" when empty.
+  - Both cards use border-gray-200, rounded-xl, shadow-sm, p-5.
+  - All badge labels are properly capitalized via charAt(0).toUpperCase() + slice(1).
+- Files changed:
+  - web/app/dashboard/subjects/[id]/page.tsx
+  - doc/WORK_LOG.md
+- Verification:
+  - No TypeScript/lint errors after changes.
+- Next:
+  - None.
+
 ## [2026-03-17 15:20:28 +05:30] Shorten Coverage Label Text in Subject List
 
 - Summary: Refined the coverage badge wording to concise, proper English by shortening `Chargeable Service` to `Chargeable` in the subjects list.
