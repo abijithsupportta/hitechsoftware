@@ -511,10 +511,18 @@ export default function SubjectsDashboardPage() {
                           {serviceTypeMeta.label}
                         </span>
                       </td>
-                      <td className="w-[110px] overflow-hidden px-4 py-3 text-sm text-slate-600">
-                        <span className="max-w-[90px] truncate whitespace-nowrap">
-                          {formatDate(subject.allocated_date)}
-                        </span>
+                      <td className="w-[120px] overflow-hidden px-4 py-3 text-sm text-slate-600">
+                        {subject.technician_allocated_date ? (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="inline-block rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">Tech</span>
+                            <span className="font-semibold text-blue-800">{formatDate(subject.technician_allocated_date)}</span>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="inline-block rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">Brand</span>
+                            <span className="truncate">{formatDate(subject.allocated_date)}</span>
+                          </div>
+                        )}
                       </td>
                       <td className="w-[80px] overflow-hidden px-4 py-3">
                         <Link

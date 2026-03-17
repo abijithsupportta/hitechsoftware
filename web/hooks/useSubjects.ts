@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { assignSubjectToTechnician, createSubjectTicket, getSubjectDetails, getSubjects, removeSubject, updateSubjectRecord } from '@/modules/subjects/subject.service';
+import { assignSubjectToTechnician, assignTechnicianWithDate, createSubjectTicket, getSubjectDetails, getSubjects, removeSubject, updateSubjectRecord } from '@/modules/subjects/subject.service';
 import { SUBJECT_DEFAULT_PAGE_SIZE, SUBJECT_QUERY_KEYS } from '@/modules/subjects/subject.constants';
-import type { CreateSubjectInput, SubjectListFilters, UpdateSubjectInput } from '@/modules/subjects/subject.types';
+import type { AssignTechnicianInput, CreateSubjectInput, SubjectListFilters, UpdateSubjectInput } from '@/modules/subjects/subject.types';
 import { getAssignableTechnicians } from '@/modules/technicians/technician.service';
 
 export function useSubjects() {
@@ -186,5 +186,25 @@ export function useAssignableTechnicians() {
     queryKey: SUBJECT_QUERY_KEYS.assignableTechnicians,
     queryFn: getAssignableTechnicians,
     staleTime: 60 * 1000,
+  });
+}
+
+export function useAssignTechnician(subjectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: AssignTechnicianInput) => assignTechnicianWithDate(input),
+    onSuccess: (result) => {
+      if (result.ok) {
+        toast.success('Technician assignment saved successfully');
+        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.all });
+        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(subjectId) });
+      } else {
+        toast.error(result.error.message);
+      }
+    },
+    onError: () => {
+      toast.error('Failed to save technician assignment');
+    },
   });
 }

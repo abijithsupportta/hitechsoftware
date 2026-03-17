@@ -3,6 +3,36 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-17 12:05:00 +05:30] Technician Allocation Date — Full Feature Implementation
+
+- Summary: Added `technician_allocated_date` and `technician_allocated_notes` columns to subjects. Implemented full data layer (DB → repository → service → hooks) and replaced the old compact assignment card on the detail page with a proper three-field Assignment Section. Updated the list page date column to show the technician visit date (with blue "Tech" badge) when present, or the brand/dealer allocated date (with gray "Brand" badge) when not.
+- Work done:
+  - **DB migration** `supabase/migrations/20260317_008_technician_allocation.sql`: adds `technician_allocated_date DATE` and `technician_allocated_notes TEXT` columns plus an index.
+  - **`web/modules/subjects/subject.types.ts`**: Added `technician_allocated_date` and `technician_allocated_notes` to `SubjectListItem`; added new `AssignTechnicianInput` interface.
+  - **`web/repositories/subject.repository.ts`**: Added new fields to `listSubjects` and `getSubjectById` selects; added `assignTechnicianFull()` function updating both allocation fields + status.
+  - **`web/modules/subjects/subject.service.ts`**: Updated `mapRawSubjectList` and `getSubjectDetails` to map new fields; added `assignTechnicianWithDate()` with validation (technician active, date not in past, auto-status ALLOCATED/PENDING).
+  - **`web/hooks/useSubjects.ts`**: Added `useAssignTechnician(subjectId)` mutation hook with toast notifications and cache invalidation.
+  - **`web/app/dashboard/subjects/[id]/page.tsx`**: Replaced old 4-card compact grid (including mini dropdown assignment card referencing deleted mutation) with: four summary mini cards (Charge To, Billing Status, Source Date, Tech Visit Date) + a full dedicated Assignment Section panel with technician dropdown, visit date picker (min=today, mandatory when tech selected), notes input, and smart Assign/Reassign/Update button with change-detection guard.
+  - **`web/app/dashboard/subjects/page.tsx`**: Date column now shows technician visit date (bold blue + "Tech" badge) when `technician_allocated_date` is non-null, else brand/dealer allocated date (+ "Brand" badge).
+- Files changed:
+  - `supabase/migrations/20260317_008_technician_allocation.sql`
+  - `web/modules/subjects/subject.types.ts`
+  - `web/repositories/subject.repository.ts`
+  - `web/modules/subjects/subject.service.ts`
+  - `web/hooks/useSubjects.ts`
+  - `web/app/dashboard/subjects/[id]/page.tsx`
+  - `web/app/dashboard/subjects/page.tsx`
+  - `doc/WORK_LOG.md`
+- Verification:
+  - No TypeScript errors in changed files.
+  - `npm run build` passed — all 19 routes compiled successfully.
+- Issues encountered:
+  - Token budget was exhausted in the prior session mid-way through JSX replacement; the detail page was left with broken `assignTechnicianMutation` references. Fixed at session resumption.
+  - `useEffect` placed after conditional returns (pre-existing pattern) — left as-is since it was passing build before; not in scope of this task.
+- Next:
+  - Apply DB migration on live Supabase project.
+  - Verify assignment flow end-to-end in staging.
+
 ## [2026-03-17 09:52:00 +05:30] Remove Native title Tooltips from Subjects Table
 
 - Summary: Replaced all browser-native `title=` attributes in the subjects list table with pure Tailwind CSS custom tooltips. Subject number now uses the `group`/`group-hover:block` pattern with a dark styled box. All other cells had their `title` props removed entirely.

@@ -1,4 +1,4 @@
-import { assignSubjectTechnician, createSubject, deleteSubject, getSubjectById, getSubjectTimeline, listSubjects, updateSubject } from '@/repositories/subject.repository';
+import { assignSubjectTechnician, assignTechnicianFull, createSubject, deleteSubject, getSubjectById, getSubjectTimeline, listSubjects, updateSubject } from '@/repositories/subject.repository';
 import { getAssignableTechnicianById, getAssignableTechnicians } from '@/modules/technicians/technician.service';
 import type { ServiceResult } from '@/types/common.types';
 import type {
@@ -9,6 +9,7 @@ import type {
   SubjectListResponse,
   SubjectListFilters,
   UpdateSubjectInput,
+  AssignTechnicianInput,
 } from '@/modules/subjects/subject.types';
 import { createSubjectSchema, updateSubjectSchema } from '@/modules/subjects/subject.validation';
 import { SUBJECT_DEFAULT_PAGE_SIZE } from '@/modules/subjects/subject.constants';
@@ -94,6 +95,8 @@ function mapRawSubjectList(data: unknown[]): SubjectListItem[] {
       priority: typed.priority,
       status: typed.status,
       allocated_date: typed.allocated_date,
+      technician_allocated_date: (typed as { technician_allocated_date?: string | null }).technician_allocated_date ?? null,
+      technician_allocated_notes: (typed as { technician_allocated_notes?: string | null }).technician_allocated_notes ?? null,
       customer_name: typed.customer_name,
       customer_phone: typed.customer_phone,
       category_name: typed.service_categories?.name ?? null,
@@ -220,6 +223,8 @@ export async function getSubjectDetails(id: string): Promise<ServiceResult<Subje
     priority_reason: string;
     status: string;
     allocated_date: string;
+    technician_allocated_date: string | null;
+    technician_allocated_notes: string | null;
     customer_phone: string | null;
     customer_name: string | null;
     customer_address: string | null;
@@ -265,6 +270,8 @@ export async function getSubjectDetails(id: string): Promise<ServiceResult<Subje
       priority_reason: typed.priority_reason,
       status: typed.status,
       allocated_date: typed.allocated_date,
+      technician_allocated_date: typed.technician_allocated_date,
+      technician_allocated_notes: typed.technician_allocated_notes,
       customer_phone: typed.customer_phone,
       customer_name: typed.customer_name,
       customer_address: typed.customer_address,
@@ -336,4 +343,47 @@ export async function assignSubjectToTechnician(subjectId: string, technicianId?
       assigned_technician_id: result.data.assigned_technician_id,
     },
   };
+}
+
+export async function assignTechnicianWithDate(input: AssignTechnicianInput): Promise<ServiceResult<{ id: string }>> {
+  const { subject_id, technician_id, technician_allocated_date, technician_allocated_notes, assigned_by } = input;
+
+  // Validate technician exists and is active when assigning
+  if (technician_id) {
+    const techResult = await getAssignableTechnicianById(technician_id);
+    if (!techResult.ok || !techResult.data) {
+      return { ok: false, error: { message: 'Selected technician is not active or does not exist.' } };
+    }
+  }
+
+  // Validate date is not in the past when a date is provided
+  if (technician_allocated_date) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const visitDate = new Date(technician_allocated_date);
+    if (visitDate < today) {
+      return { ok: false, error: { message: 'Technician visit date cannot be in the past.' } };
+    }
+  }
+
+  // When assigning a technician, status moves to ALLOCATED; unassigning reverts to PENDING
+  const newStatus = technician_id ? 'ALLOCATED' : 'PENDING';
+
+  const result = await assignTechnicianFull(
+    subject_id,
+    technician_id,
+    technician_allocated_date,
+    technician_allocated_notes,
+    assigned_by,
+    newStatus,
+  );
+
+  if (result.error || !result.data) {
+    return {
+      ok: false,
+      error: { message: result.error?.message ?? 'Failed to update technician assignment', code: result.error?.code },
+    };
+  }
+
+  return { ok: true, data: { id: result.data.id } };
 }

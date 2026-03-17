@@ -22,6 +22,8 @@ export async function listSubjects(filters: SubjectListFilters) {
       priority,
       status,
       allocated_date,
+      technician_allocated_date,
+      technician_allocated_notes,
       customer_name,
       customer_phone,
       type_of_service,
@@ -178,6 +180,29 @@ export async function assignSubjectTechnician(subjectId: string, technicianId: s
     .single<{ id: string; assigned_technician_id: string | null }>();
 }
 
+export async function assignTechnicianFull(
+  subjectId: string,
+  technicianId: string | null,
+  technicianAllocatedDate: string | null,
+  technicianAllocatedNotes: string | null,
+  assignedBy: string,
+  newStatus: string,
+) {
+  return supabase
+    .from('subjects')
+    .update({
+      assigned_technician_id: technicianId,
+      technician_allocated_date: technicianAllocatedDate,
+      technician_allocated_notes: technicianAllocatedNotes,
+      assigned_by: assignedBy,
+      status: newStatus,
+    })
+    .eq('id', subjectId)
+    .eq('is_deleted', false)
+    .select('id,assigned_technician_id,technician_allocated_date,technician_allocated_notes,status')
+    .single<{ id: string; assigned_technician_id: string | null; technician_allocated_date: string | null; technician_allocated_notes: string | null; status: string }>();
+}
+
 export async function getSubjectById(id: string) {
   return supabase
     .from('subjects')
@@ -193,6 +218,8 @@ export async function getSubjectById(id: string) {
       priority_reason,
       status,
       allocated_date,
+      technician_allocated_date,
+      technician_allocated_notes,
       type_of_service,
       category_id,
       customer_phone,

@@ -13,6 +13,8 @@ export interface SubjectListItem {
   priority: SubjectPriority;
   status: string;
   allocated_date: string;
+  technician_allocated_date: string | null;
+  technician_allocated_notes: string | null;
   customer_name: string | null;
   customer_phone: string | null;
   category_name: string | null;
@@ -105,3 +107,11 @@ export interface CreateSubjectInput extends SubjectFormValues {
 }
 
 export type UpdateSubjectInput = SubjectFormValues;
+
+export interface AssignTechnicianInput {
+  subject_id: string;
+  technician_id: string | null;
+  technician_allocated_date: string | null;  // ISO date string YYYY-MM-DD
+  technician_allocated_notes: string | null;
+  assigned_by: string;
+}

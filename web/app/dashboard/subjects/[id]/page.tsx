@@ -8,10 +8,11 @@ import { toast } from 'sonner';
 import { Activity, Calendar, Flag, UserCheck, UserMinus, UserPlus } from 'lucide-react';
 import { DeleteConfirmModal } from '@/components/customers/DeleteConfirmModal';
 import { ProtectedComponent } from '@/components/ui/ProtectedComponent';
-import { useAssignableTechnicians, useSubjectDetail } from '@/hooks/useSubjects';
+import { useAssignableTechnicians, useAssignTechnician, useSubjectDetail } from '@/hooks/useSubjects';
+import { useAuth } from '@/hooks/useAuth';
 import { ROUTES } from '@/lib/constants/routes';
 import { SUBJECT_QUERY_KEYS } from '@/modules/subjects/subject.constants';
-import { assignSubjectToTechnician, removeSubject } from '@/modules/subjects/subject.service';
+import { removeSubject } from '@/modules/subjects/subject.service';
 import type { SubjectTimelineItem } from '@/modules/subjects/subject.types';
 
 function formatDate(value: string) {
@@ -157,11 +158,17 @@ export default function SubjectDetailPage() {
   const id = params.id;
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  // Assignment form state
   const [selectedTechnicianId, setSelectedTechnicianId] = useState('');
+  const [techAllocatedDate, setTechAllocatedDate] = useState('');
+  const [techAllocatedNotes, setTechAllocatedNotes] = useState('');
 
   const query = useSubjectDetail(id);
   const techniciansQuery = useAssignableTechnicians();
+  const assignMutation = useAssignTechnician(id);
 
   const deleteSubjectMutation = useMutation({
     mutationFn: (subjectId: string) => removeSubject(subjectId),
@@ -176,23 +183,6 @@ export default function SubjectDetailPage() {
     },
     onError: () => {
       toast.error('Failed to delete subject');
-    },
-  });
-
-  const assignTechnicianMutation = useMutation({
-    mutationFn: ({ subjectId, technicianId }: { subjectId: string; technicianId?: string }) =>
-      assignSubjectToTechnician(subjectId, technicianId),
-    onSuccess: (result) => {
-      if (result.ok) {
-        toast.success('Technician assignment updated');
-        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.all });
-        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(id) });
-      } else {
-        toast.error(result.error.message);
-      }
-    },
-    onError: () => {
-      toast.error('Failed to update technician assignment');
     },
   });
 
@@ -273,7 +263,9 @@ export default function SubjectDetailPage() {
 
   useEffect(() => {
     setSelectedTechnicianId(subject.assigned_technician_id ?? '');
-  }, [subject.assigned_technician_id]);
+    setTechAllocatedDate(subject.technician_allocated_date ?? '');
+    setTechAllocatedNotes(subject.technician_allocated_notes ?? '');
+  }, [subject.assigned_technician_id, subject.technician_allocated_date, subject.technician_allocated_notes]);
 
   const coverageMeta = subject.is_amc_service
     ? { label: 'Free Service - Under AMC', className: 'bg-emerald-100 text-emerald-700' }
@@ -328,59 +320,139 @@ export default function SubjectDetailPage() {
           <p className="mt-1 text-sm font-semibold text-slate-900">{formatStatus(subject.billing_status)}</p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4">
-          <p className="text-xs uppercase tracking-wide text-slate-500">Assigned Technician</p>
-          <ProtectedComponent permission="subject:update">
-            <div className="mt-2 space-y-2">
-              <select
-                value={selectedTechnicianId}
-                onChange={(event) => setSelectedTechnicianId(event.target.value)}
-                disabled={assignTechnicianMutation.isPending || techniciansQuery.isLoading}
-                className="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <option value="">Unassigned</option>
-                {technicianOptions.map((technician) => (
-                  <option key={technician.id} value={technician.id}>
-                    {technician.display_name} ({technician.technician_code})
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                onClick={() =>
-                  assignTechnicianMutation.mutate({
-                    subjectId: subject.id,
-                    technicianId: selectedTechnicianId || undefined,
-                  })
-                }
-                disabled={
-                  assignTechnicianMutation.isPending ||
-                  techniciansQuery.isLoading ||
-                  selectedTechnicianId === (subject.assigned_technician_id ?? '')
-                }
-                className="inline-flex items-center rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {assignTechnicianMutation.isPending ? 'Updating...' : 'Update Assignment'}
-              </button>
-            </div>
-          </ProtectedComponent>
-
-          <ProtectedComponent permission="subject:update" fallback={
-            <p className="mt-1 text-sm font-semibold text-slate-900">
-              {subject.assigned_technician_name ? subject.assigned_technician_name : 'Unassigned'}
-            </p>
-          }>
-            <p className="mt-1 text-xs text-slate-500">
-              {subject.assigned_technician_name
-                ? `Current: ${subject.assigned_technician_name}`
-                : 'No technician assigned'}
-            </p>
-          </ProtectedComponent>
+          <p className="text-xs uppercase tracking-wide text-slate-500">Source Date</p>
+          <p className="mt-1 text-sm font-semibold text-slate-900">{formatDateOnly(subject.allocated_date)}</p>
+          <p className="mt-0.5 text-xs text-slate-400">Brand / Dealer allocated date</p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4">
-          <p className="text-xs uppercase tracking-wide text-slate-500">Allocated Date</p>
-          <p className="mt-1 text-sm font-semibold text-slate-900">{formatDateOnly(subject.allocated_date)}</p>
+          <p className="text-xs uppercase tracking-wide text-slate-500">Tech Visit Date</p>
+          {subject.technician_allocated_date ? (
+            <p className="mt-1 text-sm font-semibold text-blue-700">{formatDateOnly(subject.technician_allocated_date)}</p>
+          ) : (
+            <p className="mt-1 text-sm text-slate-400 italic">Not scheduled</p>
+          )}
         </div>
       </div>
+
+      {/* Assignment Section */}
+      <section className="mb-4 rounded-xl border border-slate-200 bg-white p-5">
+        <h2 className="mb-1 text-base font-semibold text-slate-900">
+          {subject.assigned_technician_id ? 'Reassign Technician' : 'Assign Technician'}
+        </h2>
+        {subject.assigned_technician_id && (
+          <p className="mb-4 text-sm text-slate-500">
+            Currently assigned to{' '}
+            <span className="font-medium text-slate-800">{subject.assigned_technician_name ?? 'unknown'}</span>
+            {subject.technician_allocated_date && (
+              <> · Visit scheduled <span className="font-medium text-blue-700">{formatDateOnly(subject.technician_allocated_date)}</span></>
+            )}
+          </p>
+        )}
+        {!subject.assigned_technician_id && (
+          <p className="mb-4 text-xs text-slate-400">No technician assigned yet.</p>
+        )}
+
+        <ProtectedComponent
+          permission="subject:update"
+          fallback={
+            <p className="text-sm text-slate-500">
+              {subject.assigned_technician_name
+                ? `Assigned: ${subject.assigned_technician_name}`
+                : 'No technician assigned.'}
+            </p>
+          }
+        >
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {/* Field 1 — Technician */}
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-700">
+                Technician <span className="text-rose-500">*</span>
+              </label>
+              <select
+                value={selectedTechnicianId}
+                onChange={(e) => setSelectedTechnicianId(e.target.value)}
+                disabled={assignMutation.isPending || techniciansQuery.isLoading}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <option value="">— Unassign —</option>
+                {techniciansQuery.data?.ok ? techniciansQuery.data.data.map((tech) => (
+                  <option key={tech.id} value={tech.id}>
+                    {tech.display_name} ({tech.technician_code})
+                  </option>
+                )) : null}
+              </select>
+            </div>
+
+            {/* Field 2 — Visit date */}
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-700">
+                Technician Visit Date{selectedTechnicianId ? <span className="text-rose-500"> *</span> : null}
+              </label>
+              <input
+                type="date"
+                value={techAllocatedDate}
+                min={new Date().toISOString().split('T')[0]}
+                onChange={(e) => setTechAllocatedDate(e.target.value)}
+                disabled={assignMutation.isPending}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+              />
+            </div>
+
+            {/* Field 3 — Notes */}
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-700">Allocation Notes <span className="text-slate-400">(optional)</span></label>
+              <input
+                type="text"
+                value={techAllocatedNotes}
+                onChange={(e) => setTechAllocatedNotes(e.target.value)}
+                placeholder="Notes for the technician…"
+                disabled={assignMutation.isPending}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 placeholder:text-slate-300 focus:border-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+              />
+            </div>
+          </div>
+
+          <div className="mt-4 flex items-center gap-3">
+            <button
+              type="button"
+              disabled={
+                assignMutation.isPending ||
+                (!!selectedTechnicianId && !techAllocatedDate) ||
+                (
+                  selectedTechnicianId === (subject.assigned_technician_id ?? '') &&
+                  techAllocatedDate === (subject.technician_allocated_date ?? '') &&
+                  techAllocatedNotes === (subject.technician_allocated_notes ?? '')
+                )
+              }
+              onClick={() => {
+                assignMutation.mutate({
+                  subject_id: subject.id,
+                  technician_id: selectedTechnicianId || null,
+                  technician_allocated_date: techAllocatedDate || null,
+                  technician_allocated_notes: techAllocatedNotes.trim() || null,
+                  assigned_by: user?.id ?? '',
+                });
+              }}
+              className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {assignMutation.isPending
+                ? 'Saving…'
+                : subject.assigned_technician_id
+                  ? 'Update Assignment'
+                  : 'Assign Technician'}
+            </button>
+            {selectedTechnicianId !== (subject.assigned_technician_id ?? '') && (
+              <span className="text-xs text-amber-600 font-medium">
+                {selectedTechnicianId
+                  ? subject.assigned_technician_id
+                    ? '↻ Reassigning technician'
+                    : '+ New assignment'
+                  : '× Will remove technician'}
+              </span>
+            )}
+          </div>
+        </ProtectedComponent>
+      </section>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <section className="rounded-xl border border-slate-200 bg-white p-5 xl:col-span-2">
