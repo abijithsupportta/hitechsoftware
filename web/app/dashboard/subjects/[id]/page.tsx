@@ -1,10 +1,16 @@
 'use client';
 
+import { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { usePermission } from '@/hooks/usePermission';
+import { useParams, useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import { DeleteConfirmModal } from '@/components/customers/DeleteConfirmModal';
+import { ProtectedComponent } from '@/components/ui/ProtectedComponent';
 import { useSubjectDetail } from '@/hooks/useSubjects';
 import { ROUTES } from '@/lib/constants/routes';
+import { SUBJECT_QUERY_KEYS } from '@/modules/subjects/subject.constants';
+import { removeSubject } from '@/modules/subjects/subject.service';
 
 function formatDate(value: string) {
   return new Date(value).toLocaleString('en-GB');
@@ -25,9 +31,26 @@ function formatDateOnly(value: string | null) {
 export default function SubjectDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
-  const { can } = usePermission();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const query = useSubjectDetail(id);
+  const deleteSubjectMutation = useMutation({
+    mutationFn: (subjectId: string) => removeSubject(subjectId),
+    onSuccess: (result) => {
+      if (result.ok) {
+        toast.success('Subject deleted successfully');
+        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.all });
+        router.push(ROUTES.DASHBOARD_SUBJECTS);
+      } else {
+        toast.error(result.error.message);
+      }
+    },
+    onError: () => {
+      toast.error('Failed to delete subject');
+    },
+  });
 
   if (query.isLoading) {
     return (
@@ -72,19 +95,20 @@ export default function SubjectDetailPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          {can('subject:edit') && !subject.assigned_technician_id ? (
-            <Link
-              href={ROUTES.DASHBOARD_SUBJECTS_EDIT(subject.id)}
-              className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
-            >
-              Quick Assign
-            </Link>
-          ) : null}
-          {can('subject:edit') ? (
+          <ProtectedComponent permission="subject:update">
             <Link href={ROUTES.DASHBOARD_SUBJECTS_EDIT(subject.id)} className="ht-btn ht-btn-primary">
-              Edit subject
+              Edit
             </Link>
-          ) : null}
+          </ProtectedComponent>
+          <ProtectedComponent permission="subject:delete">
+            <button
+              type="button"
+              onClick={() => setShowDeleteModal(true)}
+              className="ht-btn ht-btn-danger"
+            >
+              Delete
+            </button>
+          </ProtectedComponent>
           <Link href={ROUTES.DASHBOARD_SUBJECTS} className="ht-btn ht-btn-secondary">
             Back to list
           </Link>
@@ -163,6 +187,19 @@ export default function SubjectDetailPage() {
           )}
         </section>
       </div>
+
+      <DeleteConfirmModal
+        isOpen={showDeleteModal}
+        title="Delete subject"
+        description={`Delete ${subject.subject_number}? This action permanently removes the subject.`}
+        confirmLabel="Delete permanently"
+        isSubmitting={deleteSubjectMutation.isPending}
+        onCancel={() => setShowDeleteModal(false)}
+        onConfirm={() => {
+          setShowDeleteModal(false);
+          deleteSubjectMutation.mutate(subject.id);
+        }}
+      />
     </div>
   );
 }

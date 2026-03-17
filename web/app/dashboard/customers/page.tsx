@@ -1,12 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
-import { DeleteConfirmModal } from '@/components/customers/DeleteConfirmModal';
 import { CustomerStatusBadge } from '@/components/customers/CustomerStatusBadge';
 import { KOTTAYAM_AREAS } from '@/modules/customers/customer.constants';
 import { useCustomers } from '../../../hooks/useCustomers';
-import { usePermission } from '../../../hooks/usePermission';
 
 export default function CustomersListPage() {
   const {
@@ -16,15 +13,11 @@ export default function CustomersListPage() {
     searchInput,
     isLoading,
     error,
-    deleteCustomerMutation,
     setSearch,
     setArea,
     setStatus,
     setPage,
   } = useCustomers();
-
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
-  const { can } = usePermission();
 
   return (
     <div className="p-6">
@@ -126,21 +119,6 @@ export default function CustomersListPage() {
                       >
                         View
                       </Link>
-                      <Link
-                        href={`/dashboard/customers/${customer.id}/edit`}
-                        className="ht-btn ht-btn-outline-accent ht-btn-sm"
-                      >
-                        Edit
-                      </Link>
-                      {can('customer:delete') ? (
-                        <button
-                          type="button"
-                          onClick={() => setSelectedCustomerId(customer.id)}
-                          className="ht-btn ht-btn-outline-danger ht-btn-sm"
-                        >
-                          Delete
-                        </button>
-                      ) : null}
                     </div>
                   </td>
                 </tr>
@@ -176,18 +154,6 @@ export default function CustomersListPage() {
           </button>
         </div>
       </div>
-
-      <DeleteConfirmModal
-        isOpen={Boolean(selectedCustomerId)}
-        isSubmitting={deleteCustomerMutation.isPending}
-        description="This will permanently remove the customer from the database. This action cannot be undone."
-        onCancel={() => setSelectedCustomerId(null)}
-        onConfirm={() => {
-          if (!selectedCustomerId) return;
-          setSelectedCustomerId(null);
-          deleteCustomerMutation.mutate(selectedCustomerId);
-        }}
-      />
     </div>
   );
 }

@@ -1,12 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import { Check, Pencil, Trash2, X } from 'lucide-react';
+import { ProtectedComponent } from '@/components/ui/ProtectedComponent';
 import { useDealers } from '@/hooks/useDealers';
 import { usePermission } from '@/hooks/usePermission';
 
 export default function ServiceDealersPage() {
   const { can } = usePermission();
-  const { data, isLoading, error, createMutation, renameMutation, toggleMutation, deleteMutation } = useDealers();
+  const { data, isLoading, error, createMutation, renameMutation, deleteMutation } = useDealers();
   const [name, setName] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
@@ -99,16 +101,20 @@ export default function ServiceDealersPage() {
                         type="button"
                         onClick={() => commitRename(item.id)}
                         disabled={renameMutation.isPending}
-                        className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                        title="Save"
+                        aria-label="Save"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
                       >
-                        Save
+                        <Check size={14} />
                       </button>
                       <button
                         type="button"
                         onClick={() => setEditingId(null)}
-                        className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                        title="Cancel"
+                        aria-label="Cancel"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50"
                       >
-                        Cancel
+                        <X size={14} />
                       </button>
                     </div>
                   ) : (
@@ -116,26 +122,23 @@ export default function ServiceDealersPage() {
                       <button
                         type="button"
                         onClick={() => startEdit(item.id, item.name)}
-                        className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+                        title="Edit"
+                        aria-label="Edit"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-100"
                       >
-                        Rename
+                        <Pencil size={14} />
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => toggleMutation.mutate({ id: item.id, isActive: !item.is_active })}
-                        className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-                      >
-                        {item.is_active ? 'Disable' : 'Enable'}
-                      </button>
-                      {can('service-settings:edit') && (
+                      <ProtectedComponent permission="service-settings:edit">
                         <button
                           type="button"
                           onClick={() => deleteMutation.mutate(item.id)}
-                          className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100"
+                          title="Delete"
+                          aria-label="Delete"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-rose-200 text-rose-600 hover:bg-rose-50"
                         >
-                          Delete
+                          <Trash2 size={14} />
                         </button>
-                      )}
+                      </ProtectedComponent>
                     </div>
                   )}
                 </td>

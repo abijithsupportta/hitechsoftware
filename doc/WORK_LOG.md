@@ -3,6 +3,41 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-17 09:02:51 +05:30] Standardize Table Actions and Move Edit/Delete to Detail Pages
+
+- Summary: Refactored table row actions across subjects, customers, team, and master-data modules to remove row dropdowns, keep view-only table actions where requested, and shift edit/delete controls to detail pages with permission guards.
+- Work done:
+  - Subjects list: removed row dropdown menu and delete/edit controls, leaving one blue `View` button only; narrowed actions column width.
+  - Subject detail: added top-right protected `Edit` (`subject:update`) and `Delete` (`subject:delete`) actions; wired delete confirmation modal and delete mutation with cache invalidation + redirect.
+  - Added `subject:update` permission alias mapped to super admin + office staff.
+  - Customers list: removed inline edit/delete actions so table now shows only `View`.
+  - Customer detail: added protected `Edit` and `Delete` actions with delete confirmation modal and redirect after successful deletion.
+  - Team list: removed inline row edit/delete controls and made actions view-only with per-row `View` button.
+  - Team detail: created new page at `/dashboard/team/[id]` with protected `Edit` and `Delete` actions and delete confirmation modal.
+  - Master data tables (categories, brands, dealers): converted actions to icon-only inline controls (gray pencil edit, red trash delete with tooltip), removed row dropdown/menu patterns.
+  - Added route helper for team detail navigation.
+- Files changed:
+  - web/app/dashboard/subjects/page.tsx
+  - web/app/dashboard/subjects/[id]/page.tsx
+  - web/config/permissions.ts
+  - web/app/dashboard/customers/page.tsx
+  - web/app/dashboard/customers/[id]/page.tsx
+  - web/app/dashboard/team/page.tsx
+  - web/app/dashboard/team/[id]/page.tsx
+  - web/app/dashboard/service/categories/page.tsx
+  - web/app/dashboard/service/brands/page.tsx
+  - web/app/dashboard/service/dealers/page.tsx
+  - web/lib/constants/routes.ts
+  - doc/WORK_LOG.md
+- Verification:
+  - `get_errors` returned no issues for all modified files.
+  - `npm run build` passed for the web workspace (Next.js build + TypeScript).
+- Issues:
+  - Initial build failed once due to missing `useState` import in `web/app/dashboard/subjects/page.tsx`; fixed and verified in subsequent successful build.
+- Next:
+  - Browser QA: verify action visibility per role on subject, customer, and team detail pages.
+  - Browser QA: verify icon button tooltips and spacing in categories/brands/dealers tables.
+
 ## [2026-03-17 08:52:34 +05:30] Move Subjects View/Edit/Delete Back Under 3-Dot Menu
 
 - Summary: Updated the subjects list actions column to use a 3-dot dropdown menu again, with View, Edit, and Delete options contained in the menu.

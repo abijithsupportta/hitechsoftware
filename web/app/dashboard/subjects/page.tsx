@@ -1,10 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { Filter, MoreHorizontal, Plus, Trash2 } from 'lucide-react';
-import { toast } from 'sonner';
-import { ProtectedComponent } from '@/components/ui/ProtectedComponent';
+import { Filter, Plus } from 'lucide-react';
 import { usePermission } from '@/hooks/usePermission';
 import { useSubjects } from '@/hooks/useSubjects';
 import { useBrands } from '@/hooks/useBrands';
@@ -74,8 +72,6 @@ function getServiceTypeMeta(subject: SubjectListItem) {
 
 export default function SubjectsDashboardPage() {
   const { can } = usePermission();
-  const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
-  const [deletingSubjectId, setDeletingSubjectId] = useState<string | null>(null);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const brands = useBrands();
   const dealers = useDealers();
@@ -106,41 +102,7 @@ export default function SubjectsDashboardPage() {
     setToDate,
     setPage,
     setPageSize,
-    deleteSubjectMutation,
   } = useSubjects();
-
-  useEffect(() => {
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setOpenActionMenuId(null);
-      }
-    };
-
-    document.addEventListener('keydown', handleEscape);
-
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, []);
-
-  async function handleDeleteSubject(subjectId: string, subjectNumber: string) {
-    const confirmed = window.confirm(`Delete service ${subjectNumber}? This action will hide it from the service list.`);
-
-    if (!confirmed) {
-      return;
-    }
-
-    setOpenActionMenuId(null);
-    setDeletingSubjectId(subjectId);
-
-    try {
-      await deleteSubjectMutation.mutateAsync(subjectId);
-    } catch {
-      toast.error('Failed to delete subject');
-    } finally {
-      setDeletingSubjectId(null);
-    }
-  }
 
   const advancedFilterCount = [
     sourceType !== 'all',
@@ -163,12 +125,7 @@ export default function SubjectsDashboardPage() {
   }
 
   return (
-    <div
-      className="p-6"
-      onClick={() => {
-        setOpenActionMenuId(null);
-      }}
-    >
+    <div className="p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-900">Service Subjects</h1>
         <p className="mt-1 text-sm text-slate-600">Filter, track, and audit all service subjects.</p>
@@ -397,7 +354,7 @@ export default function SubjectsDashboardPage() {
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Assigned To</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Service Type</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Date</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Actions</th>
+                <th className="w-24 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -432,11 +389,7 @@ export default function SubjectsDashboardPage() {
                       <div className="h-4 w-20 rounded bg-slate-200" />
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="h-8 w-14 rounded-md bg-slate-200" />
-                        <div className="h-8 w-14 rounded-md bg-slate-200" />
-                        <div className="h-8 w-8 rounded-md bg-slate-200" />
-                      </div>
+                      <div className="h-8 w-16 rounded-md bg-slate-200" />
                     </td>
                   </tr>
                 ))
@@ -516,55 +469,13 @@ export default function SubjectsDashboardPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-600">{formatDate(subject.allocated_date)}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-end" onClick={(event) => event.stopPropagation()}>
-                          <div className="relative">
-                            <button
-                              type="button"
-                              aria-label={`Open actions for ${subject.subject_number}`}
-                              aria-expanded={openActionMenuId === subject.id}
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                setOpenActionMenuId((current) => (current === subject.id ? null : subject.id));
-                              }}
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-slate-100"
-                            >
-                              <MoreHorizontal size={16} />
-                            </button>
-
-                            {openActionMenuId === subject.id ? (
-                              <div className="absolute right-0 top-10 z-20 min-w-40 rounded-lg border border-slate-200 bg-white p-1 shadow-lg">
-                                <Link
-                                  href={ROUTES.DASHBOARD_SUBJECTS_DETAIL(subject.id)}
-                                  onClick={() => setOpenActionMenuId(null)}
-                                  className="flex items-center rounded-md px-3 py-2 text-left text-xs font-medium text-blue-700 hover:bg-blue-50"
-                                >
-                                  View
-                                </Link>
-                                {can('subject:edit') ? (
-                                  <Link
-                                    href={ROUTES.DASHBOARD_SUBJECTS_EDIT(subject.id)}
-                                    onClick={() => setOpenActionMenuId(null)}
-                                    className="flex items-center rounded-md px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-100"
-                                  >
-                                    Edit
-                                  </Link>
-                                ) : null}
-                                <ProtectedComponent permission="subject:delete">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteSubject(subject.id, subject.subject_number)}
-                                    disabled={deletingSubjectId === subject.id}
-                                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs font-medium text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
-                                  >
-                                    <Trash2 size={14} />
-                                    {deletingSubjectId === subject.id ? 'Deleting...' : 'Delete'}
-                                  </button>
-                                </ProtectedComponent>
-                              </div>
-                            ) : null}
-                          </div>
-                        </div>
+                      <td className="w-24 px-4 py-3">
+                        <Link
+                          href={ROUTES.DASHBOARD_SUBJECTS_DETAIL(subject.id)}
+                          className="inline-flex items-center rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+                        >
+                          View
+                        </Link>
                       </td>
                     </tr>
                   );

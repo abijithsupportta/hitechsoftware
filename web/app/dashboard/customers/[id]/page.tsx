@@ -1,14 +1,39 @@
 'use client';
 
+import { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import { DeleteConfirmModal } from '@/components/customers/DeleteConfirmModal';
+import { ProtectedComponent } from '@/components/ui/ProtectedComponent';
+import { CUSTOMER_QUERY_KEYS } from '@/modules/customers/customer.constants';
+import { deleteCustomer } from '@/modules/customers/customer.service';
 import { CustomerStatusBadge } from '@/components/customers/CustomerStatusBadge';
 import { useCustomer } from '../../../../hooks/useCustomers';
 
 export default function CustomerDetailPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const customerId = params?.id;
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { customer, isLoading, error } = useCustomer(customerId);
+  const deleteCustomerMutation = useMutation({
+    mutationFn: (id: string) => deleteCustomer(id),
+    onSuccess: (result) => {
+      if (result.ok) {
+        toast.success('Customer deleted successfully');
+        queryClient.invalidateQueries({ queryKey: CUSTOMER_QUERY_KEYS.all });
+        router.push('/dashboard/customers');
+      } else {
+        toast.error(result.error.message);
+      }
+    },
+    onError: () => {
+      toast.error('Failed to delete customer');
+    },
+  });
 
   if (isLoading) {
     return <div className="p-6 text-sm text-slate-600">Loading customer...</div>;
@@ -33,12 +58,23 @@ export default function CustomerDetailPage() {
           >
             Back
           </Link>
-          <Link
-            href={`/dashboard/customers/${customer.id}/edit`}
-            className="ht-btn ht-btn-primary"
-          >
-            Edit
-          </Link>
+          <ProtectedComponent permission="customer:edit">
+            <Link
+              href={`/dashboard/customers/${customer.id}/edit`}
+              className="ht-btn ht-btn-primary"
+            >
+              Edit
+            </Link>
+          </ProtectedComponent>
+          <ProtectedComponent permission="customer:delete">
+            <button
+              type="button"
+              onClick={() => setShowDeleteModal(true)}
+              className="ht-btn ht-btn-danger"
+            >
+              Delete
+            </button>
+          </ProtectedComponent>
         </div>
       </div>
 
@@ -79,6 +115,19 @@ export default function CustomerDetailPage() {
           )}
         </div>
       </div>
+
+      <DeleteConfirmModal
+        isOpen={showDeleteModal}
+        title="Delete customer"
+        description={`Delete ${customer.customer_name}? This action permanently removes the customer.`}
+        confirmLabel="Delete permanently"
+        isSubmitting={deleteCustomerMutation.isPending}
+        onCancel={() => setShowDeleteModal(false)}
+        onConfirm={() => {
+          setShowDeleteModal(false);
+          deleteCustomerMutation.mutate(customer.id);
+        }}
+      />
     </div>
   );
 }

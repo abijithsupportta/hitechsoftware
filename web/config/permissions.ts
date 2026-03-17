@@ -3,7 +3,7 @@ import type { UserRole } from '@/types/database.types';
 
 export const MODULE_ACTIONS = {
   customer: ['view', 'create', 'edit', 'delete'],
-  subject: ['view', 'create', 'edit', 'delete'],
+  subject: ['view', 'create', 'edit', 'update', 'delete'],
   inventory: ['view', 'create', 'edit', 'delete'],
   stock: ['view', 'create', 'edit', 'delete'],
   'digital-bag': ['view', 'create', 'edit', 'delete'],
@@ -34,6 +34,7 @@ export const PERMISSIONS: Record<Permission, UserRole[]> = {
   'subject:view': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF, ROLES.STOCK_MANAGER, ROLES.TECHNICIAN],
   'subject:create': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF],
   'subject:edit': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF],
+  'subject:update': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF],
   'subject:delete': [ROLES.SUPER_ADMIN],
 
   'inventory:view': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF, ROLES.STOCK_MANAGER, ROLES.TECHNICIAN],
