@@ -8,11 +8,118 @@ import { getCustomerList } from '@/modules/customers/customer.service';
 import { CUSTOMER_QUERY_KEYS } from '@/modules/customers/customer.constants';
 import { getTeamMembers } from '@/modules/technicians/technician.service';
 import { TEAM_QUERY_KEYS } from '@/modules/technicians/technician.constants';
-import { useAllTechnicianStatus } from '@/hooks/attendance/useAttendance';
+import { useAllTechnicianStatus, useTodayAttendance, useToggleAttendance } from '@/hooks/attendance/useAttendance';
 import { ROUTES } from '@/lib/constants/routes';
+import { useAuth } from '@/hooks/auth/useAuth';
+import { getSubjects } from '@/modules/subjects/subject.service';
+import { SUBJECT_QUERY_KEYS } from '@/modules/subjects/subject.constants';
+
+function formatTime(value: string | null) {
+  if (!value) {
+    return '-';
+  }
+
+  return new Date(value).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
 
 export default function DashboardPage() {
+  const { user, userRole } = useAuth();
   const [showTechnicianList, setShowTechnicianList] = useState(false);
+  const today = new Date().toISOString().split('T')[0];
+
+  const todayAttendanceQuery = useTodayAttendance(user?.id ?? '');
+  const toggleAttendanceMutation = useToggleAttendance();
+
+  const technicianTodaySubjectsQuery = useQuery({
+    queryKey: [...SUBJECT_QUERY_KEYS.list, 'technician-dashboard-today', user?.id, today],
+    queryFn: async () => {
+      const result = await getSubjects({
+        from_date: today,
+        to_date: today,
+        page: 1,
+        page_size: 50,
+      });
+
+      if (!result.ok) {
+        throw new Error(result.error.message);
+      }
+
+      return result.data.data;
+    },
+    enabled: Boolean(user?.id) && userRole === 'technician',
+    staleTime: 30 * 1000,
+  });
+
+  if (userRole === 'technician') {
+    const todayAttendance = todayAttendanceQuery.data?.ok ? todayAttendanceQuery.data.data : null;
+    const isOnline = Boolean(todayAttendance?.toggled_on_at) && !todayAttendance?.toggled_off_at;
+    const todaysSubjects = technicianTodaySubjectsQuery.data ?? [];
+
+    return (
+      <div className="p-4 md:p-6">
+        <div className="mb-6 rounded-2xl border border-ht-border bg-white p-6 shadow-sm">
+          <h1 className="text-2xl font-bold text-ht-text-900">Technician Dashboard</h1>
+          <p className="mt-2 text-sm text-ht-text-500">Your attendance and today&apos;s services at a glance.</p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="rounded-2xl border border-ht-border bg-white p-5 shadow-sm">
+            <p className="text-sm font-medium text-ht-text-500">Attendance Status</p>
+            <p className={`mt-2 text-2xl font-bold ${isOnline ? 'text-emerald-700' : 'text-slate-700'}`}>
+              {isOnline ? 'Online' : 'Offline'}
+            </p>
+            <p className="mt-1 text-sm text-slate-600">
+              ON time: {formatTime(todayAttendance?.toggled_on_at ?? null)}
+            </p>
+            <button
+              type="button"
+              disabled={toggleAttendanceMutation.isPending || !user?.id}
+              onClick={() => {
+                if (user?.id) {
+                  toggleAttendanceMutation.mutate(user.id);
+                }
+              }}
+              className="mt-4 inline-flex min-h-12 items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              {toggleAttendanceMutation.isPending ? 'Updating...' : isOnline ? 'Toggle OFF' : 'Toggle ON'}
+            </button>
+          </div>
+
+          <div className="rounded-2xl border border-ht-border bg-white p-5 shadow-sm">
+            <p className="text-sm font-medium text-ht-text-500">Today&apos;s Services</p>
+            <p className="mt-2 text-2xl font-bold text-ht-text-900">{technicianTodaySubjectsQuery.isLoading ? '...' : todaysSubjects.length}</p>
+            <p className="mt-1 text-sm text-slate-600">Only current day assigned services are listed.</p>
+            <Link href={ROUTES.DASHBOARD_SUBJECTS} className="mt-4 inline-flex items-center text-sm font-medium text-ht-blue-600 hover:text-ht-navy-800">
+              Open Service List
+              <ArrowRight size={16} className="ml-2" />
+            </Link>
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-ht-border bg-white p-5 shadow-sm">
+          <h2 className="text-base font-semibold text-ht-text-900">Assigned Subject Numbers for Today</h2>
+          {technicianTodaySubjectsQuery.isLoading ? (
+            <p className="mt-2 text-sm text-slate-500">Loading...</p>
+          ) : todaysSubjects.length === 0 ? (
+            <p className="mt-2 text-sm text-slate-500">No services assigned for today.</p>
+          ) : (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {todaysSubjects.map((subject) => (
+                <Link
+                  key={subject.id}
+                  href={ROUTES.DASHBOARD_SUBJECTS_DETAIL(subject.id)}
+                  className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+                >
+                  {subject.subject_number}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   const customerCountQuery = useQuery({
     queryKey: [...CUSTOMER_QUERY_KEYS.all, 'count'],
     queryFn: async () => {

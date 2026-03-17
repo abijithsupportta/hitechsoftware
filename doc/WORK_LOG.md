@@ -3,6 +3,28 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-17 20:05:00 +05:30] Technician Dashboard Implemented on /dashboard
+
+- Summary: Added a technician-specific dashboard experience so technician users have a functional landing dashboard with attendance status, attendance toggle action, and today service visibility.
+- Work done:
+  - Updated `web/app/dashboard/page.tsx` to be role-aware using `useAuth()`.
+  - Added technician-only dashboard layout on `/dashboard` with:
+    - Attendance status card (online/offline)
+    - Toggle ON/OFF action using existing attendance mutation
+    - ON time display
+    - Today services count and service list shortcut
+    - Today assigned subject number chips linking to subject detail pages
+  - Kept existing staff/admin dashboard unchanged for non-technician roles.
+- Files changed:
+  - web/app/dashboard/page.tsx
+  - doc/WORK_LOG.md
+- Verification:
+  - `npm run build` in `web/` passed successfully.
+- Bugs/issues encountered:
+  - none
+- Next:
+  - Optional UX step: add technician quick links for attendance history and today-customer list directly from this dashboard.
+
 ## [2026-03-17 19:40:00 +05:30] Technician Customer Visibility Restricted to Current-Day Assigned Services
 
 - Summary: Implemented strict customer visibility for technicians so only customers tied to today's assigned services are visible in the customer module. Added page-level permission guards for customer list/detail/new/edit routes.
