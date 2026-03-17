@@ -3,6 +3,40 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-17 09:27:20 +05:30] Refine Sidebar UX and Revert Subjects List Assignment to Read-Only
+
+- Summary: Improved dashboard sidebar readability/spacing and simplified subjects list by removing inline assignment controls, restoring Assigned To as display-only.
+- Work done:
+  - Sidebar layout updates:
+    - Set expanded sidebar width to `260px`.
+    - Prevented `Service Module` and submenu labels from wrapping by applying `whitespace-nowrap`.
+    - Increased nav-item padding for better breathing room.
+    - Removed all `Coming soon` badges from unavailable items.
+    - Made unavailable nav items cleanly disabled via reduced opacity + `pointer-events-none`.
+  - User avatar initials:
+    - Replaced email-split fallback-only logic with display-name-first initials (`first letter of first name + first letter of last name`) using auth user metadata, with safe fallback.
+  - Subjects list page updates:
+    - Removed inline technician assignment dropdown and row updating indicator from `Assigned To` column.
+    - `Assigned To` now shows technician text or red `Unassigned` badge only.
+    - Kept assignment responsibility in subject detail page flow.
+    - Updated subject column to `min-w-[280px]` and ensured subject number remains full single-line no-wrap.
+    - Increased customer name visibility to 20 characters before truncation.
+    - Rebalanced table layout to use full width more cleanly after removing assignment controls.
+  - API documentation review:
+    - Reviewed impact and confirmed no API contract/endpoint/schema/auth behavior changes were required.
+- Files changed:
+  - web/app/dashboard/layout.tsx
+  - web/app/dashboard/subjects/page.tsx
+  - doc/WORK_LOG.md
+- Verification:
+  - `get_errors` returned no issues for modified files.
+  - `npm run build` passed for the web workspace.
+- Issues:
+  - None
+- Next:
+  - Browser QA: confirm sidebar labels stay single-line across common resolutions.
+  - Browser QA: confirm disabled nav items are non-clickable and visually muted.
+
 ## [2026-03-17 09:23:20 +05:30] Make Technician Assignment Auto-Save on Selection
 
 - Summary: Simplified subjects list assignment UX by removing the Assign button and auto-updating assignment immediately when a technician is selected.

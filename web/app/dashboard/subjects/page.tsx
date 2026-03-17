@@ -9,7 +9,6 @@ import { useSubjects } from '@/hooks/useSubjects';
 import { useBrands } from '@/hooks/useBrands';
 import { useDealers } from '@/hooks/useDealers';
 import { useServiceCategories } from '@/hooks/useServiceCategories';
-import { useAssignableTechnicians } from '@/hooks/useSubjects';
 import { ROUTES } from '@/lib/constants/routes';
 import { SUBJECT_PRIORITY_OPTIONS, SUBJECT_QUERY_KEYS, SUBJECT_SOURCE_OPTIONS, SUBJECT_STATUS_OPTIONS } from '@/modules/subjects/subject.constants';
 import { getSubjectDetails } from '@/modules/subjects/subject.service';
@@ -85,12 +84,9 @@ export default function SubjectsDashboardPage() {
   const { can } = usePermission();
   const queryClient = useQueryClient();
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  const [assignmentDraftById, setAssignmentDraftById] = useState<Record<string, string>>({});
-  const [assigningSubjectId, setAssigningSubjectId] = useState<string | null>(null);
   const brands = useBrands();
   const dealers = useDealers();
   const categories = useServiceCategories();
-  const techniciansQuery = useAssignableTechnicians();
   const {
     subjects,
     pagination,
@@ -117,7 +113,6 @@ export default function SubjectsDashboardPage() {
     setToDate,
     setPage,
     setPageSize,
-    quickAssignSubjectMutation,
   } = useSubjects();
 
   const advancedFilterCount = [
@@ -146,32 +141,6 @@ export default function SubjectsDashboardPage() {
       queryFn: () => getSubjectDetails(subjectId),
       staleTime: 1000 * 60 * 5,
     });
-  }
-
-  const technicianOptions = techniciansQuery.data?.ok ? techniciansQuery.data.data : [];
-
-  async function handleQuickAssign(subjectId: string, technicianId: string) {
-    const normalizedTechnicianId = technicianId || '';
-
-    setAssignmentDraftById((prev) => ({
-      ...prev,
-      [subjectId]: normalizedTechnicianId,
-    }));
-
-    setAssigningSubjectId(subjectId);
-    try {
-      await quickAssignSubjectMutation.mutateAsync({
-        subjectId,
-        technicianId: normalizedTechnicianId || undefined,
-      });
-      setAssignmentDraftById((prev) => {
-        const next = { ...prev };
-        delete next[subjectId];
-        return next;
-      });
-    } finally {
-      setAssigningSubjectId(null);
-    }
   }
 
   return (
@@ -393,18 +362,18 @@ export default function SubjectsDashboardPage() {
 
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200">
+          <table className="w-full table-fixed divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>
-                <th className="min-w-[150px] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Subject</th>
-                <th className="w-[180px] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Customer</th>
-                <th className="w-[150px] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Source</th>
-                <th className="w-[110px] px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">Priority</th>
-                <th className="w-[130px] px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">Status</th>
-                <th className="w-[250px] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Assigned To</th>
-                <th className="w-[150px] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Service Type</th>
-                <th className="w-[120px] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Date</th>
-                <th className="w-20 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Actions</th>
+                <th className="min-w-[280px] w-[24%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Subject</th>
+                <th className="w-[20%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Customer</th>
+                <th className="w-[14%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Source</th>
+                <th className="w-[9%] px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">Priority</th>
+                <th className="w-[11%] px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">Status</th>
+                <th className="w-[13%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Assigned To</th>
+                <th className="w-[11%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Service Type</th>
+                <th className="w-[9%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Date</th>
+                <th className="w-[9%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -468,7 +437,7 @@ export default function SubjectsDashboardPage() {
                       key={subject.id}
                       className={`hover:bg-slate-50/70${needsAttentionBorder ? ' border-l-4 border-l-rose-400' : ''}`}
                     >
-                      <td className="min-w-[150px] px-4 py-3 text-sm">
+                      <td className="min-w-[280px] px-4 py-3 text-sm">
                         <Link
                           href={ROUTES.DASHBOARD_SUBJECTS_DETAIL(subject.id)}
                           className="block whitespace-nowrap font-bold text-blue-600 hover:underline"
@@ -483,24 +452,24 @@ export default function SubjectsDashboardPage() {
                           {subject.category_name ?? '-'}
                         </p>
                       </td>
-                      <td className="w-[180px] px-4 py-3 text-sm">
+                      <td className="px-4 py-3 text-sm">
                         {subject.customer_name ? (
                           <>
                             <p
-                              className="max-w-[150px] truncate whitespace-nowrap font-medium text-slate-900"
+                              className="max-w-[210px] truncate whitespace-nowrap font-medium text-slate-900"
                               title={subject.customer_name}
                             >
-                              {truncateText(subject.customer_name, 15)}
+                              {truncateText(subject.customer_name, 20)}
                             </p>
-                            <p className="max-w-[150px] truncate whitespace-nowrap text-xs text-slate-500" title={subject.customer_phone ?? ''}>
+                            <p className="max-w-[210px] truncate whitespace-nowrap text-xs text-slate-500" title={subject.customer_phone ?? ''}>
                               {subject.customer_phone ?? ''}
                             </p>
                           </>
                         ) : (
-                          <span className="max-w-[150px] truncate whitespace-nowrap italic text-slate-400" title="Walk-in">Walk-in</span>
+                          <span className="max-w-[210px] truncate whitespace-nowrap italic text-slate-400" title="Walk-in">Walk-in</span>
                         )}
                       </td>
-                      <td className="w-[150px] px-4 py-3 text-sm">
+                      <td className="px-4 py-3 text-sm">
                         <p
                           className="max-w-[120px] truncate whitespace-nowrap font-medium text-slate-900"
                           title={subject.source_name}
@@ -514,44 +483,18 @@ export default function SubjectsDashboardPage() {
                           {subject.source_type === 'brand' ? 'Brand' : 'Dealer'}
                         </p>
                       </td>
-                      <td className="w-[110px] px-4 py-3 text-center">
+                      <td className="px-4 py-3 text-center">
                         <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${priorityMeta.className}`}>
                           {priorityMeta.label}
                         </span>
                       </td>
-                      <td className="w-[130px] px-4 py-3 text-center">
+                      <td className="px-4 py-3 text-center">
                         <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${statusMeta.className}`}>
                           {statusMeta.label}
                         </span>
                       </td>
-                      <td className="w-[250px] px-4 py-3 text-sm">
-                        {can('subject:update') ? (
-                          <div className="flex items-center gap-2">
-                            <select
-                              value={assignmentDraftById[subject.id] ?? subject.assigned_technician_id ?? ''}
-                              onChange={(event) => {
-                                const selectedId = event.target.value;
-                                const currentAssignedId = subject.assigned_technician_id ?? '';
-
-                                if (selectedId === currentAssignedId) {
-                                  return;
-                                }
-
-                                void handleQuickAssign(subject.id, selectedId);
-                              }}
-                              className="w-40 rounded-md border border-slate-300 px-2 py-1.5 text-xs text-slate-700 focus:border-blue-500 focus:outline-none"
-                              disabled={assigningSubjectId === subject.id || techniciansQuery.isLoading}
-                            >
-                              <option value="">Unassigned</option>
-                              {technicianOptions.map((technician) => (
-                                <option key={technician.id} value={technician.id}>
-                                  {technician.display_name} ({technician.technician_code})
-                                </option>
-                              ))}
-                            </select>
-                            {assigningSubjectId === subject.id ? <span className="text-xs text-blue-600">Updating...</span> : null}
-                          </div>
-                        ) : subject.assigned_technician_name ? (
+                      <td className="px-4 py-3 text-sm">
+                        {subject.assigned_technician_name ? (
                           <>
                             <p
                               className="max-w-[120px] truncate whitespace-nowrap font-medium text-slate-900"
@@ -572,7 +515,7 @@ export default function SubjectsDashboardPage() {
                           </span>
                         )}
                       </td>
-                      <td className="w-[150px] px-4 py-3">
+                      <td className="px-4 py-3">
                         <span
                           className={`inline-flex max-w-[120px] truncate whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${serviceTypeMeta.className}`}
                           title={serviceTypeMeta.label}
@@ -580,12 +523,12 @@ export default function SubjectsDashboardPage() {
                           {serviceTypeMeta.label}
                         </span>
                       </td>
-                      <td className="w-[120px] px-4 py-3 text-sm text-slate-600">
+                      <td className="px-4 py-3 text-sm text-slate-600">
                         <span className="max-w-[90px] truncate whitespace-nowrap" title={formatDate(subject.allocated_date)}>
                           {formatDate(subject.allocated_date)}
                         </span>
                       </td>
-                      <td className="w-20 px-4 py-3">
+                      <td className="px-4 py-3">
                         <Link
                           href={ROUTES.DASHBOARD_SUBJECTS_DETAIL(subject.id)}
                           onMouseEnter={() => handlePrefetch(subject.id)}

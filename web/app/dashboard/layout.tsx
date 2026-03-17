@@ -73,8 +73,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const roleLabel = userRole ? userRole.replace('_', ' ') : 'team member';
   const identity = user.email ?? 'user';
-  const identityParts = identity.split('@')[0]?.split(/[._-]/).filter(Boolean) ?? [];
-  const initials = (identityParts[0]?.[0] ?? 'U') + (identityParts[1]?.[0] ?? 'S');
+  const displayName =
+    String(user.user_metadata?.full_name ?? user.user_metadata?.name ?? '').trim() ||
+    identity.split('@')[0] ||
+    'User';
+  const nameParts = displayName.split(/\s+/).filter(Boolean);
+  const initials = `${nameParts[0]?.[0] ?? 'U'}${nameParts[nameParts.length - 1]?.[0] ?? 'U'}`.toUpperCase();
   const visibleServiceItems = SERVICE_MODULE_ITEMS.filter((item) => !item.superAdminOnly || userRole === 'super_admin');
   const isSuperAdmin = userRole === 'super_admin';
   const isServiceModuleActive =
@@ -145,7 +149,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       <div className="flex">
         <aside
           className={`min-h-[calc(100vh-4rem)] border-r border-blue-900/40 bg-ht-navy-950 transition-[width] duration-200 ${
-            sidebarExpanded ? 'w-72' : 'w-20'
+            sidebarExpanded ? 'w-[260px]' : 'w-20'
           }`}
         >
           <nav className="space-y-1 p-3">
@@ -166,7 +170,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                         href={item.href}
                         title={!sidebarExpanded ? item.label : undefined}
                         aria-current={isActive ? 'page' : undefined}
-                        className={`relative flex flex-1 items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition ${
+                        className={`relative flex flex-1 items-center gap-3 rounded-xl border px-3.5 py-3 text-[13px] transition ${
                           isActive
                             ? 'border-white/20 bg-white/15 font-semibold text-white shadow-sm'
                             : 'border-transparent font-medium text-blue-200/70 hover:border-white/10 hover:bg-white/10 hover:text-white'
@@ -174,7 +178,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       >
                         {isActive ? <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-ht-blue-400" /> : null}
                         <item.icon size={18} />
-                        <span>{item.label}</span>
+                        <span className="whitespace-nowrap">{item.label}</span>
                       </Link>
 
                       <button
@@ -193,7 +197,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       title={!sidebarExpanded ? item.label : undefined}
                       aria-current={isActive ? 'page' : undefined}
                       className={`relative flex rounded-xl border text-sm transition ${
-                        sidebarExpanded ? 'items-center gap-3 px-3 py-2.5' : 'justify-center px-0 py-3'
+                        sidebarExpanded ? 'items-center gap-3 px-3.5 py-3' : 'justify-center px-0 py-3.5'
                       } ${
                         isActive
                           ? 'border-white/20 bg-white/15 font-semibold text-white shadow-sm'
@@ -202,25 +206,20 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     >
                       {isActive ? <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-ht-blue-400" /> : null}
                       <item.icon size={18} />
-                      {sidebarExpanded ? <span>{item.label}</span> : <span className="sr-only">{item.label}</span>}
+                      {sidebarExpanded ? <span className="whitespace-nowrap text-[13px]">{item.label}</span> : <span className="sr-only">{item.label}</span>}
                     </Link>
                   ) : (
                     <div
-                      title={!sidebarExpanded ? `${item.label} (Coming soon)` : undefined}
+                      title={!sidebarExpanded ? item.label : undefined}
                       className={`relative flex rounded-xl border border-transparent text-sm ${
-                        sidebarExpanded ? 'items-center gap-3 px-3 py-2.5' : 'justify-center px-0 py-3'
-                      } text-blue-200/45`}
+                        sidebarExpanded ? 'items-center gap-3 px-3.5 py-3' : 'justify-center px-0 py-3.5'
+                      } pointer-events-none opacity-40`}
                     >
                       <item.icon size={18} />
                       {sidebarExpanded ? (
-                        <>
-                          <span>{item.label}</span>
-                          <span className="ml-auto rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-100/70">
-                            Coming soon
-                          </span>
-                        </>
+                        <span className="whitespace-nowrap text-[13px] text-blue-200/70">{item.label}</span>
                       ) : (
-                        <span className="sr-only">{item.label} coming soon</span>
+                        <span className="sr-only">{item.label}</span>
                       )}
                     </div>
                   )}
@@ -242,7 +241,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                             }`}
                           >
                             <serviceItem.icon size={15} />
-                            <span>{serviceItem.label}</span>
+                            <span className="whitespace-nowrap">{serviceItem.label}</span>
                           </Link>
                         );
                       })}
