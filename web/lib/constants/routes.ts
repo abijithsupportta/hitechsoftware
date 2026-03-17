@@ -9,6 +9,7 @@ export const ROUTES = {
   DASHBOARD_SUBJECTS_NEW: '/dashboard/subjects/new',
   DASHBOARD_SUBJECTS_DETAIL: (id: string) => `/dashboard/subjects/${id}`,
   DASHBOARD_SUBJECTS_EDIT: (id: string) => `/dashboard/subjects/${id}/edit`,
+  DASHBOARD_ATTENDANCE: '/dashboard/attendance',
   DASHBOARD_SERVICE_CATEGORIES: '/dashboard/service/categories',
   DASHBOARD_SERVICE_BRANDS: '/dashboard/service/brands',
   DASHBOARD_SERVICE_DEALERS: '/dashboard/service/dealers',

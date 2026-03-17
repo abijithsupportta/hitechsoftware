@@ -7,6 +7,7 @@ export interface ProfileRow {
   phone_number: string | null;
   role: UserRole;
   is_active: boolean;
+  is_online?: boolean;
   is_deleted: boolean;
   created_at?: string;
   updated_at?: string;

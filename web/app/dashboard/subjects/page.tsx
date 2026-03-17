@@ -9,6 +9,7 @@ import { useSubjects } from '@/hooks/subjects/useSubjects';
 import { useBrands } from '@/hooks/brands/useBrands';
 import { useDealers } from '@/hooks/dealers/useDealers';
 import { useServiceCategories } from '@/hooks/service-categories/useServiceCategories';
+import { AttendanceGuard } from '@/components/attendance/AttendanceGuard';
 import { ROUTES } from '@/lib/constants/routes';
 import { SUBJECT_PRIORITY_OPTIONS, SUBJECT_QUERY_KEYS, SUBJECT_SOURCE_OPTIONS, SUBJECT_STATUS_OPTIONS } from '@/modules/subjects/subject.constants';
 import { getSubjectDetails } from '@/modules/subjects/subject.service';
@@ -157,7 +158,8 @@ export default function SubjectsDashboardPage() {
   }
 
   return (
-    <div className="p-6">
+    <AttendanceGuard>
+      <div className="p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-900">Service Subjects</h1>
         <p className="mt-1 text-sm text-slate-600">Filter, track, and audit all service subjects.</p>
@@ -588,6 +590,7 @@ export default function SubjectsDashboardPage() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </AttendanceGuard>
   );
 }

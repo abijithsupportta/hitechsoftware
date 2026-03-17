@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Eye, EyeOff, ShieldCheck, UserPlus, X } from 'lucide-react';
 import { usePermission } from '@/hooks/auth/usePermission';
 import { useTeam } from '@/hooks/team/useTeam';
+import { useAllTechnicianStatus } from '@/hooks/attendance/useAttendance';
 import { ROUTES } from '@/lib/constants/routes';
 import type { CreateTeamMemberInput } from '@/modules/technicians/technician.types';
 import type { UserRole } from '@/types/database.types';
@@ -40,6 +41,9 @@ export default function TeamManagementPage() {
     setSearchFilter,
     createMutation,
   } = useTeam();
+  const liveStatusQuery = useAllTechnicianStatus();
+  const liveStatus = liveStatusQuery.data?.ok ? liveStatusQuery.data.data : [];
+  const liveByTechnicianId = new Map(liveStatus.map((item) => [item.id, item]));
 
   const [form, setForm] = useState<CreateTeamMemberInput>(INITIAL_FORM);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -259,9 +263,26 @@ export default function TeamManagementPage() {
               </tr>
             ) : (
               members.map((member) => {
+                const live = member.role === 'technician' ? liveByTechnicianId.get(member.id) : null;
+                const lastToggleOnAt = live?.today_attendance?.toggled_on_at ?? null;
+                const isAbsentToday = member.role === 'technician' && (!live?.today_attendance || !live.today_attendance.is_present);
+
                 return (
                   <tr key={member.id} className="border-t border-slate-100">
-                    <td className="px-4 py-3 font-medium text-slate-900">{member.display_name}</td>
+                    <td className="px-4 py-3 font-medium text-slate-900">
+                      <div className="flex items-center gap-2">
+                        {member.role === 'technician' ? (
+                          <span className={`inline-flex h-2.5 w-2.5 rounded-full ${live?.is_online ? 'animate-pulse bg-emerald-500' : 'bg-slate-400'}`} />
+                        ) : null}
+                        <span>{member.display_name}</span>
+                        {isAbsentToday ? (
+                          <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-700">Absent Today</span>
+                        ) : null}
+                      </div>
+                      {member.role === 'technician' && lastToggleOnAt ? (
+                        <p className="mt-1 text-xs font-normal text-slate-500">Last ON: {new Date(lastToggleOnAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</p>
+                      ) : null}
+                    </td>
                     <td className="px-4 py-3 text-slate-700">{member.email}</td>
                     <td className="px-4 py-3 text-slate-700">{ROLE_OPTIONS.find((option) => option.value === member.role)?.label ?? member.role}</td>
                     <td className="px-4 py-3 text-slate-700">{member.phone_number ?? '-'}</td>

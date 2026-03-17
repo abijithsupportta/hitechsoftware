@@ -12,7 +12,7 @@ function normalizeNullable(value?: string) {
 export async function listTeamMembers(role?: UserRole | 'all', search?: string) {
   let query = supabase
     .from('profiles')
-    .select('id,email,display_name,phone_number,role,is_active,is_deleted,created_at,updated_at')
+    .select('id,email,display_name,phone_number,role,is_active,is_online,is_deleted,created_at,updated_at')
     .in('role', ['technician', 'office_staff', 'stock_manager'])
     .eq('is_deleted', false)
     .order('created_at', { ascending: false });
@@ -75,7 +75,7 @@ export async function updateProfile(id: string, input: UpdateTeamMemberInput) {
     .update(payload)
     .eq('id', id)
     .eq('is_deleted', false)
-    .select('id,email,display_name,phone_number,role,is_active,is_deleted,created_at,updated_at')
+    .select('id,email,display_name,phone_number,role,is_active,is_online,is_deleted,created_at,updated_at')
     .single();
 }
 

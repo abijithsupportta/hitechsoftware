@@ -17,6 +17,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Bell,
+  CalendarDays,
   Building2,
   Shapes,
   Tags,
@@ -26,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { ROUTES } from '@/lib/constants/routes';
+import type { UserRole } from '@/types/database.types';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -33,6 +35,7 @@ interface DashboardLayoutProps {
 
 const NAV_ITEMS = [
   { icon: Home, label: 'Dashboard', href: ROUTES.DASHBOARD, isAvailable: true },
+  { icon: CalendarDays, label: 'Attendance', href: ROUTES.DASHBOARD_ATTENDANCE, isAvailable: true, allowedRoles: ['technician'] as UserRole[] },
   { icon: ClipboardList, label: 'Service Module', href: ROUTES.DASHBOARD_SUBJECTS, isAvailable: true },
   { icon: Users, label: 'Customers', href: ROUTES.DASHBOARD_CUSTOMERS, isAvailable: true },
   { icon: UserCog, label: 'Team', href: ROUTES.DASHBOARD_TEAM, isAvailable: true },
@@ -156,6 +159,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         >
           <nav className="space-y-1 p-3">
             {NAV_ITEMS.map((item) => {
+              if (item.allowedRoles && (!userRole || !item.allowedRoles.includes(userRole))) {
+                return null;
+              }
+
               const isActive =
                 item.href === ROUTES.DASHBOARD_SUBJECTS
                   ? isServiceModuleActive

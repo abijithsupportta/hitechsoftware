@@ -11,11 +11,12 @@ import { WarrantyAndContractsSection } from '@/components/warranty/WarrantyAndCo
 import { SubjectInfoCard } from '@/components/subjects/SubjectInfoCard';
 import { ProductInfoCard } from '@/components/subjects/ProductInfoCard';
 import { ActivityTimeline } from '@/components/subjects/ActivityTimeline';
+import { AttendanceGuard } from '@/components/attendance/AttendanceGuard';
 import { useContractsBySubject } from '@/hooks/contracts/useContracts';
 import { useSubjectDetail } from '@/hooks/subjects/useSubjects';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { ROUTES } from '@/lib/constants/routes';
-import { SUBJECT_QUERY_KEYS, WARRANTY_PERIODS } from '@/modules/subjects/subject.constants';
+import { SUBJECT_QUERY_KEYS } from '@/modules/subjects/subject.constants';
 import { removeSubject } from '@/modules/subjects/subject.service';
 
 function formatDate(value: string) {
@@ -87,7 +88,8 @@ export default function SubjectDetailPage() {
   }
 
   return (
-    <div className="p-6">
+    <AttendanceGuard>
+      <div className="p-6">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Subject {subject.subject_number}</h1>
@@ -153,6 +155,7 @@ export default function SubjectDetailPage() {
           deleteSubjectMutation.mutate(subject.id);
         }}
       />
-    </div>
+      </div>
+    </AttendanceGuard>
   );
 }

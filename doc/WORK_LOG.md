@@ -3,6 +3,62 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-17 19:05:00 +05:30] Attendance Module End-to-End Implementation (Web + API + Cron)
+
+- Summary: Implemented the complete attendance module across database migration, backend architecture layers, cron automation, technician attendance UI, service access guard, dashboard/team live status updates, and realtime profile status subscription.
+- Work done:
+  - Created migration `20260317_009_attendance.sql` with `attendance_logs`, `attendance_settings`, `profiles.is_online`, indexes, singleton settings row, triggers, and RLS policies.
+  - Implemented attendance architecture layers:
+    - `modules/attendance/attendance.types.ts`
+    - `modules/attendance/attendance.service.ts`
+    - `repositories/attendance.repository.ts`
+    - `hooks/attendance/useAttendance.ts`
+  - Added realtime support using `hooks/useRealtime.ts` and wired profile `is_online` subscription in attendance hook.
+  - Added protected API route `app/api/attendance/toggle/route.ts` so attendance log inserts happen through service-role server logic (matching RLS requirement).
+  - Added cron API routes with `CRON_SECRET` protection:
+    - `app/api/cron/attendance-reset/route.ts` (midnight reset + absent insert for no ON)
+    - `app/api/cron/attendance-absent-flag/route.ts` (10:30 absent marking + notification queue)
+  - Added cron schedule config in `web/vercel.json`.
+  - Built technician attendance screen: `app/dashboard/attendance/page.tsx` with large toggle card, today summary, calendar with status dots/service badges, and date detail drawer.
+  - Added `components/attendance/AttendanceGuard.tsx` and wrapped:
+    - `app/dashboard/subjects/page.tsx`
+    - `app/dashboard/subjects/[id]/page.tsx`
+  - Updated office/admin visibility:
+    - `app/dashboard/page.tsx` live technicians card (total, online, absent, view list)
+    - `app/dashboard/team/page.tsx` online/offline dot, absent today badge, last ON time
+  - Added route constant `DASHBOARD_ATTENDANCE` and attendance navigation visibility in dashboard layout for technicians.
+- Files changed:
+  - supabase/migrations/20260317_009_attendance.sql
+  - web/modules/attendance/attendance.types.ts
+  - web/modules/attendance/attendance.constants.ts
+  - web/modules/attendance/attendance.service.ts
+  - web/repositories/attendance.repository.ts
+  - web/hooks/attendance/useAttendance.ts
+  - web/hooks/useRealtime.ts
+  - web/app/api/attendance/toggle/route.ts
+  - web/app/api/cron/attendance-reset/route.ts
+  - web/app/api/cron/attendance-absent-flag/route.ts
+  - web/app/dashboard/attendance/page.tsx
+  - web/components/attendance/AttendanceGuard.tsx
+  - web/app/dashboard/subjects/page.tsx
+  - web/app/dashboard/subjects/[id]/page.tsx
+  - web/app/dashboard/page.tsx
+  - web/app/dashboard/team/page.tsx
+  - web/app/dashboard/layout.tsx
+  - web/lib/constants/routes.ts
+  - web/modules/technicians/technician.types.ts
+  - web/repositories/technician.repository.ts
+  - web/types/database.types.ts
+  - web/vercel.json
+  - doc/WORK_LOG.md
+- Verification:
+  - `npm run build` in `web/` passed successfully.
+  - Build output includes new routes: `/dashboard/attendance`, `/api/attendance/toggle`, `/api/cron/attendance-reset`, `/api/cron/attendance-absent-flag`.
+- Bugs/issues encountered:
+  - Initial direct client-side attendance insert conflicted with “service-role-only insert” requirement; resolved by moving toggle write path to protected server API route.
+- Next:
+  - Configure `CRON_SECRET` in deployment environment and wire Vercel cron auth header for production execution.
+
 ## [2026-03-18 14:30:00 +05:30] Full Architecture Cleanup — Domain Extraction, Hook Grouping, Component Decomposition
 
 - Summary: Complete architecture refactor of the web project. Extracted contracts into their own domain, grouped all hooks by domain, decomposed the 950-line subject detail page into ~120 lines using 7 extracted components, deleted empty stub module folders, updated all consumer imports, and verified clean production build.
