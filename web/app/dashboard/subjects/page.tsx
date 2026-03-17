@@ -14,6 +14,8 @@ import { ROUTES } from '@/lib/constants/routes';
 import { SUBJECT_PRIORITY_OPTIONS, SUBJECT_SOURCE_OPTIONS, SUBJECT_STATUS_OPTIONS } from '@/modules/subjects/subject.constants';
 import type { SubjectListItem } from '@/modules/subjects/subject.types';
 
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
+
 function formatDate(value: string) {
   return new Date(value).toLocaleDateString('en-GB');
 }
@@ -81,6 +83,7 @@ export default function SubjectsDashboardPage() {
     subjects,
     pagination,
     searchInput,
+    pageSize,
     sourceType,
     priority,
     status,
@@ -101,6 +104,7 @@ export default function SubjectsDashboardPage() {
     setFromDate,
     setToDate,
     setPage,
+    setPageSize,
     deleteSubjectMutation,
   } = useSubjects();
 
@@ -529,9 +533,28 @@ export default function SubjectsDashboardPage() {
         </div>
 
         <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3 text-sm text-slate-600">
-          <p>
-            Page {pagination.page} of {pagination.totalPages} ({pagination.total} total)
-          </p>
+          <div className="flex items-center gap-3">
+            <p>
+              Page {pagination.page} of {pagination.totalPages} ({pagination.total} total)
+            </p>
+            <div className="flex items-center gap-2">
+              <label htmlFor="subjects-page-size" className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                Rows
+              </label>
+              <select
+                id="subjects-page-size"
+                value={pageSize}
+                onChange={(event) => setPageSize(Number(event.target.value))}
+                className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 focus:border-blue-500 focus:outline-none"
+              >
+                {PAGE_SIZE_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
           <div className="flex items-center gap-2">
             <button
               type="button"

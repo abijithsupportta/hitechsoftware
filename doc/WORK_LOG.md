@@ -3,6 +3,28 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-17 08:50:56 +05:30] Add Subjects Rows-Per-Page Pagination Selector
+
+- Summary: Added a user-selectable rows-per-page option on the subjects list so pagination is no longer fixed to 10 items and can be switched to 20, 50, or 100.
+- Work done:
+  - Updated `useSubjects` hook to track `pageSize` in state instead of a hardcoded `SUBJECT_DEFAULT_PAGE_SIZE` for every query.
+  - Updated subject list query filters to send dynamic `page_size` from `pageSize` state.
+  - Added `setPageSize` handler in `useSubjects` that resets to page 1 when page size changes.
+  - Added a rows selector UI in subjects pagination footer with options: 10, 20, 50, 100.
+  - Wired selector change to `setPageSize(Number(value))`.
+  - Left API documentation unchanged because this is a frontend pagination UI/filter behavior update with no API contract changes.
+- Files changed:
+  - web/hooks/useSubjects.ts
+  - web/app/dashboard/subjects/page.tsx
+  - doc/WORK_LOG.md
+- Verification:
+  - `get_errors` returned no errors for modified hook and page files.
+  - `npm run build` passed for the web workspace.
+- Issues:
+  - None
+- Next:
+  - Browser QA: verify switching 10/20/50/100 updates the list and resets to page 1.
+
 ## [2026-03-17 08:47:55 +05:30] Seed 100 Dummy Subjects Using Service Role
 
 - Summary: Added and executed a terminal-driven seed script that uses Supabase service role credentials to create 100 dummy subject records for testing.

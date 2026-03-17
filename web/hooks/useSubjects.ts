@@ -10,6 +10,7 @@ export function useSubjects() {
   const queryClient = useQueryClient();
   const [searchInput, setSearchInput] = useState('');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(SUBJECT_DEFAULT_PAGE_SIZE);
   const [sourceType, setSourceType] = useState<'all' | 'brand' | 'dealer'>('all');
   const [priority, setPriority] = useState<'all' | 'critical' | 'high' | 'medium' | 'low'>('all');
   const [status, setStatus] = useState('');
@@ -31,9 +32,9 @@ export function useSubjects() {
       from_date: fromDate || undefined,
       to_date: toDate || undefined,
       page,
-      page_size: SUBJECT_DEFAULT_PAGE_SIZE,
+      page_size: pageSize,
     };
-  }, [searchInput, sourceType, priority, status, categoryId, brandId, dealerId, fromDate, toDate, page]);
+  }, [searchInput, sourceType, priority, status, categoryId, brandId, dealerId, fromDate, toDate, page, pageSize]);
 
   const query = useQuery({
     queryKey: [...SUBJECT_QUERY_KEYS.list, filters],
@@ -93,6 +94,7 @@ export function useSubjects() {
           totalPages: 1,
         },
     searchInput,
+    pageSize,
     sourceType,
     priority,
     status,
@@ -146,6 +148,10 @@ export function useSubjects() {
       setPage(1);
     },
     setPage: (value: number) => setPage(Math.max(1, value)),
+    setPageSize: (value: number) => {
+      setPageSize(value);
+      setPage(1);
+    },
   };
 }
 
