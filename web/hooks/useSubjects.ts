@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { assignSubjectToTechnician, assignTechnicianWithDate, createSubjectTicket, getSubjectDetails, getSubjects, removeSubject, updateSubjectRecord } from '@/modules/subjects/subject.service';
+import { assignSubjectToTechnician, assignTechnicianWithDate, createSubjectTicket, getSubjectDetails, getSubjects, removeSubject, saveSubjectWarranty, updateSubjectRecord } from '@/modules/subjects/subject.service';
 import { SUBJECT_DEFAULT_PAGE_SIZE, SUBJECT_QUERY_KEYS } from '@/modules/subjects/subject.constants';
 import type { AssignTechnicianInput, CreateSubjectInput, SubjectListFilters, UpdateSubjectInput } from '@/modules/subjects/subject.types';
 import { getAssignableTechnicians } from '@/modules/technicians/technician.service';
@@ -205,6 +205,31 @@ export function useAssignTechnician(subjectId: string) {
     },
     onError: () => {
       toast.error('Failed to save technician assignment');
+    },
+  });
+}
+
+export function useSaveSubjectWarranty(subjectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: {
+      subject_id: string;
+      purchase_date: string | null;
+      warranty_period: '6_months' | '1_year' | '2_years' | '3_years' | '4_years' | '5_years' | 'custom';
+      warranty_end_date_manual: string | null;
+    }) => saveSubjectWarranty(input),
+    onSuccess: (result) => {
+      if (result.ok) {
+        toast.success('Warranty details updated successfully');
+        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(subjectId) });
+        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.all });
+      } else {
+        toast.error(result.error.message);
+      }
+    },
+    onError: () => {
+      toast.error('Failed to update warranty details');
     },
   });
 }

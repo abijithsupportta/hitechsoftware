@@ -229,7 +229,9 @@ export async function getSubjectById(id: string) {
       serial_number,
       product_description,
       purchase_date,
+      warranty_period_months,
       warranty_end_date,
+      warranty_status,
       amc_end_date,
       service_charge_type,
       is_amc_service,
@@ -254,6 +256,38 @@ export async function getSubjectTimeline(subjectId: string) {
     .select('id,event_type,status,changed_at,note,old_value,new_value')
     .eq('subject_id', subjectId)
     .order('changed_at', { ascending: false });
+}
+
+export async function updateSubjectWarranty(
+  subjectId: string,
+  purchaseDate: string | null,
+  warrantyPeriodMonths: number | null,
+  warrantyEndDate: string | null,
+) {
+  return supabase
+    .from('subjects')
+    .update({
+      purchase_date: purchaseDate,
+      warranty_period_months: warrantyPeriodMonths,
+      warranty_end_date: warrantyEndDate,
+    })
+    .eq('id', subjectId)
+    .eq('is_deleted', false)
+    .select('id,purchase_date,warranty_period_months,warranty_end_date,warranty_status,service_charge_type')
+    .single<{
+      id: string;
+      purchase_date: string | null;
+      warranty_period_months: number | null;
+      warranty_end_date: string | null;
+      warranty_status: 'active' | 'expired' | null;
+      service_charge_type: 'customer' | 'brand_dealer';
+    }>();
+}
+
+export async function recalculateSubjectBillingType(subjectId: string) {
+  return supabase.rpc('refresh_subject_billing_type', {
+    p_subject_id: subjectId,
+  });
 }
 
 export async function deleteSubject(id: string) {

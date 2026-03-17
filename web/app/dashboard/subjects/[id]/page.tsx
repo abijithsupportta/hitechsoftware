@@ -1,19 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Activity, Calendar, Flag, UserCheck, UserMinus, UserPlus } from 'lucide-react';
+import { Activity, Calendar, Flag, Plus, UserCheck, UserMinus, UserPlus } from 'lucide-react';
 import { DeleteConfirmModal } from '@/components/customers/DeleteConfirmModal';
 import { ProtectedComponent } from '@/components/ui/ProtectedComponent';
-import { useAssignableTechnicians, useAssignTechnician, useSubjectDetail } from '@/hooks/useSubjects';
+import { useContractsBySubject, useCreateContract, useDeleteContract } from '@/hooks/useContracts';
+import { useAssignableTechnicians, useAssignTechnician, useSaveSubjectWarranty, useSubjectDetail } from '@/hooks/useSubjects';
 import { useAuth } from '@/hooks/useAuth';
 import { ROUTES } from '@/lib/constants/routes';
-import { SUBJECT_QUERY_KEYS } from '@/modules/subjects/subject.constants';
+import { SUBJECT_QUERY_KEYS, WARRANTY_PERIODS } from '@/modules/subjects/subject.constants';
 import { removeSubject } from '@/modules/subjects/subject.service';
-import type { SubjectTimelineItem } from '@/modules/subjects/subject.types';
+import type { SubjectContract, SubjectTimelineItem, WarrantyPeriod } from '@/modules/subjects/subject.types';
 
 function formatDate(value: string) {
   return new Date(value).toLocaleString('en-GB');
@@ -29,6 +30,35 @@ function formatDateOnly(value: string | null) {
   }
 
   return new Date(value).toLocaleDateString('en-GB');
+}
+
+function toIsoDate(value: string) {
+  return new Date(value).toISOString().split('T')[0];
+}
+
+function addMonths(dateText: string, months: number) {
+  const date = new Date(dateText);
+  date.setMonth(date.getMonth() + months);
+  return toIsoDate(date.toISOString());
+}
+
+function getWarrantyPeriodFromMonths(months: number | null): WarrantyPeriod {
+  const match = WARRANTY_PERIODS.find((item) => item.months === months);
+  return (match?.value as WarrantyPeriod | undefined) ?? 'custom';
+}
+
+function getContractVisualStatus(contract: SubjectContract): 'active' | 'upcoming' | 'expired' {
+  const today = new Date().toISOString().split('T')[0];
+
+  if (contract.start_date > today) {
+    return 'upcoming';
+  }
+
+  if (contract.end_date < today) {
+    return 'expired';
+  }
+
+  return 'active';
 }
 
 const EVENT_META: Record<string, { label: string; icon: React.ReactNode; iconBg: string; iconColor: string; borderColor: string }> = {
@@ -158,17 +188,31 @@ export default function SubjectDetailPage() {
   const id = params.id;
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  // Assignment form state
   const [selectedTechnicianId, setSelectedTechnicianId] = useState('');
   const [techAllocatedDate, setTechAllocatedDate] = useState('');
   const [techAllocatedNotes, setTechAllocatedNotes] = useState('');
 
+  const [isEditingWarranty, setIsEditingWarranty] = useState(false);
+  const [purchaseDate, setPurchaseDate] = useState('');
+  const [warrantyPeriod, setWarrantyPeriod] = useState<WarrantyPeriod>('custom');
+  const [warrantyEndDate, setWarrantyEndDate] = useState('');
+
+  const [showContractForm, setShowContractForm] = useState(false);
+  const [contractName, setContractName] = useState('');
+  const [contractStartDate, setContractStartDate] = useState('');
+  const [contractPeriod, setContractPeriod] = useState<WarrantyPeriod>('1_year');
+  const [contractEndDate, setContractEndDate] = useState('');
+
   const query = useSubjectDetail(id);
+  const contractsQuery = useContractsBySubject(id);
   const techniciansQuery = useAssignableTechnicians();
   const assignMutation = useAssignTechnician(id);
+  const saveWarrantyMutation = useSaveSubjectWarranty(id);
+  const createContractMutation = useCreateContract(id);
+  const deleteContractMutation = useDeleteContract(id);
 
   const deleteSubjectMutation = useMutation({
     mutationFn: (subjectId: string) => removeSubject(subjectId),
@@ -186,69 +230,103 @@ export default function SubjectDetailPage() {
     },
   });
 
+  const subject = query.data?.ok ? query.data.data : null;
+  const contractRows = contractsQuery.data?.ok ? contractsQuery.data.data : [];
+
+  const sortedContracts = useMemo(() => {
+    return [...contractRows].sort((a, b) => a.start_date.localeCompare(b.start_date));
+  }, [contractRows]);
+
+  const selectedWarrantyMonths = WARRANTY_PERIODS.find((item) => item.value === warrantyPeriod)?.months ?? null;
+  const selectedContractMonths = WARRANTY_PERIODS.find((item) => item.value === contractPeriod)?.months ?? null;
+
+  const effectiveWarrantyEndDate = warrantyEndDate || (purchaseDate && selectedWarrantyMonths ? addMonths(purchaseDate, selectedWarrantyMonths) : '');
+
+  const recommendedContractStartDate = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    if (sortedContracts.length > 0) {
+      return sortedContracts[sortedContracts.length - 1].end_date;
+    }
+
+    if (effectiveWarrantyEndDate) {
+      return effectiveWarrantyEndDate;
+    }
+
+    return today;
+  }, [effectiveWarrantyEndDate, sortedContracts]);
+
+  const hasActiveContract = sortedContracts.some((contract) => getContractVisualStatus(contract) === 'active');
+  const isWarrantyActive = Boolean(effectiveWarrantyEndDate && effectiveWarrantyEndDate >= new Date().toISOString().split('T')[0]);
+
+  const billingTypeMeta = isWarrantyActive
+    ? { label: 'Under Warranty', className: 'bg-emerald-100 text-emerald-700', serviceChargeType: 'brand_dealer' as const }
+    : hasActiveContract
+      ? { label: 'Active AMC Contract', className: 'bg-blue-100 text-blue-700', serviceChargeType: 'brand_dealer' as const }
+      : { label: 'Chargeable', className: 'bg-slate-100 text-slate-700', serviceChargeType: 'customer' as const };
+
+  const warrantyStatusMeta = !effectiveWarrantyEndDate
+    ? { label: 'No Warranty', className: 'bg-slate-100 text-slate-600' }
+    : isWarrantyActive
+      ? { label: 'Under Warranty', className: 'bg-emerald-100 text-emerald-700' }
+      : { label: 'Expired', className: 'bg-rose-100 text-rose-700' };
+
+  const canManageWarrantyAndContracts = userRole === 'super_admin' || userRole === 'office_staff';
+  const canDeleteContract = userRole === 'super_admin';
+
+  useEffect(() => {
+    if (!subject) {
+      return;
+    }
+
+    setSelectedTechnicianId(subject.assigned_technician_id ?? '');
+    setTechAllocatedDate(subject.technician_allocated_date ?? '');
+    setTechAllocatedNotes(subject.technician_allocated_notes ?? '');
+
+    setPurchaseDate(subject.purchase_date ?? '');
+    setWarrantyEndDate(subject.warranty_end_date ?? '');
+    setWarrantyPeriod(getWarrantyPeriodFromMonths(subject.warranty_period_months));
+  }, [subject]);
+
+  useEffect(() => {
+    if (!showContractForm) {
+      return;
+    }
+
+    setContractStartDate(recommendedContractStartDate);
+  }, [recommendedContractStartDate, showContractForm]);
+
+  useEffect(() => {
+    if (warrantyPeriod === 'custom') {
+      return;
+    }
+
+    if (purchaseDate && selectedWarrantyMonths) {
+      setWarrantyEndDate(addMonths(purchaseDate, selectedWarrantyMonths));
+    }
+  }, [purchaseDate, selectedWarrantyMonths, warrantyPeriod]);
+
+  useEffect(() => {
+    if (contractPeriod === 'custom') {
+      return;
+    }
+
+    if (contractStartDate && selectedContractMonths) {
+      setContractEndDate(addMonths(contractStartDate, selectedContractMonths));
+    }
+  }, [contractStartDate, selectedContractMonths, contractPeriod]);
+
   if (query.isLoading) {
     return (
       <div className="space-y-4 p-6">
         <div className="animate-pulse rounded-xl border border-slate-200 bg-white p-5">
           <div className="h-7 w-56 rounded bg-slate-200" />
           <div className="mt-2 h-4 w-80 rounded bg-slate-100" />
-          <div className="mt-3 flex gap-2">
-            <div className="h-6 w-28 rounded-full bg-slate-200" />
-            <div className="h-6 w-24 rounded-full bg-slate-200" />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <div key={`subject-summary-skeleton-${index}`} className="animate-pulse rounded-xl border border-slate-200 bg-white p-4">
-              <div className="h-3 w-20 rounded bg-slate-100" />
-              <div className="mt-2 h-4 w-28 rounded bg-slate-200" />
-            </div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-          <section className="animate-pulse rounded-xl border border-slate-200 bg-white p-5 xl:col-span-2">
-            <div className="mb-4 h-5 w-40 rounded bg-slate-200" />
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              {Array.from({ length: 8 }).map((_, index) => (
-                <div key={`service-info-skeleton-${index}`} className="h-4 rounded bg-slate-100" />
-              ))}
-            </div>
-          </section>
-
-          <section className="animate-pulse rounded-xl border border-slate-200 bg-white p-5">
-            <div className="mb-4 h-5 w-32 rounded bg-slate-200" />
-            <div className="space-y-3">
-              {Array.from({ length: 3 }).map((_, index) => (
-                <div key={`status-info-skeleton-${index}`} className="h-4 rounded bg-slate-100" />
-              ))}
-            </div>
-          </section>
-
-          <section className="animate-pulse rounded-xl border border-slate-200 bg-white p-5 xl:col-span-2">
-            <div className="mb-4 h-5 w-36 rounded bg-slate-200" />
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              {Array.from({ length: 5 }).map((_, index) => (
-                <div key={`product-info-skeleton-${index}`} className="h-4 rounded bg-slate-100" />
-              ))}
-            </div>
-          </section>
-
-          <section className="animate-pulse rounded-xl border border-slate-200 bg-white p-5">
-            <div className="mb-4 h-5 w-28 rounded bg-slate-200" />
-            <div className="space-y-3">
-              {Array.from({ length: 3 }).map((_, index) => (
-                <div key={`timeline-skeleton-${index}`} className="h-16 rounded-lg bg-slate-100" />
-              ))}
-            </div>
-          </section>
         </div>
       </div>
     );
   }
 
-  if (!query.data?.ok) {
+  if (!query.data?.ok || !subject) {
     const message = query.data && !query.data.ok ? query.data.error.message : 'Failed to load subject';
 
     return (
@@ -258,21 +336,6 @@ export default function SubjectDetailPage() {
     );
   }
 
-  const subject = query.data.data;
-  const technicianOptions = techniciansQuery.data?.ok ? techniciansQuery.data.data : [];
-
-  useEffect(() => {
-    setSelectedTechnicianId(subject.assigned_technician_id ?? '');
-    setTechAllocatedDate(subject.technician_allocated_date ?? '');
-    setTechAllocatedNotes(subject.technician_allocated_notes ?? '');
-  }, [subject.assigned_technician_id, subject.technician_allocated_date, subject.technician_allocated_notes]);
-
-  const coverageMeta = subject.is_amc_service
-    ? { label: 'Free Service - Under AMC', className: 'bg-emerald-100 text-emerald-700' }
-    : subject.is_warranty_service
-      ? { label: 'Under Warranty', className: 'bg-blue-100 text-blue-700' }
-      : { label: 'Out of Warranty', className: 'bg-slate-100 text-slate-700' };
-
   return (
     <div className="p-6">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
@@ -280,8 +343,8 @@ export default function SubjectDetailPage() {
           <h1 className="text-2xl font-bold text-slate-900">Subject {subject.subject_number}</h1>
           <p className="mt-1 text-sm text-slate-600">Easy service summary with billing and warranty clarity.</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${coverageMeta.className}`}>
-              {coverageMeta.label}
+            <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${billingTypeMeta.className}`}>
+              {billingTypeMeta.label}
             </span>
             <span className="inline-flex items-center rounded-full bg-violet-100 px-2.5 py-1 text-xs font-semibold text-violet-700">
               {formatStatus(subject.status)}
@@ -313,7 +376,7 @@ export default function SubjectDetailPage() {
       <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
         <div className="rounded-xl border border-slate-200 bg-white p-4">
           <p className="text-xs uppercase tracking-wide text-slate-500">Charge To</p>
-          <p className="mt-1 text-sm font-semibold text-slate-900">{subject.service_charge_type === 'brand_dealer' ? 'Brand / Dealer' : 'Customer'}</p>
+          <p className="mt-1 text-sm font-semibold text-slate-900">{billingTypeMeta.serviceChargeType === 'brand_dealer' ? 'Brand / Dealer' : 'Customer'}</p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4">
           <p className="text-xs uppercase tracking-wide text-slate-500">Billing Status</p>
@@ -334,24 +397,10 @@ export default function SubjectDetailPage() {
         </div>
       </div>
 
-      {/* Assignment Section */}
       <section className="mb-4 rounded-xl border border-slate-200 bg-white p-5">
         <h2 className="mb-1 text-base font-semibold text-slate-900">
           {subject.assigned_technician_id ? 'Reassign Technician' : 'Assign Technician'}
         </h2>
-        {subject.assigned_technician_id && (
-          <p className="mb-4 text-sm text-slate-500">
-            Currently assigned to{' '}
-            <span className="font-medium text-slate-800">{subject.assigned_technician_name ?? 'unknown'}</span>
-            {subject.technician_allocated_date && (
-              <> · Visit scheduled <span className="font-medium text-blue-700">{formatDateOnly(subject.technician_allocated_date)}</span></>
-            )}
-          </p>
-        )}
-        {!subject.assigned_technician_id && (
-          <p className="mb-4 text-xs text-slate-400">No technician assigned yet.</p>
-        )}
-
         <ProtectedComponent
           permission="subject:update"
           fallback={
@@ -363,7 +412,6 @@ export default function SubjectDetailPage() {
           }
         >
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            {/* Field 1 — Technician */}
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-700">
                 Technician <span className="text-rose-500">*</span>
@@ -374,7 +422,7 @@ export default function SubjectDetailPage() {
                 disabled={assignMutation.isPending || techniciansQuery.isLoading}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <option value="">— Unassign —</option>
+                <option value="">- Unassign -</option>
                 {techniciansQuery.data?.ok ? techniciansQuery.data.data.map((tech) => (
                   <option key={tech.id} value={tech.id}>
                     {tech.display_name} ({tech.technician_code})
@@ -383,7 +431,6 @@ export default function SubjectDetailPage() {
               </select>
             </div>
 
-            {/* Field 2 — Visit date */}
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-700">
                 Technician Visit Date{selectedTechnicianId ? <span className="text-rose-500"> *</span> : null}
@@ -398,14 +445,13 @@ export default function SubjectDetailPage() {
               />
             </div>
 
-            {/* Field 3 — Notes */}
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-700">Allocation Notes <span className="text-slate-400">(optional)</span></label>
               <input
                 type="text"
                 value={techAllocatedNotes}
                 onChange={(e) => setTechAllocatedNotes(e.target.value)}
-                placeholder="Notes for the technician…"
+                placeholder="Notes for the technician"
                 disabled={assignMutation.isPending}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 placeholder:text-slate-300 focus:border-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
               />
@@ -417,12 +463,7 @@ export default function SubjectDetailPage() {
               type="button"
               disabled={
                 assignMutation.isPending ||
-                (!!selectedTechnicianId && !techAllocatedDate) ||
-                (
-                  selectedTechnicianId === (subject.assigned_technician_id ?? '') &&
-                  techAllocatedDate === (subject.technician_allocated_date ?? '') &&
-                  techAllocatedNotes === (subject.technician_allocated_notes ?? '')
-                )
+                (!!selectedTechnicianId && !techAllocatedDate)
               }
               onClick={() => {
                 assignMutation.mutate({
@@ -435,23 +476,281 @@ export default function SubjectDetailPage() {
               }}
               className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {assignMutation.isPending
-                ? 'Saving…'
-                : subject.assigned_technician_id
-                  ? 'Update Assignment'
-                  : 'Assign Technician'}
+              {assignMutation.isPending ? 'Saving...' : 'Save Assignment'}
             </button>
-            {selectedTechnicianId !== (subject.assigned_technician_id ?? '') && (
-              <span className="text-xs text-amber-600 font-medium">
-                {selectedTechnicianId
-                  ? subject.assigned_technician_id
-                    ? '↻ Reassigning technician'
-                    : '+ New assignment'
-                  : '× Will remove technician'}
-              </span>
-            )}
           </div>
         </ProtectedComponent>
+      </section>
+
+      <section className="mb-4 rounded-xl border border-slate-200 bg-white p-5">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="text-base font-semibold text-slate-900">Warranty and AMC Contracts</h2>
+          <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${billingTypeMeta.className}`}>
+            {billingTypeMeta.label}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-slate-900">Warranty Card</h3>
+              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${warrantyStatusMeta.className}`}>
+                {warrantyStatusMeta.label}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-700">Purchase Date</label>
+                <input
+                  type="date"
+                  value={purchaseDate}
+                  onChange={(event) => setPurchaseDate(event.target.value)}
+                  disabled={!isEditingWarranty || !canManageWarrantyAndContracts || saveWarrantyMutation.isPending}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-700">Warranty Period</label>
+                <select
+                  value={warrantyPeriod}
+                  onChange={(event) => setWarrantyPeriod(event.target.value as WarrantyPeriod)}
+                  disabled={!isEditingWarranty || !canManageWarrantyAndContracts || saveWarrantyMutation.isPending}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100"
+                >
+                  {WARRANTY_PERIODS.map((period) => (
+                    <option key={period.value} value={period.value}>{period.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-700">Warranty End Date</label>
+                <input
+                  type="date"
+                  value={warrantyEndDate}
+                  onChange={(event) => setWarrantyEndDate(event.target.value)}
+                  disabled={!isEditingWarranty || !canManageWarrantyAndContracts || saveWarrantyMutation.isPending}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100"
+                />
+              </div>
+            </div>
+
+            {canManageWarrantyAndContracts && (
+              <div className="mt-4 flex gap-2">
+                {!isEditingWarranty ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingWarranty(true)}
+                    className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                  >
+                    Edit
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      disabled={saveWarrantyMutation.isPending}
+                      onClick={() => {
+                        saveWarrantyMutation.mutate({
+                          subject_id: subject.id,
+                          purchase_date: purchaseDate || null,
+                          warranty_period: warrantyPeriod,
+                          warranty_end_date_manual: warrantyEndDate || null,
+                        }, {
+                          onSuccess: (result) => {
+                            if (result.ok) {
+                              setIsEditingWarranty(false);
+                            }
+                          },
+                        });
+                      }}
+                      className="inline-flex items-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                    >
+                      {saveWarrantyMutation.isPending ? 'Saving...' : 'Save'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPurchaseDate(subject.purchase_date ?? '');
+                        setWarrantyEndDate(subject.warranty_end_date ?? '');
+                        setWarrantyPeriod(getWarrantyPeriodFromMonths(subject.warranty_period_months));
+                        setIsEditingWarranty(false);
+                      }}
+                      className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-slate-900">Contracts Timeline</h3>
+              {canManageWarrantyAndContracts && (
+                <button
+                  type="button"
+                  onClick={() => setShowContractForm((prev) => !prev)}
+                  className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add Contract
+                </button>
+              )}
+            </div>
+
+            {contractsQuery.isLoading ? (
+              <p className="text-xs text-slate-500">Loading contracts...</p>
+            ) : sortedContracts.length === 0 ? (
+              <p className="text-xs text-slate-500">No contracts added yet.</p>
+            ) : (
+              <div className="mb-4 overflow-x-auto pb-2">
+                <div className="flex min-w-max items-stretch gap-2">
+                  {sortedContracts.map((contract) => {
+                    const status = getContractVisualStatus(contract);
+                    const statusClass = status === 'active'
+                      ? 'bg-blue-100 text-blue-700 border-blue-200'
+                      : status === 'upcoming'
+                        ? 'bg-amber-100 text-amber-700 border-amber-200'
+                        : 'bg-slate-100 text-slate-600 border-slate-200';
+
+                    return (
+                      <div key={contract.id} className={`min-w-[220px] rounded-lg border px-3 py-2 ${statusClass}`}>
+                        <p className="truncate text-xs font-semibold">{contract.contract_name}</p>
+                        <p className="mt-1 text-[11px]">{formatDateOnly(contract.start_date)} to {formatDateOnly(contract.end_date)}</p>
+                        <span className="mt-1 inline-flex rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-semibold uppercase">{status}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {showContractForm && canManageWarrantyAndContracts && (
+              <div className="rounded-lg border border-slate-200 bg-white p-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div className="md:col-span-2">
+                    <label className="mb-1 block text-xs font-medium text-slate-700">Contract Name</label>
+                    <input
+                      type="text"
+                      value={contractName}
+                      onChange={(event) => setContractName(event.target.value)}
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-700">Start Date</label>
+                    <input
+                      type="date"
+                      value={contractStartDate}
+                      onChange={(event) => setContractStartDate(event.target.value)}
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    />
+                    <p className="mt-1 text-[11px] text-slate-500">Recommended start date: {formatDateOnly(recommendedContractStartDate)}</p>
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-700">Duration</label>
+                    <select
+                      value={contractPeriod}
+                      onChange={(event) => setContractPeriod(event.target.value as WarrantyPeriod)}
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    >
+                      {WARRANTY_PERIODS.map((period) => (
+                        <option key={period.value} value={period.value}>{period.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="mb-1 block text-xs font-medium text-slate-700">End Date</label>
+                    <input
+                      type="date"
+                      value={contractEndDate}
+                      onChange={(event) => setContractEndDate(event.target.value)}
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-3 flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={createContractMutation.isPending || !contractName.trim() || !contractStartDate || !contractEndDate}
+                    onClick={() => {
+                      createContractMutation.mutate({
+                        subject_id: subject.id,
+                        contract_name: contractName,
+                        start_date: contractStartDate,
+                        duration_period: contractPeriod,
+                        end_date: contractEndDate,
+                        created_by: user?.id ?? '',
+                      }, {
+                        onSuccess: (result) => {
+                          if (result.ok) {
+                            setContractName('');
+                            setContractPeriod('1_year');
+                            setContractEndDate('');
+                            setContractStartDate(recommendedContractStartDate);
+                            setShowContractForm(false);
+                          }
+                        },
+                      });
+                    }}
+                    className="inline-flex items-center rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {createContractMutation.isPending ? 'Saving...' : 'Save Contract'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowContractForm(false)}
+                    className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-4 grid grid-cols-1 gap-2">
+              {sortedContracts.map((contract) => {
+                const status = getContractVisualStatus(contract);
+                const statusClass = status === 'active'
+                  ? 'bg-blue-100 text-blue-700'
+                  : status === 'upcoming'
+                    ? 'bg-amber-100 text-amber-700'
+                    : 'bg-slate-100 text-slate-700';
+
+                return (
+                  <div key={contract.id} className="rounded-lg border border-slate-200 bg-white p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-slate-900">{contract.contract_name}</p>
+                      <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase ${statusClass}`}>{status}</span>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-600">Start: {formatDateOnly(contract.start_date)}</p>
+                    <p className="text-xs text-slate-600">End: {formatDateOnly(contract.end_date)}</p>
+                    <p className="text-xs text-slate-600">Duration: {contract.duration_months ? `${contract.duration_months} months` : 'Custom'}</p>
+                    {canDeleteContract && status !== 'active' && (
+                      <button
+                        type="button"
+                        disabled={deleteContractMutation.isPending}
+                        onClick={() => deleteContractMutation.mutate(contract.id)}
+                        className="mt-2 inline-flex items-center rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-50"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       </section>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
@@ -471,24 +770,15 @@ export default function SubjectDetailPage() {
         </section>
 
         <section className="rounded-xl border border-slate-200 bg-white p-5">
-          <h2 className="mb-4 text-base font-semibold text-slate-900">Coverage Dates</h2>
-          <div className="space-y-2">
-            <p className="text-sm text-slate-700"><span className="font-medium text-slate-900">Purchase Date:</span> {formatDateOnly(subject.purchase_date)}</p>
-            <p className="text-sm text-slate-700"><span className="font-medium text-slate-900">Warranty End Date:</span> {formatDateOnly(subject.warranty_end_date)}</p>
-            <p className="text-sm text-slate-700"><span className="font-medium text-slate-900">AMC End Date:</span> {formatDateOnly(subject.amc_end_date)}</p>
-          </div>
-        </section>
-
-        <section className="rounded-xl border border-slate-200 bg-white p-5 xl:col-span-2">
           <h2 className="mb-4 text-base font-semibold text-slate-900">Product Information</h2>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="space-y-2">
             <p className="text-sm text-slate-700"><span className="font-medium text-slate-900">Product Name:</span> {subject.product_name ?? '-'}</p>
             <p className="text-sm text-slate-700"><span className="font-medium text-slate-900">Serial Number:</span> {subject.serial_number ?? '-'}</p>
-            <p className="text-sm text-slate-700 md:col-span-2"><span className="font-medium text-slate-900">Product Description:</span> {subject.product_description ?? '-'}</p>
+            <p className="text-sm text-slate-700"><span className="font-medium text-slate-900">Description:</span> {subject.product_description ?? '-'}</p>
           </div>
         </section>
 
-        <section className="rounded-xl border border-slate-200 bg-white p-5">
+        <section className="rounded-xl border border-slate-200 bg-white p-5 xl:col-span-3">
           <h2 className="mb-4 text-base font-semibold text-slate-900">Activity Timeline</h2>
           {subject.timeline.length === 0 ? (
             <p className="text-sm text-slate-500">No activity recorded yet.</p>

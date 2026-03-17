@@ -1,6 +1,7 @@
 export type SubjectSourceType = 'brand' | 'dealer';
 export type SubjectPriority = 'critical' | 'high' | 'medium' | 'low';
 export type SubjectTypeOfService = 'installation' | 'service';
+export type WarrantyPeriod = '6_months' | '1_year' | '2_years' | '3_years' | '4_years' | '5_years' | 'custom';
 
 export interface SubjectListItem {
   id: string;
@@ -37,7 +38,9 @@ export interface SubjectDetail extends SubjectListItem {
   serial_number: string | null;
   product_description: string | null;
   purchase_date: string | null;
+  warranty_period_months: number | null;
   warranty_end_date: string | null;
+  warranty_status: 'active' | 'expired' | null;
   amc_end_date: string | null;
   service_charge_type: 'customer' | 'brand_dealer';
   is_amc_service: boolean;
@@ -114,4 +117,36 @@ export interface AssignTechnicianInput {
   technician_allocated_date: string | null;  // ISO date string YYYY-MM-DD
   technician_allocated_notes: string | null;
   assigned_by: string;
+}
+
+export interface SubjectContract {
+  id: string;
+  subject_id: string;
+  contract_name: string;
+  start_date: string;
+  duration_months: number | null;
+  end_date: string;
+  is_custom_duration: boolean;
+  status: 'active' | 'upcoming' | 'expired';
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateContractInput {
+  subject_id: string;
+  contract_name: string;
+  start_date: string;
+  duration_period: WarrantyPeriod;
+  end_date?: string;
+  created_by: string;
+}
+
+export interface UpdateContractInput {
+  id: string;
+  subject_id: string;
+  contract_name: string;
+  start_date: string;
+  duration_period: WarrantyPeriod;
+  end_date?: string;
 }

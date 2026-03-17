@@ -3,6 +3,44 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-17 15:04:49 +05:30] Warranty and AMC Contracts Section for Subject Detail
+
+- Summary: Implemented a complete warranty and contract management flow for subject details across database, repository/service/hooks, and UI. Added live billing-type recomputation behavior tied to warranty/contract changes and shipped a new Warranty + Contracts experience on the detail page.
+- Work done:
+  - Added migration `supabase/migrations/20260317_008_warranty_amc.sql`.
+  - Extended `subjects` with warranty fields (`purchase_date`, `warranty_period_months`, `warranty_end_date`, `warranty_status`) and trigger-based warranty status sync.
+  - Created new `subject_contracts` table with chainable contract date model, status sync trigger, timestamp trigger, indexes, and RLS policies (authenticated read; staff/admin write).
+  - Added `get_subject_billing_type` and refresh helpers/triggers to auto-update parent subject `service_charge_type` when warranty/contracts change.
+  - Added subject contract repository (`findBySubjectId`, `getLastContract`, `getActiveContract`, `create`, `update`, `delete` alias).
+  - Added contract service with business rules: chain rule, overlap rejection, custom duration/manual end date handling, and active-contract delete protection.
+  - Added `useContracts` hook set (`useContractsBySubject`, `useCreateContract`, `useDeleteContract` with confirmation/toasts).
+  - Added subject warranty save flow in subject service + hook (`saveSubjectWarranty`, `useSaveSubjectWarranty`).
+  - Rebuilt `subjects/[id]/page.tsx` with:
+    - Warranty card (editable purchase date, period dropdown, live auto end-date calculation, manual override, status badge, guarded save).
+    - Contracts timeline (horizontal bars with active/upcoming/expired colors), add-contract form with live end-date calc, recommended chain-rule start-date hint, and detailed contract cards.
+    - Role-based actions: office_staff/super_admin for warranty+contract create; super_admin for contract delete; active contracts cannot be deleted.
+    - Instantly updating billing badge states: Under Warranty / Active AMC Contract / Chargeable.
+  - Updated subject constants/types/repository/service models for new warranty + contract data.
+- Files changed:
+  - supabase/migrations/20260317_008_warranty_amc.sql
+  - web/repositories/subject-contract.repository.ts
+  - web/repositories/subject.repository.ts
+  - web/modules/subjects/subject-contract.service.ts
+  - web/modules/subjects/subject.service.ts
+  - web/modules/subjects/subject.types.ts
+  - web/modules/subjects/subject.constants.ts
+  - web/hooks/useContracts.ts
+  - web/hooks/useSubjects.ts
+  - web/app/dashboard/subjects/[id]/page.tsx
+  - doc/WORK_LOG.md
+- Verification:
+  - `npm run build` passed successfully (Next.js production build, TypeScript checks, all routes generated).
+- Issues encountered:
+  - PostgreSQL generated columns cannot reliably derive values from `CURRENT_DATE`; implemented trigger-based auto-sync for warranty/contract status to preserve the required active/expired/upcoming behavior.
+- Next:
+  - Apply new migration in Supabase.
+  - Validate warranty/contract transitions with real data in staging (especially chain-rule suggestions and overlap rejection messages).
+
 ## [2026-03-17 09:59:10 +05:30] Fix Subject History RLS Failure During Technician Assignment
 
 - Summary: Fixed the database-side RLS error that blocked technician assignment and other audited subject updates when trigger inserts into `subject_status_history` were executed under caller privileges.

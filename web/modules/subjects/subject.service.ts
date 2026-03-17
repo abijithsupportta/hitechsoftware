@@ -1,4 +1,4 @@
-import { assignSubjectTechnician, assignTechnicianFull, createSubject, deleteSubject, getSubjectById, getSubjectTimeline, listSubjects, updateSubject } from '@/repositories/subject.repository';
+import { assignSubjectTechnician, assignTechnicianFull, createSubject, deleteSubject, getSubjectById, getSubjectTimeline, listSubjects, recalculateSubjectBillingType, updateSubject, updateSubjectWarranty } from '@/repositories/subject.repository';
 import { getAssignableTechnicianById, getAssignableTechnicians } from '@/modules/technicians/technician.service';
 import type { ServiceResult } from '@/types/common.types';
 import type {
@@ -10,9 +10,10 @@ import type {
   SubjectListFilters,
   UpdateSubjectInput,
   AssignTechnicianInput,
+  WarrantyPeriod,
 } from '@/modules/subjects/subject.types';
 import { createSubjectSchema, updateSubjectSchema } from '@/modules/subjects/subject.validation';
-import { SUBJECT_DEFAULT_PAGE_SIZE } from '@/modules/subjects/subject.constants';
+import { SUBJECT_DEFAULT_PAGE_SIZE, WARRANTY_PERIODS } from '@/modules/subjects/subject.constants';
 
 function normalizeOptional(value?: string) {
   const trimmed = value?.trim();
@@ -21,6 +22,17 @@ function normalizeOptional(value?: string) {
 
 function normalizeSubjectNumber(value: string) {
   return value.trim().toUpperCase();
+}
+
+function addMonths(dateText: string, months: number) {
+  const date = new Date(dateText);
+  date.setMonth(date.getMonth() + months);
+  return date.toISOString().split('T')[0];
+}
+
+function monthsForWarrantyPeriod(period: WarrantyPeriod): number | null {
+  const periodOption = WARRANTY_PERIODS.find((item) => item.value === period);
+  return periodOption?.months ?? null;
 }
 
 function normalizeSubjectPayload(input: SubjectFormValues) {
@@ -234,7 +246,9 @@ export async function getSubjectDetails(id: string): Promise<ServiceResult<Subje
     serial_number: string | null;
     product_description: string | null;
     purchase_date: string | null;
+    warranty_period_months: number | null;
     warranty_end_date: string | null;
+    warranty_status: 'active' | 'expired' | null;
     amc_end_date: string | null;
     service_charge_type: 'customer' | 'brand_dealer';
     is_amc_service: boolean;
@@ -282,7 +296,9 @@ export async function getSubjectDetails(id: string): Promise<ServiceResult<Subje
       serial_number: typed.serial_number,
       product_description: typed.product_description,
       purchase_date: typed.purchase_date,
+      warranty_period_months: typed.warranty_period_months,
       warranty_end_date: typed.warranty_end_date,
+      warranty_status: typed.warranty_status,
       amc_end_date: typed.amc_end_date,
       service_charge_type: typed.service_charge_type,
       is_amc_service: typed.is_amc_service,
@@ -386,4 +402,55 @@ export async function assignTechnicianWithDate(input: AssignTechnicianInput): Pr
   }
 
   return { ok: true, data: { id: result.data.id } };
+}
+
+export async function saveSubjectWarranty(input: {
+  subject_id: string;
+  purchase_date: string | null;
+  warranty_period: WarrantyPeriod;
+  warranty_end_date_manual: string | null;
+}): Promise<ServiceResult<{ id: string }>> {
+  if (!input.subject_id) {
+    return { ok: false, error: { message: 'Subject id is required.' } };
+  }
+
+  const purchaseDate = input.purchase_date?.trim() || null;
+  const manualEndDate = input.warranty_end_date_manual?.trim() || null;
+  const periodMonths = monthsForWarrantyPeriod(input.warranty_period);
+
+  let resolvedWarrantyEndDate: string | null = null;
+
+  if (manualEndDate) {
+    resolvedWarrantyEndDate = manualEndDate;
+  } else if (purchaseDate && periodMonths) {
+    resolvedWarrantyEndDate = addMonths(purchaseDate, periodMonths);
+  }
+
+  if (resolvedWarrantyEndDate && purchaseDate && resolvedWarrantyEndDate < purchaseDate) {
+    return { ok: false, error: { message: 'Warranty end date must be on or after purchase date.' } };
+  }
+
+  const result = await updateSubjectWarranty(
+    input.subject_id,
+    purchaseDate,
+    periodMonths,
+    resolvedWarrantyEndDate,
+  );
+
+  if (result.error || !result.data) {
+    return {
+      ok: false,
+      error: {
+        message: result.error?.message ?? 'Failed to update warranty details.',
+        code: result.error?.code,
+      },
+    };
+  }
+
+  await recalculateSubjectBillingType(input.subject_id);
+
+  return {
+    ok: true,
+    data: { id: result.data.id },
+  };
 }
