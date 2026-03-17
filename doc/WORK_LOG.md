@@ -3,6 +3,30 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-17 08:47:55 +05:30] Seed 100 Dummy Subjects Using Service Role
+
+- Summary: Added and executed a terminal-driven seed script that uses Supabase service role credentials to create 100 dummy subject records for testing.
+- Work done:
+  - Created `scripts/seed-subjects.js` to seed subjects through `create_subject_with_customer` RPC.
+  - Script automatically reads `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` from `web/.env.local`.
+  - Script fetches valid active `brands`, `dealers`, and `service_categories` to satisfy source and category constraints.
+  - Script fetches an active `super_admin`/`office_staff` profile for `created_by`.
+  - Script generated unique subject numbers (`DUMMY-SVC-<runToken>-###`) and inserted 100 subjects.
+  - Executed via terminal: `node scripts/seed-subjects.js 100`.
+  - Run result: 100 requested, 100 successful, 0 failed, and DB verification count for the run token = 100.
+  - Left API documentation unchanged because this task inserts test data and does not change API contracts.
+- Files changed:
+  - scripts/seed-subjects.js
+  - doc/WORK_LOG.md
+- Verification:
+  - Terminal output confirmed successful creation of all 100 subjects.
+  - Post-insert DB count verification returned 100 for the generated run token.
+- Issues:
+  - None
+- Next:
+  - If needed, run `node scripts/seed-subjects.js <count>` with a different count for more dummy data.
+  - Optional follow-up: add a cleanup script to delete seeded `DUMMY-SVC-*` records quickly after QA.
+
 ## [2026-03-17 08:42:13 +05:30] Fix Subject Deletion to Remove Rows from Database
 
 - Summary: Corrected subject deletion behavior from soft delete to actual database row deletion, and improved error messaging for records blocked by foreign-key dependencies.
