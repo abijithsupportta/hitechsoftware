@@ -3,6 +3,26 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-17 08:07:51 +05:30] Elevate API Documentation as Mandatory Workflow
+
+- Summary: Updated the project documentation workflow so API documentation is explicitly treated as mandatory and high-priority for every backend or contract-affecting change.
+- Work done:
+  - Updated the root `README.md` API section to state that `web/docs/API_DOCUMENTATION.md` must be updated whenever routes, payloads, auth rules, repository-backed server behavior, or client-consumed contracts change.
+  - Updated the `Documentation Maintenance During Development` section in `README.md` to require API documentation updates in the same work item.
+  - Added an API-specific check to the developer pre-push checklist in `README.md`.
+  - Updated `web/docs/API_DOCUMENTATION.md` to declare itself mandatory project documentation for all implemented backend contract changes.
+- Files changed:
+  - README.md
+  - web/docs/API_DOCUMENTATION.md
+  - doc/WORK_LOG.md
+- Verification:
+  - Reviewed the updated documentation sections for consistency with the existing workflow rules.
+  - No code changes were made; lint/build not required for this documentation-only update.
+- Issues:
+  - None
+- Next:
+  - Apply this rule on every future backend, API, auth, or client-contract change.
+
 ## [2026-03-17 08:06:22 +05:30] Web Project Analysis and Workflow Review
 
 - Summary: Reviewed the `web` project structure, key documentation, current work-log history, and repository Git configuration to establish the expected coding workflow: analyze against the documented architecture, record every completed task in `doc/WORK_LOG.md`, and push completed work to GitHub `main`.

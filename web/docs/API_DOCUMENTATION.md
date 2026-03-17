@@ -5,6 +5,8 @@ Base API for the Service Management System consumed by:
 - `hitech_admin` (Flutter)
 - `hitech_technician` (Flutter)
 
+This document is mandatory project documentation. Any change to implemented route handlers, request or response schemas, authentication or authorization behavior, or other client-consumed backend contracts must update this file in the same task before the work is considered complete.
+
 ## Current Implementation Status (Source of Truth)
 
 This document previously contained a planned `/api/v1` contract. The currently implemented backend routes in this repository are under Next.js route handlers at `web/app/api/**`.

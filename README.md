@@ -100,6 +100,8 @@ Complete API contract for Next.js backend and Flutter clients:
 
 This document is the single source of truth for endpoint paths, request/response contracts, auth rules, and Flutter integration guidance.
 
+API documentation is mandatory maintenance. Any change to route handlers, request or response payloads, auth rules, repository-backed server behavior, or client-consumed data contracts must be reflected in `web/docs/API_DOCUMENTATION.md` before the task is considered complete.
+
 ---
 
 ## 5. User Roles & Permissions
@@ -692,17 +694,21 @@ SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 
 To keep implementation aligned with business logic, developers must update this README whenever behavior changes.
 
+API documentation has equal priority and must always be kept current for any backend or contract-affecting change.
+
 ### Mandatory when business rules change
 
 1. Update relevant module section(s) with the exact field/flow changes.
 2. Update `18. Business Rules & Constraints` with any new rules or modified defaults.
 3. If logic affects billing/status/flags, update the Service Charge Determination table in Module 1.
-4. Add or update migration notes in code comments and ensure README reflects schema-impacting changes.
-5. Add an entry to `doc/WORK_LOG.md` with timestamp, summary, files changed, verification, and issues.
+4. If API routes, payloads, auth behavior, or client-consumed contracts change, update `web/docs/API_DOCUMENTATION.md` in the same work item.
+5. Add or update migration notes in code comments and ensure README reflects schema-impacting changes.
+6. Add an entry to `doc/WORK_LOG.md` with timestamp, summary, files changed, verification, and issues.
 
 ### Developer checklist before pushing
 
 - README and implementation behavior are consistent.
+- `web/docs/API_DOCUMENTATION.md` matches the current backend behavior and client-facing contracts.
 - UI labels and API/data model names match README terminology.
 - Role visibility and permissions in README match actual enforcement.
 - Lint/build checks pass after documentation-related code changes.
