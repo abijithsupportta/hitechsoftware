@@ -100,7 +100,7 @@ export async function POST(request: Request) {
         is_active: true,
         is_deleted: false,
       })
-      .select('id,technician_code,qualification,experience_years,daily_subject_limit,digital_bag_capacity,is_active,is_deleted')
+      .select('id,technician_code,qualification,experience_years,daily_subject_limit,digital_bag_capacity,is_active,is_deleted,total_rejections')
       .single();
 
     if (technicianInsert.error) {

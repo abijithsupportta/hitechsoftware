@@ -16,6 +16,8 @@ export interface SubjectListItem {
   allocated_date: string;
   technician_allocated_date: string | null;
   technician_allocated_notes: string | null;
+  technician_acceptance_status: 'pending' | 'accepted' | 'rejected';
+  is_rejected_pending_reschedule: boolean;
   customer_name: string | null;
   customer_phone: string | null;
   category_name: string | null;
@@ -46,6 +48,7 @@ export interface SubjectDetail extends SubjectListItem {
   is_amc_service: boolean;
   is_warranty_service: boolean;
   billing_status: 'not_applicable' | 'due' | 'partially_paid' | 'paid' | 'waived';
+  technician_rejection_reason: string | null;
   created_by: string | null;
   assigned_by: string | null;
   timeline: SubjectTimelineItem[];

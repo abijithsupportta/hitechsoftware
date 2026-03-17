@@ -168,6 +168,21 @@ export default function TeamMemberDetailPage() {
         </div>
       </div>
 
+      {member.role === 'technician' && member.technician && (
+        <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Performance Stats</h2>
+          <div className="flex items-start gap-8">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-slate-500">Total Rejections</p>
+              <p className={`mt-1 text-2xl font-bold ${member.technician.total_rejections > 0 ? 'text-rose-600' : 'text-slate-900'}`}>
+                {member.technician.total_rejections}
+              </p>
+              <p className="mt-0.5 text-xs text-slate-400">Services rejected by this technician</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <DeleteConfirmModal
         isOpen={showDeleteModal}
         title="Delete team member"

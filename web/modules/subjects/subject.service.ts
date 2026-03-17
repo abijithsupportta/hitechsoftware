@@ -109,6 +109,8 @@ function mapRawSubjectList(data: unknown[]): SubjectListItem[] {
       allocated_date: typed.allocated_date,
       technician_allocated_date: (typed as { technician_allocated_date?: string | null }).technician_allocated_date ?? null,
       technician_allocated_notes: (typed as { technician_allocated_notes?: string | null }).technician_allocated_notes ?? null,
+      technician_acceptance_status: ((typed as { technician_acceptance_status?: string }).technician_acceptance_status ?? 'pending') as 'pending' | 'accepted' | 'rejected',
+      is_rejected_pending_reschedule: (typed as { is_rejected_pending_reschedule?: boolean }).is_rejected_pending_reschedule ?? false,
       customer_name: typed.customer_name,
       customer_phone: typed.customer_phone,
       category_name: typed.service_categories?.name ?? null,
@@ -237,6 +239,9 @@ export async function getSubjectDetails(id: string): Promise<ServiceResult<Subje
     allocated_date: string;
     technician_allocated_date: string | null;
     technician_allocated_notes: string | null;
+    technician_acceptance_status: 'pending' | 'accepted' | 'rejected';
+    technician_rejection_reason: string | null;
+    is_rejected_pending_reschedule: boolean;
     customer_phone: string | null;
     customer_name: string | null;
     customer_address: string | null;
@@ -286,6 +291,9 @@ export async function getSubjectDetails(id: string): Promise<ServiceResult<Subje
       allocated_date: typed.allocated_date,
       technician_allocated_date: typed.technician_allocated_date,
       technician_allocated_notes: typed.technician_allocated_notes,
+      technician_acceptance_status: typed.technician_acceptance_status ?? 'pending',
+      technician_rejection_reason: typed.technician_rejection_reason ?? null,
+      is_rejected_pending_reschedule: typed.is_rejected_pending_reschedule ?? false,
       customer_phone: typed.customer_phone,
       customer_name: typed.customer_name,
       customer_address: typed.customer_address,

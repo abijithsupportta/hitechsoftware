@@ -1,6 +1,6 @@
 'use client';
 
-import { Activity, Calendar, Flag, UserCheck, UserMinus, UserPlus } from 'lucide-react';
+import { Activity, Calendar, CheckCircle2, Flag, UserCheck, UserMinus, UserPlus, XCircle } from 'lucide-react';
 import type { SubjectTimelineItem } from '@/modules/subjects/subject.types';
 
 function formatDate(value: string) {
@@ -59,6 +59,20 @@ const EVENT_META: Record<string, { label: string; icon: React.ReactNode; iconBg:
     iconColor: 'text-orange-600',
     borderColor: 'border-orange-100',
   },
+  rejection: {
+    label: 'Rejected by Technician',
+    icon: <XCircle className="h-3.5 w-3.5" />,
+    iconBg: 'bg-rose-100',
+    iconColor: 'text-rose-600',
+    borderColor: 'border-rose-200',
+  },
+  acceptance: {
+    label: 'Accepted by Technician',
+    icon: <CheckCircle2 className="h-3.5 w-3.5" />,
+    iconBg: 'bg-emerald-100',
+    iconColor: 'text-emerald-600',
+    borderColor: 'border-emerald-100',
+  },
 };
 
 function TimelineEventDetail({ item }: { item: SubjectTimelineItem }) {
@@ -115,6 +129,16 @@ function TimelineEventDetail({ item }: { item: SubjectTimelineItem }) {
             ) : null}
             <span className="rounded bg-orange-100 px-1.5 py-0.5 font-medium capitalize text-orange-700">{item.new_value ?? item.status}</span>
           </p>
+        );
+      case 'rejection':
+        return (
+          <p className="mt-0.5 text-[13px] text-rose-700">
+            Reason: <span className="italic font-medium">{item.new_value ?? 'No reason provided'}</span>
+          </p>
+        );
+      case 'acceptance':
+        return (
+          <p className="mt-0.5 text-[13px] text-emerald-700">Technician accepted this service.</p>
         );
       default:
         return null;

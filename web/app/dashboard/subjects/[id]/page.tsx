@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
 import { DeleteConfirmModal } from '@/components/customers/DeleteConfirmModal';
 import { ProtectedComponent } from '@/components/ui/ProtectedComponent';
 import { AssignTechnicianForm } from '@/components/assignment/AssignTechnicianForm';
@@ -18,6 +19,15 @@ import { useAuth } from '@/hooks/auth/useAuth';
 import { ROUTES } from '@/lib/constants/routes';
 import { SUBJECT_QUERY_KEYS } from '@/modules/subjects/subject.constants';
 import { removeSubject } from '@/modules/subjects/subject.service';
+
+async function respondToSubjectApi(subjectId: string, action: 'accept' | 'reject', rejectionReason?: string) {
+  const response = await fetch(`/api/subjects/${subjectId}/respond`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, rejection_reason: rejectionReason }),
+  });
+  return response.json() as Promise<{ ok: boolean; error?: { message: string } }>;
+}
 
 function formatDate(value: string) {
   return value;
@@ -41,6 +51,8 @@ export default function SubjectDetailPage() {
   const queryClient = useQueryClient();
   const { userRole } = useAuth();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
 
   const query = useSubjectDetail(id);
   const contractsQuery = useContractsBySubject(id);
@@ -58,6 +70,25 @@ export default function SubjectDetailPage() {
     },
     onError: () => {
       toast.error('Failed to delete subject');
+    },
+  });
+
+  const respondMutation = useMutation({
+    mutationFn: ({ action, reason }: { action: 'accept' | 'reject'; reason?: string }) =>
+      respondToSubjectApi(id, action, reason),
+    onSuccess: (result, variables) => {
+      if (result.ok) {
+        toast.success(variables.action === 'accept' ? 'Service accepted successfully' : 'Service rejected');
+        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.all });
+        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(id) });
+        setShowRejectModal(false);
+        setRejectionReason('');
+      } else {
+        toast.error(result.error?.message ?? 'Failed to respond');
+      }
+    },
+    onError: () => {
+      toast.error('Failed to respond to service');
     },
   });
 
@@ -150,6 +181,72 @@ export default function SubjectDetailPage() {
       </div>
 
       <AssignTechnicianForm subject={subject} userRole={userRole} />
+
+      {/* Urgent reschedule warning — visible to admin/staff when technician has rejected */}
+      {userRole !== 'technician' && subject.is_rejected_pending_reschedule && (
+        <div className="mb-4 flex items-start gap-3 rounded-xl border border-rose-300 bg-rose-50 p-4">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" />
+          <div>
+            <p className="text-sm font-semibold text-rose-800">Reschedule Urgently — Technician Rejected</p>
+            {subject.technician_rejection_reason && (
+              <p className="mt-1 text-sm text-rose-700">
+                Reason: <span className="italic">{subject.technician_rejection_reason}</span>
+              </p>
+            )}
+            <p className="mt-1 text-xs text-rose-500">Please reassign or reschedule this service as soon as possible.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Technician accept / reject panel */}
+      {userRole === 'technician' && subject.status === 'ALLOCATED' && subject.technician_acceptance_status === 'pending' && (
+        <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 p-5">
+          <p className="text-sm font-semibold text-blue-900">This service is allocated to you. Do you accept?</p>
+          <p className="mt-1 text-xs text-blue-600">Once you accept, the status will change to Accepted and your work can begin. If you cannot attend, reject with a reason so the admin can reschedule.</p>
+          <div className="mt-4 flex gap-3">
+            <button
+              type="button"
+              disabled={respondMutation.isPending}
+              onClick={() => respondMutation.mutate({ action: 'accept' })}
+              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              {respondMutation.isPending && respondMutation.variables?.action === 'accept' ? 'Accepting...' : 'Accept Service'}
+            </button>
+            <button
+              type="button"
+              disabled={respondMutation.isPending}
+              onClick={() => setShowRejectModal(true)}
+              className="inline-flex items-center gap-2 rounded-lg border border-rose-300 bg-white px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-60"
+            >
+              <XCircle className="h-4 w-4" />
+              Reject Service
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Technician: show accepted badge */}
+      {userRole === 'technician' && subject.technician_acceptance_status === 'accepted' && (
+        <div className="mb-4 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+          <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+          <p className="text-sm font-semibold text-emerald-800">You have accepted this service.</p>
+        </div>
+      )}
+
+      {/* Technician: show rejected badge */}
+      {userRole === 'technician' && subject.technician_acceptance_status === 'rejected' && (
+        <div className="mb-4 flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4">
+          <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" />
+          <div>
+            <p className="text-sm font-semibold text-rose-800">You rejected this service.</p>
+            {subject.technician_rejection_reason && (
+              <p className="mt-0.5 text-sm text-rose-700">Reason: <span className="italic">{subject.technician_rejection_reason}</span></p>
+            )}
+          </div>
+        </div>
+      )}
+
       <WarrantyAndContractsSection subject={subject} userRole={userRole} />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
@@ -170,6 +267,40 @@ export default function SubjectDetailPage() {
           deleteSubjectMutation.mutate(subject.id);
         }}
       />
+
+      {/* Reject reason modal */}
+      {showRejectModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-base font-semibold text-slate-900">Reject Service</h3>
+            <p className="mt-1 text-sm text-slate-600">Please provide a reason so the admin can reschedule appropriately.</p>
+            <textarea
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              rows={4}
+              placeholder="e.g. Customer not reachable, address not found, personal emergency…"
+              className="mt-4 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-100"
+            />
+            <div className="mt-4 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => { setShowRejectModal(false); setRejectionReason(''); }}
+                className="ht-btn ht-btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={rejectionReason.trim().length === 0 || respondMutation.isPending}
+                onClick={() => respondMutation.mutate({ action: 'reject', reason: rejectionReason })}
+                className="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-60"
+              >
+                {respondMutation.isPending ? 'Submitting...' : 'Confirm Rejection'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
     </AttendanceGuard>
   );

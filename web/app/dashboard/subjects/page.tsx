@@ -482,6 +482,11 @@ export default function SubjectsDashboardPage() {
                             </div>
                           </div>
                         </Link>
+                        {subject.is_rejected_pending_reschedule && (
+                          <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold text-rose-700">
+                            ⚠ Reschedule Urgently
+                          </span>
+                        )}
                         <p className="max-w-[180px] truncate whitespace-nowrap text-xs text-slate-500">
                           {subject.category_name ?? '-'}
                         </p>

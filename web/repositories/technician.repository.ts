@@ -36,7 +36,7 @@ export async function listTechnicianRowsByIds(ids: string[]) {
 
   return supabase
     .from('technicians')
-    .select('id,technician_code,qualification,experience_years,daily_subject_limit,digital_bag_capacity,is_active,is_deleted')
+    .select('id,technician_code,qualification,experience_years,daily_subject_limit,digital_bag_capacity,total_rejections,is_active,is_deleted')
     .in('id', ids);
 }
 
@@ -92,7 +92,7 @@ export async function upsertTechnician(id: string, input: NonNullable<UpdateTeam
       is_active: input.is_active ?? true,
       is_deleted: input.is_deleted ?? false,
     })
-    .select('id,technician_code,qualification,experience_years,daily_subject_limit,digital_bag_capacity,is_active,is_deleted')
+    .select('id,technician_code,qualification,experience_years,daily_subject_limit,digital_bag_capacity,total_rejections,is_active,is_deleted')
     .single();
 }
 

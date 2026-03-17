@@ -7,6 +7,7 @@ export interface TechnicianDetail {
   experience_years: number | null;
   daily_subject_limit: number;
   digital_bag_capacity: number;
+  total_rejections: number;
   is_active: boolean;
   is_deleted: boolean;
 }

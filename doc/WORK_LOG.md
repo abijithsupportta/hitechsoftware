@@ -2,7 +2,46 @@
 
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
+## [2026-03-18 15:00:00 +05:30] Feat: Technician Accept/Reject Service Assignment with Urgent Reschedule Tracking
 
+- Summary: Technicians can now accept or reject assigned service tasks. Rejected tasks show a red "Reschedule Urgently" badge visible to admins on both the list and detail pages. All events are automatically tracked in the activity timeline. Technician rejection counts are tallied on the team member profile.
+- Work done:
+  - DB migration `20260318_011_technician_subject_response.sql`:
+    - Added `technician_acceptance_status` (pending/accepted/rejected), `technician_rejection_reason`, `is_rejected_pending_reschedule` to `subjects`
+    - Added `total_rejections INTEGER DEFAULT 0` to `technicians`
+    - Added `increment_technician_rejections(p_technician_id UUID)` RPC for atomic counter increment
+    - Added DB trigger `trg_subject_acceptance_history` to auto-log acceptance/rejection events to `subject_status_history`
+    - Added RLS policy `subjects_technician_respond` so technicians can UPDATE their own assigned subjects
+  - `web/modules/subjects/subject.types.ts`: added 3 new fields to `SubjectListItem` and `SubjectDetail`
+  - `web/modules/technicians/technician.types.ts`: added `total_rejections` to `TechnicianDetail`
+  - `web/repositories/subject.repository.ts`: included new columns in `listSubjects` and `getSubjectById` selects
+  - `web/repositories/technician.repository.ts`: included `total_rejections` in technician row selects
+  - `web/modules/subjects/subject.service.ts`: maps new fields in list and detail mappers
+  - `web/app/api/subjects/[id]/respond/route.ts` (NEW): POST endpoint — verifies technician session and subject ownership; handles accept (sets status ACCEPTED) and reject (sets rejection fields, calls increment RPC)
+  - `web/app/dashboard/subjects/[id]/page.tsx`: added Accept/Reject buttons panel, accepted/rejected status badges, admin urgent warning box, and reject reason modal with mutation
+  - `web/app/dashboard/subjects/page.tsx`: added red "⚠ Reschedule Urgently" chip under subject number in list rows
+  - `web/components/subjects/ActivityTimeline.tsx`: added `rejection` and `acceptance` event type meta and content renderers
+  - `web/app/dashboard/team/[id]/page.tsx`: added "Performance Stats" section showing total rejections count for technicians
+  - `web/app/api/team/members/route.ts`: added `total_rejections` to technician insert select to fix TypeScript type error
+- Files changed:
+  - supabase/migrations/20260318_011_technician_subject_response.sql (new)
+  - web/app/api/subjects/[id]/respond/route.ts (new)
+  - web/modules/subjects/subject.types.ts
+  - web/modules/technicians/technician.types.ts
+  - web/repositories/subject.repository.ts
+  - web/repositories/technician.repository.ts
+  - web/modules/subjects/subject.service.ts
+  - web/app/dashboard/subjects/[id]/page.tsx
+  - web/app/dashboard/subjects/page.tsx
+  - web/components/subjects/ActivityTimeline.tsx
+  - web/app/dashboard/team/[id]/page.tsx
+  - web/app/api/team/members/route.ts
+- Verification:
+  - `npm run build` passes with 0 TypeScript errors
+  - All 18 static pages and dynamic routes compiled successfully
+- Next:
+  - Apply migration to production Supabase instance
+  - Review: check reject reason textarea handles XSS (it's submitted as plain text to a TEXT column — safe)
 ## [2026-03-17 21:10:00 +05:30] Fix: Technician Service List Not Showing Today's Services
 
 - Summary: Fixed a bug where technicians could not see any services in the subject list page despite services being allocated to them for today. Root cause was the date filter using `allocated_date` (ticket creation date) instead of `technician_allocated_date` (scheduled visit date).
