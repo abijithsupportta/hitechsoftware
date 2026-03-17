@@ -3,6 +3,28 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-17 09:35:11 +05:30] Enable Assign/Reassign Technician from Subject Detail Page
+
+- Summary: Added direct technician assignment and reassignment controls on the subject detail page so office users can manage assignment without opening edit form.
+- Work done:
+  - Added assignable technician dropdown inside the `Assigned Technician` card on subject detail page.
+  - Added `Update Assignment` action with disabled-state guard when selection is unchanged.
+  - Added support for unassign via `Unassigned` option.
+  - Added mutation flow for assignment updates with success/error feedback and cache invalidation.
+  - Kept assignment controls protected with `subject:update` permission and read-only fallback for other roles.
+  - Reviewed API documentation impact: no external API contract/endpoint/schema/auth changes required (internal UI + existing service path usage only).
+- Files changed:
+  - web/app/dashboard/subjects/[id]/page.tsx
+  - doc/WORK_LOG.md
+- Verification:
+  - `get_errors` returned no issues for modified file.
+  - `npm run build` passed for the web workspace.
+- Issues:
+  - None
+- Next:
+  - Browser QA: verify super_admin/office_staff can assign and reassign technicians from detail page.
+  - Browser QA: verify roles without `subject:update` only see read-only assigned technician text.
+
 ## [2026-03-17 09:31:23 +05:30] Stabilize Subjects Table Layout and Sidebar Disabled-Item Rendering
 
 - Summary: Applied a full subjects table layout reset (fixed widths + table-fixed + overflow handling), removed remaining assignment noise from list, restored disabled sidebar item structure/icons, and hardened avatar initials derivation.

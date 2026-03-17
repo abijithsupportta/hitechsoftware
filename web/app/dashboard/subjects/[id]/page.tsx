@@ -1,16 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { DeleteConfirmModal } from '@/components/customers/DeleteConfirmModal';
 import { ProtectedComponent } from '@/components/ui/ProtectedComponent';
-import { useSubjectDetail } from '@/hooks/useSubjects';
+import { useAssignableTechnicians, useSubjectDetail } from '@/hooks/useSubjects';
 import { ROUTES } from '@/lib/constants/routes';
 import { SUBJECT_QUERY_KEYS } from '@/modules/subjects/subject.constants';
-import { removeSubject } from '@/modules/subjects/subject.service';
+import { assignSubjectToTechnician, removeSubject } from '@/modules/subjects/subject.service';
 
 function formatDate(value: string) {
   return new Date(value).toLocaleString('en-GB');
@@ -34,8 +34,11 @@ export default function SubjectDetailPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedTechnicianId, setSelectedTechnicianId] = useState('');
 
   const query = useSubjectDetail(id);
+  const techniciansQuery = useAssignableTechnicians();
+
   const deleteSubjectMutation = useMutation({
     mutationFn: (subjectId: string) => removeSubject(subjectId),
     onSuccess: (result) => {
@@ -49,6 +52,23 @@ export default function SubjectDetailPage() {
     },
     onError: () => {
       toast.error('Failed to delete subject');
+    },
+  });
+
+  const assignTechnicianMutation = useMutation({
+    mutationFn: ({ subjectId, technicianId }: { subjectId: string; technicianId?: string }) =>
+      assignSubjectToTechnician(subjectId, technicianId),
+    onSuccess: (result) => {
+      if (result.ok) {
+        toast.success('Technician assignment updated');
+        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.all });
+        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(id) });
+      } else {
+        toast.error(result.error.message);
+      }
+    },
+    onError: () => {
+      toast.error('Failed to update technician assignment');
     },
   });
 
@@ -125,6 +145,11 @@ export default function SubjectDetailPage() {
   }
 
   const subject = query.data.data;
+  const technicianOptions = techniciansQuery.data?.ok ? techniciansQuery.data.data : [];
+
+  useEffect(() => {
+    setSelectedTechnicianId(subject.assigned_technician_id ?? '');
+  }, [subject.assigned_technician_id]);
 
   const coverageMeta = subject.is_amc_service
     ? { label: 'Free Service - Under AMC', className: 'bg-emerald-100 text-emerald-700' }
@@ -180,9 +205,52 @@ export default function SubjectDetailPage() {
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4">
           <p className="text-xs uppercase tracking-wide text-slate-500">Assigned Technician</p>
-          <p className="mt-1 text-sm font-semibold text-slate-900">
-            {subject.assigned_technician_name ? `${subject.assigned_technician_name} (${subject.assigned_technician_code})` : 'Unassigned'}
-          </p>
+          <ProtectedComponent permission="subject:update">
+            <div className="mt-2 space-y-2">
+              <select
+                value={selectedTechnicianId}
+                onChange={(event) => setSelectedTechnicianId(event.target.value)}
+                disabled={assignTechnicianMutation.isPending || techniciansQuery.isLoading}
+                className="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <option value="">Unassigned</option>
+                {technicianOptions.map((technician) => (
+                  <option key={technician.id} value={technician.id}>
+                    {technician.display_name} ({technician.technician_code})
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() =>
+                  assignTechnicianMutation.mutate({
+                    subjectId: subject.id,
+                    technicianId: selectedTechnicianId || undefined,
+                  })
+                }
+                disabled={
+                  assignTechnicianMutation.isPending ||
+                  techniciansQuery.isLoading ||
+                  selectedTechnicianId === (subject.assigned_technician_id ?? '')
+                }
+                className="inline-flex items-center rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {assignTechnicianMutation.isPending ? 'Updating...' : 'Update Assignment'}
+              </button>
+            </div>
+          </ProtectedComponent>
+
+          <ProtectedComponent permission="subject:update" fallback={
+            <p className="mt-1 text-sm font-semibold text-slate-900">
+              {subject.assigned_technician_name ? subject.assigned_technician_name : 'Unassigned'}
+            </p>
+          }>
+            <p className="mt-1 text-xs text-slate-500">
+              {subject.assigned_technician_name
+                ? `Current: ${subject.assigned_technician_name}`
+                : 'No technician assigned'}
+            </p>
+          </ProtectedComponent>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4">
           <p className="text-xs uppercase tracking-wide text-slate-500">Allocated Date</p>
