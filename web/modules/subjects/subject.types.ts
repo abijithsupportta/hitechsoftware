@@ -48,9 +48,12 @@ export interface SubjectDetail extends SubjectListItem {
 
 export interface SubjectTimelineItem {
   id: string;
+  event_type: string;
   status: string;
   changed_at: string;
   note: string | null;
+  old_value: string | null;
+  new_value: string | null;
 }
 
 export interface SubjectListFilters {

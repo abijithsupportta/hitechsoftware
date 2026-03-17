@@ -284,12 +284,15 @@ export async function getSubjectDetails(id: string): Promise<ServiceResult<Subje
       created_at: typed.created_at,
       created_by: typed.created_by,
       assigned_by: typed.assigned_by,
-      timeline: ((timelineResult.data ?? []) as Array<{ id: string; status: string; changed_at: string; note: string | null }>).map(
+      timeline: ((timelineResult.data ?? []) as Array<{ id: string; event_type: string; status: string; changed_at: string; note: string | null; old_value: string | null; new_value: string | null }>).map(
         (item) => ({
           id: item.id,
+          event_type: item.event_type ?? 'status_change',
           status: item.status,
           changed_at: item.changed_at,
           note: item.note,
+          old_value: item.old_value,
+          new_value: item.new_value,
         }),
       ),
     },

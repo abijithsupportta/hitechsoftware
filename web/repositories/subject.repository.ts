@@ -224,7 +224,7 @@ export async function getSubjectById(id: string) {
 export async function getSubjectTimeline(subjectId: string) {
   return supabase
     .from('subject_status_history')
-    .select('id,status,changed_at,note')
+    .select('id,event_type,status,changed_at,note,old_value,new_value')
     .eq('subject_id', subjectId)
     .order('changed_at', { ascending: false });
 }

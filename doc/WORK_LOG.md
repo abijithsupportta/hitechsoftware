@@ -3,6 +3,49 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-17 09:45:58 +05:30] Comprehensive Activity Timeline – All Events Tracked
+
+- Summary: Extended the subject timeline from status-only tracking to a full activity audit log covering technician assignment, reassignment, unassignment, rescheduling, and priority changes — all displayed with colour-coded icons on the detail page.
+- Work done:
+  - **New migration** `supabase/migrations/20260317_007_subject_audit_log.sql`:
+    - Added `event_type`, `old_value`, `new_value` columns to `subject_status_history`.
+    - Back-filled existing rows with `event_type = 'status_change'` and `new_value = status`.
+    - Updated `log_subject_status_change` function to store `old_value` (previous status) and `new_value` (new status).
+    - New trigger function + trigger `trg_subject_assignment_history`: fires on `UPDATE OF assigned_technician_id`; resolves tech display names from `profiles`; logs `assignment`, `reassignment`, or `unassignment` events.
+    - New trigger function + trigger `trg_subject_reschedule_history`: fires on `UPDATE OF allocated_date`; logs `reschedule` events with old/new dates.
+    - New trigger function + trigger `trg_subject_priority_history`: fires on `UPDATE OF priority`; logs `priority_change` events with old/new values.
+  - **Repository** `web/repositories/subject.repository.ts`:
+    - `getSubjectTimeline` now selects `event_type, old_value, new_value` in addition to existing columns.
+  - **Types** `web/modules/subjects/subject.types.ts`:
+    - `SubjectTimelineItem` extended with `event_type`, `old_value`, `new_value` fields.
+  - **Service** `web/modules/subjects/subject.service.ts`:
+    - Updated timeline mapping to pass through new fields with `event_type ?? 'status_change'` fallback for older rows.
+  - **UI** `web/app/dashboard/subjects/[id]/page.tsx`:
+    - Added `lucide-react` icons (`Activity`, `Calendar`, `Flag`, `UserCheck`, `UserMinus`, `UserPlus`).
+    - Added `EVENT_META` map for label, icon, icon bg, and border colour per event type.
+    - Added `TimelineEventDetail` component: renders coloured icon pill, event label, timestamp, before→after value display, and optional note.
+    - Status changes show old → new status badges (violet).
+    - Assignments show technician name (emerald).
+    - Reassignments show old tech → new tech arrow (amber).
+    - Unassignments show removed tech name (rose).
+    - Reschedule shows old → new date (sky).
+    - Priority changes show old → new priority (orange).
+    - Section heading updated from "Timeline" to "Activity Timeline".
+- Files changed:
+  - `supabase/migrations/20260317_007_subject_audit_log.sql` (new)
+  - `web/repositories/subject.repository.ts`
+  - `web/modules/subjects/subject.types.ts`
+  - `web/modules/subjects/subject.service.ts`
+  - `web/app/dashboard/subjects/[id]/page.tsx`
+  - `doc/WORK_LOG.md`
+- Verification:
+  - No TypeScript errors in any changed file.
+  - `npm run build` passed — all 19 routes compiled successfully.
+- Issues encountered: None.
+- Next:
+  - Apply migration `20260317_007_subject_audit_log.sql` to Supabase project (manual step).
+  - QA: create a subject, assign a tech, reassign, change priority, reschedule — verify each event appears in the timeline.
+
 ## [2026-03-17 09:35:11 +05:30] Enable Assign/Reassign Technician from Subject Detail Page
 
 - Summary: Added direct technician assignment and reassignment controls on the subject detail page so office users can manage assignment without opening edit form.
