@@ -115,6 +115,7 @@ export default function SubjectsDashboardPage() {
     dealerId,
     fromDate,
     toDate,
+    technicianDate,
     isLoading,
     error,
     setSearch,
@@ -126,6 +127,7 @@ export default function SubjectsDashboardPage() {
     setDealerId,
     setFromDate,
     setToDate,
+    setTechnicianDate,
     setPage,
     setPageSize,
   } = useSubjects();
@@ -135,14 +137,10 @@ export default function SubjectsDashboardPage() {
       return;
     }
 
-    if (fromDate !== today) {
-      setFromDate(today);
+    if (technicianDate !== today) {
+      setTechnicianDate(today);
     }
-
-    if (toDate !== today) {
-      setToDate(today);
-    }
-  }, [fromDate, role, setFromDate, setToDate, toDate, today]);
+  }, [role, setTechnicianDate, technicianDate, today]);
 
   const advancedFilterCount = [
     sourceType !== 'all',

@@ -19,6 +19,7 @@ export function useSubjects() {
   const [dealerId, setDealerId] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [technicianDate, setTechnicianDate] = useState('');
 
   const filters: SubjectListFilters = useMemo(() => {
     return {
@@ -31,10 +32,11 @@ export function useSubjects() {
       dealer_id: dealerId || undefined,
       from_date: fromDate || undefined,
       to_date: toDate || undefined,
+      technician_date: technicianDate || undefined,
       page,
       page_size: pageSize,
     };
-  }, [searchInput, sourceType, priority, status, categoryId, brandId, dealerId, fromDate, toDate, page, pageSize]);
+  }, [searchInput, sourceType, priority, status, categoryId, brandId, dealerId, fromDate, toDate, technicianDate, page, pageSize]);
 
   const query = useQuery({
     queryKey: [...SUBJECT_QUERY_KEYS.list, filters],
@@ -119,6 +121,7 @@ export function useSubjects() {
     dealerId,
     fromDate,
     toDate,
+    technicianDate,
     isLoading: query.isLoading,
     isCreating: createSubjectMutation.isPending,
     error:
@@ -162,6 +165,10 @@ export function useSubjects() {
     },
     setToDate: (value: string) => {
       setToDate(value);
+      setPage(1);
+    },
+    setTechnicianDate: (value: string) => {
+      setTechnicianDate(value);
       setPage(1);
     },
     setPage: (value: number) => setPage(Math.max(1, value)),

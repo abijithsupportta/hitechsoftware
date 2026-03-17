@@ -71,12 +71,16 @@ export async function listSubjects(filters: SubjectListFilters) {
     query = query.eq('dealer_id', filters.dealer_id);
   }
 
-  if (filters.from_date) {
-    query = query.gte('allocated_date', filters.from_date);
-  }
+  if (filters.technician_date) {
+    query = query.eq('technician_allocated_date', filters.technician_date);
+  } else {
+    if (filters.from_date) {
+      query = query.gte('allocated_date', filters.from_date);
+    }
 
-  if (filters.to_date) {
-    query = query.lte('allocated_date', filters.to_date);
+    if (filters.to_date) {
+      query = query.lte('allocated_date', filters.to_date);
+    }
   }
 
   const result = await query.range(from, to);

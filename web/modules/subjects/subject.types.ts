@@ -71,6 +71,8 @@ export interface SubjectListFilters {
   dealer_id?: string;
   from_date?: string;
   to_date?: string;
+  /** Filter by technician_allocated_date (used for technician role to see today's assignments) */
+  technician_date?: string;
   page?: number;
   page_size?: number;
 }

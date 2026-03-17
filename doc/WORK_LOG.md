@@ -3,6 +3,27 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-17 21:10:00 +05:30] Fix: Technician Service List Not Showing Today's Services
+
+- Summary: Fixed a bug where technicians could not see any services in the subject list page despite services being allocated to them for today. Root cause was the date filter using `allocated_date` (ticket creation date) instead of `technician_allocated_date` (scheduled visit date).
+- Work done:
+  - Added `technician_date` optional field to `SubjectListFilters` interface.
+  - Updated `listSubjects` repository function to filter by `technician_allocated_date` when `technician_date` is set; otherwise falls back to `allocated_date` range filters as before.
+  - Added `technicianDate` state and `setTechnicianDate` setter to `useSubjects` hook; included in query filter memoization.
+  - Updated subjects page `useEffect` for technician role: now sets `technicianDate = today` instead of locking `fromDate`/`toDate` to today (which was filtering the wrong column).
+- Files changed:
+  - web/modules/subjects/subject.types.ts
+  - web/repositories/subject.repository.ts
+  - web/hooks/subjects/useSubjects.ts
+  - web/app/dashboard/subjects/page.tsx
+  - doc/WORK_LOG.md
+- Verification:
+  - `npm run build` in `web/` passed with no TypeScript or compilation errors. All 24 routes healthy.
+- Bugs/issues encountered:
+  - `allocated_date` = original ticket creation/assignment date by admin; `technician_allocated_date` = scheduled technician visit date. These are separate columns — previous implementation was filtering by the wrong one.
+- Next:
+  - Optional DB-level hardening: add RLS policy on `subjects` restricting technicians to rows where `technician_allocated_date = CURRENT_DATE`.
+
 ## [2026-03-17 20:25:00 +05:30] Technician Service Visibility Limited to Current Date + Calendar Behavior Update
 
 - Summary: Enforced technician-facing service visibility to current-date allocations on service screens and updated attendance calendar detail behavior to show full subject list only for current date while showing count-only for other dates.
