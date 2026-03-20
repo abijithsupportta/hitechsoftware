@@ -3,6 +3,33 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-20 18:04:22 +05:30] Add structured error handling to job workflow API
+
+- Summary: Technicians marking job as "arrived" were getting vague "Subject not found" errors. Added comprehensive 7-step error handling to distinguish between missing subjects, wrong technician assignment, RLS denials, and database errors.
+- Work done:
+  - Enhanced `/api/subjects/[id]/workflow` route in `web/app/api/subjects/[id]/workflow/route.ts` with:
+    - 7-step flow with clear checkpoints (Subject ID validation → Auth → Technician role → JSON parse → Action validate → Subject existence & assignment → Process action)
+    - Structured error response format (step, code, message, userMessage, details) identical to team members API
+    - Detailed error codes for each failure type: `INVALID_SUBJECT_ID`, `UNAUTHORIZED`, `PROFILE_NOT_FOUND`, `INVALID_ROLE`, `INVALID_JSON`, `MISSING_ACTION`, `SUBJECT_QUERY_ERROR`, `SUBJECT_NOT_FOUND`, `SUBJECT_NOT_ASSIGNED`, `NOT_ASSIGNED_TO_SUBJECT`, etc.
+    - Console logging with timestamps showing progress (✓), warnings (⊘), and failures (✗)
+    - Development-mode error details (dbError, IDs, roles) hidden in production for security
+    - Specific HTTP status codes for each error type (400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found)
+- Files changed:
+  - web/app/api/subjects/[id]/workflow/route.ts
+  - doc/WORK_LOG.md
+- Verification:
+  - `npm run build --workspace=web` ✓ Compiled successfully in 12.7s
+  - All 31 API routes present and properly typed
+  - No TypeScript errors
+- Testing notes:
+  - When technician marks job as arrived and gets error, check Network tab response for:
+    - `step`: exact location where workflow failed
+    - `code`: machine-readable error code for debugging
+    - `userMessage`: human-friendly explanation to display in UI
+    - `details`: development mode shows dbError, IDs, roles for deeper diagnosis
+- Next:
+  - Monitor server console logs during UAT to see step-by-step progress checkmarks
+
 ## [2026-03-20 17:22:23 +05:30] Fix: Auth createUser database error for team member creation
 
 - Summary: Super admin team-member creation was still failing at auth step with `Auth user creation failed: Database error creating new user`.

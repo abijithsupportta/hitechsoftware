@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createServerClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import {
   updateJobStatus,
   markJobIncomplete,
@@ -7,41 +8,98 @@ import {
 } from '@/modules/subjects/subject.job-workflow';
 import type { IncompleteJobInput, IncompleteReason } from '@/modules/subjects/subject.types';
 
+const isDev = process.env.NODE_ENV === 'development';
+
+// Structured error response format
+interface ErrorResponse {
+  step: string;
+  code: string;
+  message: string;
+  userMessage: string;
+  details?: Record<string, unknown>;
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id: subjectId } = await params;
+  const timestamp = new Date().toISOString();
 
-  if (!subjectId) {
-    return NextResponse.json(
-      { ok: false, error: { message: 'Subject ID is required' } },
-      { status: 400 },
-    );
+  console.log(`[${timestamp}] ✓ Workflow API: Starting job status mutation for subject ${subjectId}`);
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Step 1: Validate subject ID
+  // ──────────────────────────────────────────────────────────────────────────
+  if (!subjectId || typeof subjectId !== 'string' || subjectId.trim() === '') {
+    const error: ErrorResponse = {
+      step: '1. Validate Subject ID',
+      code: 'INVALID_SUBJECT_ID',
+      message: 'Subject ID is required and must be a non-empty string',
+      userMessage: 'Invalid subject ID format',
+    };
+    console.log(`[${timestamp}] ✗ Step 1 failed:`, error.code);
+    return NextResponse.json({ ok: false, error }, { status: 400 });
   }
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // Step 2: Get authenticated user
+  // ──────────────────────────────────────────────────────────────────────────
   const supabase = await createServerClient();
   const authState = await supabase.auth.getUser();
 
   if (authState.error || !authState.data.user) {
-    return NextResponse.json({ ok: false, error: { message: 'Unauthorized' } }, { status: 401 });
+    const error: ErrorResponse = {
+      step: '2. Authentication',
+      code: 'UNAUTHORIZED',
+      message: authState.error?.message || 'No authenticated user found',
+      userMessage: 'You must be logged in to perform this action',
+    };
+    console.log(`[${timestamp}] ✗ Step 2 failed:`, error.code);
+    return NextResponse.json({ ok: false, error }, { status: 401 });
   }
 
   const userId = authState.data.user.id;
+  console.log(`[${timestamp}] ✓ Step 2 passed: User ${userId} authenticated`);
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // Step 3: Verify technician role
+  // ──────────────────────────────────────────────────────────────────────────
   const profileResult = await supabase
     .from('profiles')
     .select('id,role')
     .eq('id', userId)
     .maybeSingle<{ id: string; role: string }>();
 
-  if (profileResult.error || !profileResult.data || profileResult.data.role !== 'technician') {
-    return NextResponse.json(
-      { ok: false, error: { message: 'Only technicians can update job workflow' } },
-      { status: 403 },
-    );
+  if (profileResult.error || !profileResult.data) {
+    const error: ErrorResponse = {
+      step: '3. Load Technician Profile',
+      code: 'PROFILE_NOT_FOUND',
+      message: profileResult.error?.message || 'User profile record missing',
+      userMessage: 'Your profile could not be found. Please log out and log back in.',
+      details: isDev ? { dbError: profileResult.error?.message } : undefined,
+    };
+    console.log(`[${timestamp}] ✗ Step 3 failed:`, error.code);
+    return NextResponse.json({ ok: false, error }, { status: 400 });
   }
 
+  if (profileResult.data.role !== 'technician') {
+    const error: ErrorResponse = {
+      step: '3. Verify Technician Role',
+      code: 'INVALID_ROLE',
+      message: `User role is '${profileResult.data.role}', expected 'technician'`,
+      userMessage: 'Only technicians can update job workflow status',
+      details: isDev ? { userRole: profileResult.data.role } : undefined,
+    };
+    console.log(`[${timestamp}] ✗ Step 3 failed:`, error.code);
+    return NextResponse.json({ ok: false, error }, { status: 403 });
+  }
+
+  console.log(`[${timestamp}] ✓ Step 3 passed: User is technician`);
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Step 4: Parse request body
+  // ──────────────────────────────────────────────────────────────────────────
   let body: {
     action?: string;
     status?: string;
@@ -56,33 +114,141 @@ export async function POST(
 
   try {
     body = await request.json();
-  } catch {
-    return NextResponse.json(
-      { ok: false, error: { message: 'Invalid JSON body' } },
-      { status: 400 },
-    );
+  } catch (parseErr) {
+    const error: ErrorResponse = {
+      step: '4. Parse Request Body',
+      code: 'INVALID_JSON',
+      message: parseErr instanceof Error ? parseErr.message : 'Invalid JSON body',
+      userMessage: 'Request body must be valid JSON',
+      details: isDev ? { error: parseErr instanceof Error ? parseErr.message : 'Unknown' } : undefined,
+    };
+    console.log(`[${timestamp}] ✗ Step 4 failed:`, error.code);
+    return NextResponse.json({ ok: false, error }, { status: 400 });
   }
+
+  console.log(`[${timestamp}] ✓ Step 4 passed: Request parsed`);
 
   const { action } = body;
 
-  // ── update_status: ARRIVED | IN_PROGRESS | AWAITING_PARTS ────────────────
+  // ──────────────────────────────────────────────────────────────────────────
+  // Step 5: Validate action & required fields
+  // ──────────────────────────────────────────────────────────────────────────
+  if (!action) {
+    const error: ErrorResponse = {
+      step: '5. Validate Action',
+      code: 'MISSING_ACTION',
+      message: 'action field is required',
+      userMessage: 'Request must specify which action to perform',
+    };
+    console.log(`[${timestamp}] ✗ Step 5 failed:`, error.code);
+    return NextResponse.json({ ok: false, error }, { status: 400 });
+  }
+
+  console.log(`[${timestamp}] ✓ Step 5 passed: Action=${action}`);
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Step 6: Verify subject exists and technician is assigned
+  // ──────────────────────────────────────────────────────────────────────────
+  const admin = await createAdminClient();
+  const subjectCheckResult = await admin
+    .from('subjects')
+    .select('id,assigned_technician_id,status')
+    .eq('id', subjectId)
+    .eq('is_deleted', false)
+    .maybeSingle<{ id: string; assigned_technician_id: string | null; status: string }>();
+
+  if (subjectCheckResult.error) {
+    const error: ErrorResponse = {
+      step: '6. Load Subject',
+      code: 'SUBJECT_QUERY_ERROR',
+      message: subjectCheckResult.error.message,
+      userMessage: 'Failed to load subject details. Please try again.',
+      details: isDev ? { dbError: subjectCheckResult.error.message } : undefined,
+    };
+    console.log(`[${timestamp}] ✗ Step 6 failed:`, error.code);
+    return NextResponse.json({ ok: false, error }, { status: 400 });
+  }
+
+  if (!subjectCheckResult.data) {
+    const error: ErrorResponse = {
+      step: '6. Load Subject',
+      code: 'SUBJECT_NOT_FOUND',
+      message: `No active subject found with ID ${subjectId}`,
+      userMessage: 'This subject could not be found. It may have been deleted or the ID is incorrect.',
+      details: isDev ? { subjectId } : undefined,
+    };
+    console.log(`[${timestamp}] ✗ Step 6 failed:`, error.code);
+    return NextResponse.json({ ok: false, error }, { status: 404 });
+  }
+
+  const subject = subjectCheckResult.data;
+
+  if (!subject.assigned_technician_id) {
+    const error: ErrorResponse = {
+      step: '6. Verify Assignment',
+      code: 'SUBJECT_NOT_ASSIGNED',
+      message: 'No technician is assigned to this subject',
+      userMessage: 'This subject has not been assigned to any technician yet',
+      details: isDev ? { subjectStatus: subject.status } : undefined,
+    };
+    console.log(`[${timestamp}] ✗ Step 6 failed:`, error.code);
+    return NextResponse.json({ ok: false, error }, { status: 400 });
+  }
+
+  if (subject.assigned_technician_id !== userId) {
+    const error: ErrorResponse = {
+      step: '6. Verify Technician Assignment',
+      code: 'NOT_ASSIGNED_TO_SUBJECT',
+      message: `Subject is assigned to technician ${subject.assigned_technician_id}, not ${userId}`,
+      userMessage: 'You are not assigned to this subject. You can only update subjects assigned to you.',
+      details: isDev ? { assignedTo: subject.assigned_technician_id, requestedBy: userId } : undefined,
+    };
+    console.log(`[${timestamp}] ✗ Step 6 failed:`, error.code);
+    return NextResponse.json({ ok: false, error }, { status: 403 });
+  }
+
+  console.log(`[${timestamp}] ✓ Step 6 passed: Subject ${subjectId} is assigned to technician`);
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Action: update_status
+  // ──────────────────────────────────────────────────────────────────────────
   if (action === 'update_status') {
     const { status } = body;
     if (!status) {
-      return NextResponse.json(
-        { ok: false, error: { message: 'status is required' } },
-        { status: 400 },
-      );
+      const error: ErrorResponse = {
+        step: '7. Process: update_status',
+        code: 'MISSING_STATUS',
+        message: 'status field is required for update_status action',
+        userMessage: 'You must specify the new status (ARRIVED, IN_PROGRESS, AWAITING_PARTS)',
+      };
+      console.log(`[${timestamp}] ✗ Step 7 failed:`, error.code);
+      return NextResponse.json({ ok: false, error }, { status: 400 });
     }
 
+    console.log(`[${timestamp}] ⊘ Processing: update_status to '${status}'`);
     const result = await updateJobStatus(subjectId, userId, status);
+
     if (!result.ok) {
-      return NextResponse.json({ ok: false, error: result.error }, { status: 400 });
+      const workflowError = result.error as ErrorResponse | { message: string };
+      const error: ErrorResponse = {
+        step: '7. Update Job Status',
+        code: 'WORKFLOW_UPDATE_FAILED',
+        message: 'message' in workflowError ? workflowError.message : 'Unknown workflow error',
+        userMessage:
+          'message' in workflowError ? workflowError.message : 'Failed to update job status',
+        details: isDev ? workflowError : undefined,
+      };
+      console.log(`[${timestamp}] ✗ Step 7 failed:`, error.code, '-', error.message);
+      return NextResponse.json({ ok: false, error }, { status: 400 });
     }
+
+    console.log(`[${timestamp}] ✓✓✓ Workflow complete: Job marked as '${status}'`);
     return NextResponse.json({ ok: true, data: result.data });
   }
 
-  // ── mark_incomplete ────────────────────────────────────────────────────────
+  // ──────────────────────────────────────────────────────────────────────────
+  // Action: mark_incomplete
+  // ──────────────────────────────────────────────────────────────────────────
   if (action === 'mark_incomplete') {
     const input: IncompleteJobInput = {
       reason: (body.reason ?? '') as IncompleteReason,
@@ -93,24 +259,62 @@ export async function POST(
       rescheduledDate: body.rescheduledDate,
     };
 
+    console.log(`[${timestamp}] ⊘ Processing: mark_incomplete with reason '${input.reason}'`);
     const result = await markJobIncomplete(subjectId, userId, input);
+
     if (!result.ok) {
-      return NextResponse.json({ ok: false, error: result.error }, { status: 400 });
+      const workflowError = result.error as ErrorResponse | { message: string };
+      const error: ErrorResponse = {
+        step: '7. Mark Job Incomplete',
+        code: 'MARK_INCOMPLETE_FAILED',
+        message: 'message' in workflowError ? workflowError.message : 'Unknown workflow error',
+        userMessage:
+          'message' in workflowError ? workflowError.message : 'Failed to mark job incomplete',
+        details: isDev ? workflowError : undefined,
+      };
+      console.log(`[${timestamp}] ✗ Step 7 failed:`, error.code, '-', error.message);
+      return NextResponse.json({ ok: false, error }, { status: 400 });
     }
+
+    console.log(`[${timestamp}] ✓✓✓ Workflow complete: Job marked as incomplete`);
     return NextResponse.json({ ok: true, data: result.data });
   }
 
-  // ── mark_complete ──────────────────────────────────────────────────────────
+  // ──────────────────────────────────────────────────────────────────────────
+  // Action: mark_complete
+  // ──────────────────────────────────────────────────────────────────────────
   if (action === 'mark_complete') {
+    console.log(`[${timestamp}] ⊘ Processing: mark_complete`);
     const result = await markJobComplete(subjectId, userId, body.notes);
+
     if (!result.ok) {
-      return NextResponse.json({ ok: false, error: result.error }, { status: 400 });
+      const workflowError = result.error as ErrorResponse | { message: string };
+      const error: ErrorResponse = {
+        step: '7. Mark Job Complete',
+        code: 'MARK_COMPLETE_FAILED',
+        message: 'message' in workflowError ? workflowError.message : 'Unknown workflow error',
+        userMessage:
+          'message' in workflowError ? workflowError.message : 'Failed to mark job complete',
+        details: isDev ? workflowError : undefined,
+      };
+      console.log(`[${timestamp}] ✗ Step 7 failed:`, error.code, '-', error.message);
+      return NextResponse.json({ ok: false, error }, { status: 400 });
     }
+
+    console.log(`[${timestamp}] ✓✓✓ Workflow complete: Job marked as complete`);
     return NextResponse.json({ ok: true, data: result.data });
   }
 
-  return NextResponse.json(
-    { ok: false, error: { message: `Unknown action: ${action ?? '(none)'}` } },
-    { status: 400 },
-  );
+  // ──────────────────────────────────────────────────────────────────────────
+  // Unknown action
+  // ──────────────────────────────────────────────────────────────────────────
+  const error: ErrorResponse = {
+    step: '5. Validate Action',
+    code: 'UNKNOWN_ACTION',
+    message: `Unknown action: '${action}'`,
+    userMessage: `Action '${action}' is not supported. Use: update_status, mark_incomplete, or mark_complete`,
+    details: isDev ? { actionReceived: action } : undefined,
+  };
+  console.log(`[${timestamp}] ✗ Validation failed:`, error.code);
+  return NextResponse.json({ ok: false, error }, { status: 400 });
 }
