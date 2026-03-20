@@ -3,6 +3,27 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-20 18:42:15 +05:30] Migrate billing hooks to API routes
+
+- Summary: Updated billing mutations in useBilling.ts hook to use dedicated API routes instead of direct service function calls. Ensures all billing operations follow the standard API pattern and improves separation of concerns.
+- Work done:
+  - Updated `useAddAccessory` to POST to `/api/subjects/{id}/billing` with action `add_accessory`
+  - Updated `useGenerateBill` to POST to `/api/subjects/{id}/billing` with action `generate_bill`
+  - Updated `useRemoveAccessory` to DELETE to `/api/subjects/{id}/billing` with action `remove_accessory`
+  - Updated `useUpdateBillPaymentStatus` to PATCH to `/api/subjects/{id}/billing` with action `update_payment_status`
+  - Removed unused imports: `addAccessory`, `generateBill`, `removeAccessory`, `updateBillPaymentStatus`
+  - Kept read-only queries: `getAccessoriesBySubject`, `getBillBySubject`
+- Files changed:
+  - web/hooks/subjects/useBilling.ts
+- Verification:
+  - TypeScript: No errors found
+  - All four mutation functions successfully updated to fetch pattern
+  - Proper error handling with userMessage fallback
+  - Query cache invalidation logic preserved
+- Next:
+  - Monitor API route performance
+  - Test billing operations end-to-end
+
 ## [2026-03-20 18:27:58 +05:30] Fix: Status change history showing wrong technician (admin name instead of actual technician)
 
 - Summary: Status change history was showing "Joby Sir" (super admin) as the user making all status changes instead of the actual technician. Root cause was the database trigger using `auth.uid()` which returns the admin/service role when admin client makes updates.

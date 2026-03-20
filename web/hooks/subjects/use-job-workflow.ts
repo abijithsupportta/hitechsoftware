@@ -68,13 +68,28 @@ export function useJobWorkflow(subjectId: string) {
     onError: (err: Error) => toast.error(err.message),
   });
 
-  // Mutation: upload photo with progress tracking
+  // Mutation: upload photo with progress tracking (via API route for storage access)
   const uploadPhotoMutation = useMutation({
     mutationFn: async ({ file, photoType }: { file: File; photoType: PhotoType }) => {
       if (!technicianId) throw new Error('Not authenticated');
-      const result = await uploadJobPhoto(subjectId, technicianId, file, photoType);
-      if (!result.ok) throw new Error(result.error.message);
-      return result.data;
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('photoType', photoType);
+      
+      const res = await fetch(`/api/subjects/${subjectId}/photos/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      const json = await res.json() as { 
+        ok: boolean
+        data?: { id: string; photo_type: string; public_url: string }
+        error?: { code: string; userMessage: string }
+      };
+      
+      if (!json.ok) throw new Error(json.error?.userMessage ?? 'Upload failed');
+      return json.data!;
     },
     onSuccess: (_, { photoType }) => {
       queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(subjectId) });

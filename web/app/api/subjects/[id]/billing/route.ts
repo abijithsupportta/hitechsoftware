@@ -1,0 +1,395 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient as createServerClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import type { GenerateBillInput, AddAccessoryInput } from '@/modules/subjects/subject.types';
+import { checkCompletionRequirements } from '@/modules/subjects/subject.job-workflow';
+
+interface ErrorResponse {
+  step: string;
+  code: string;
+  message: string;
+  userMessage: string;
+  details?: Record<string, unknown>;
+}
+
+const isDev = process.env.NODE_ENV === 'development';
+
+function toNumber(value: unknown): number {
+  const n = Number(value ?? 0);
+  return Number.isFinite(n) ? n : 0;
+}
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id: subjectId } = await params;
+  const timestamp = new Date().toISOString();
+
+  console.log(`[${timestamp}] ✓ Billing API: Starting for subject ${subjectId}`);
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Step 1: Validate subject ID
+  // ──────────────────────────────────────────────────────────────────────────
+  if (!subjectId || typeof subjectId !== 'string' || subjectId.trim() === '') {
+    const error: ErrorResponse = {
+      step: '1. Validate Subject ID',
+      code: 'INVALID_SUBJECT_ID',
+      message: 'Subject ID is required',
+      userMessage: 'Invalid subject ID',
+    };
+    console.log(`[${timestamp}] ✗ Step 1 failed:`, error.code);
+    return NextResponse.json({ ok: false, error }, { status: 400 });
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Step 2: Authenticate user
+  // ──────────────────────────────────────────────────────────────────────────
+  const supabase = await createServerClient();
+  const authState = await supabase.auth.getUser();
+
+  if (authState.error || !authState.data.user) {
+    const error: ErrorResponse = {
+      step: '2. Authentication',
+      code: 'UNAUTHORIZED',
+      message: 'No authenticated user found',
+      userMessage: 'You must be logged in',
+    };
+    console.log(`[${timestamp}] ✗ Step 2 failed:`, error.code);
+    return NextResponse.json({ ok: false, error }, { status: 401 });
+  }
+
+  const userId = authState.data.user.id;
+  console.log(`[${timestamp}] ✓ Step 2 passed: User ${userId} authenticated`);
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Step 3: Verify technician role
+  // ──────────────────────────────────────────────────────────────────────────
+  const profileResult = await supabase
+    .from('profiles')
+    .select('id,role')
+    .eq('id', userId)
+    .maybeSingle<{ id: string; role: string }>();
+
+  if (profileResult.error || !profileResult.data) {
+    const error: ErrorResponse = {
+      step: '3. Load Profile',
+      code: 'PROFILE_NOT_FOUND',
+      message: 'User profile missing',
+      userMessage: 'Your profile could not be found. Please log out and log back in.',
+    };
+    console.log(`[${timestamp}] ✗ Step 3 failed:`, error.code);
+    return NextResponse.json({ ok: false, error }, { status: 400 });
+  }
+
+  if (profileResult.data.role !== 'technician') {
+    const error: ErrorResponse = {
+      step: '3. Verify Role',
+      code: 'INVALID_ROLE',
+      message: `User role is '${profileResult.data.role}', expected 'technician'`,
+      userMessage: 'Only technicians can manage billing',
+    };
+    console.log(`[${timestamp}] ✗ Step 3 failed:`, error.code);
+    return NextResponse.json({ ok: false, error }, { status: 403 });
+  }
+
+  console.log(`[${timestamp}] ✓ Step 3 passed: User is technician`);
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Step 4: Parse request body
+  // ──────────────────────────────────────────────────────────────────────────
+  let body: { action: string; [key: string]: unknown };
+
+  try {
+    body = await request.json();
+  } catch (err) {
+    const error: ErrorResponse = {
+      step: '4. Parse Request',
+      code: 'INVALID_JSON',
+      message: err instanceof Error ? err.message : 'Invalid JSON',
+      userMessage: 'Request body must be valid JSON',
+    };
+    console.log(`[${timestamp}] ✗ Step 4 failed:`, error.code);
+    return NextResponse.json({ ok: false, error }, { status: 400 });
+  }
+
+  console.log(`[${timestamp}] ✓ Step 4 passed: Request parsed, action=${body.action}`);
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Step 5: Verify subject exists and technician is assigned
+  // ──────────────────────────────────────────────────────────────────────────
+  const admin = await createAdminClient();
+  const subjectResult = await admin
+    .from('subjects')
+    .select(
+      'id,assigned_technician_id,status,brand_id,dealer_id,is_warranty_service,is_amc_service,source_name,customer_name,service_charge_type',
+    )
+    .eq('id', subjectId)
+    .eq('is_deleted', false)
+    .maybeSingle<{
+      id: string;
+      assigned_technician_id: string | null;
+      status: string;
+      brand_id: string | null;
+      dealer_id: string | null;
+      is_warranty_service: boolean;
+      is_amc_service: boolean;
+      source_name: string | null;
+      customer_name: string | null;
+      service_charge_type: string;
+    }>();
+
+  if (subjectResult.error || !subjectResult.data) {
+    const error: ErrorResponse = {
+      step: '5. Load Subject',
+      code: 'SUBJECT_NOT_FOUND',
+      message: `Subject ${subjectId} not found`,
+      userMessage: 'This subject could not be found',
+    };
+    console.log(`[${timestamp}] ✗ Step 5 failed:`, error.code);
+    return NextResponse.json({ ok: false, error }, { status: 404 });
+  }
+
+  const subject = subjectResult.data;
+
+  if (subject.assigned_technician_id !== userId) {
+    const error: ErrorResponse = {
+      step: '5. Verify Assignment',
+      code: 'NOT_ASSIGNED_TO_SUBJECT',
+      message: `Not assigned to subject ${subjectId}`,
+      userMessage: 'You can only manage billing for subjects assigned to you',
+    };
+    console.log(`[${timestamp}] ✗ Step 5 failed:`, error.code);
+    return NextResponse.json({ ok: false, error }, { status: 403 });
+  }
+
+  console.log(`[${timestamp}] ✓ Step 5 passed: Subject verified, status=${subject.status}`);
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // ROUTE: add_accessory
+  // ──────────────────────────────────────────────────────────────────────────
+  if (body.action === 'add_accessory') {
+    const input = body as AddAccessoryInput & { action: string };
+
+    if (!input.item_name?.trim()) {
+      const error: ErrorResponse = {
+        step: '6. Validate Accessory',
+        code: 'MISSING_ITEM_NAME',
+        message: 'Item name is required',
+        userMessage: 'Please enter an item name',
+      };
+      console.log(`[${timestamp}] ✗ Failed:`, error.code);
+      return NextResponse.json({ ok: false, error }, { status: 400 });
+    }
+
+    if (subject.status !== 'IN_PROGRESS') {
+      const error: ErrorResponse = {
+        step: '6. Check Status',
+        code: 'INVALID_STATUS',
+        message: `Cannot add accessories when status is ${subject.status}`,
+        userMessage: 'Accessories can only be added while job is in progress',
+      };
+      console.log(`[${timestamp}] ✗ Failed:`, error.code);
+      return NextResponse.json({ ok: false, error }, { status: 400 });
+    }
+
+    console.log(`[${timestamp}] ⊘ Processing: add_accessory "${input.item_name}"`);
+
+    const accessoryResult = await admin
+      .from('subject_accessories')
+      .insert({
+        subject_id: subjectId,
+        item_name: input.item_name.trim(),
+        quantity: toNumber(input.quantity),
+        unit_price: toNumber(input.unit_price),
+      })
+      .select('id,subject_id,item_name,quantity,unit_price')
+      .single();
+
+    if (accessoryResult.error) {
+      const error: ErrorResponse = {
+        step: '6. Create Accessory',
+        code: 'ACCESSORY_CREATE_FAILED',
+        message: accessoryResult.error.message,
+        userMessage: 'Failed to add accessory. Please try again.',
+        details: isDev ? { dbError: accessoryResult.error.message } : undefined,
+      };
+      console.log(`[${timestamp}] ✗ Failed:`, error.code);
+      return NextResponse.json({ ok: false, error }, { status: 400 });
+    }
+
+    console.log(`[${timestamp}] ✓✓✓ Accessory added successfully`);
+    return NextResponse.json({
+      ok: true,
+      data: {
+        id: accessoryResult.data.id,
+        item_name: accessoryResult.data.item_name,
+        quantity: accessoryResult.data.quantity,
+        unit_price: accessoryResult.data.unit_price,
+      },
+    });
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // ROUTE: generate_bill
+  // ──────────────────────────────────────────────────────────────────────────
+  if (body.action === 'generate_bill') {
+    const billInput = body as GenerateBillInput & { action: string };
+
+    if (subject.status !== 'IN_PROGRESS') {
+      const error: ErrorResponse = {
+        step: '6. Check Status',
+        code: 'INVALID_STATUS',
+        message: `Cannot generate bill when status is ${subject.status}`,
+        userMessage: 'Bill can only be generated when subject is in progress',
+      };
+      console.log(`[${timestamp}] ✗ Failed:`, error.code);
+      return NextResponse.json({ ok: false, error }, { status: 400 });
+    }
+
+    console.log(`[${timestamp}] ⊘ Processing: generate_bill`);
+
+    // Check if bill already exists
+    const existingBill = await admin
+      .from('subject_bills')
+      .select('id')
+      .eq('subject_id', subjectId)
+      .eq('is_deleted', false)
+      .maybeSingle();
+
+    if (existingBill.data) {
+      const error: ErrorResponse = {
+        step: '6. Check Existing Bill',
+        code: 'BILL_ALREADY_EXISTS',
+        message: 'Bill already generated for this subject',
+        userMessage: 'A bill has already been generated for this subject',
+      };
+      console.log(`[${timestamp}] ✗ Failed:`, error.code);
+      return NextResponse.json({ ok: false, error }, { status: 400 });
+    }
+
+    // Check completion requirements
+    const completionCheck = await checkCompletionRequirements(subjectId);
+    if (!completionCheck.ok) {
+      const error: ErrorResponse = {
+        step: '6. Check Completion',
+        code: 'COMPLETION_CHECK_FAILED',
+        message: completionCheck.error.message,
+        userMessage: completionCheck.error.message,
+      };
+      console.log(`[${timestamp}] ✗ Failed:`, error.code);
+      return NextResponse.json({ ok: false, error }, { status: 400 });
+    }
+
+    if (!completionCheck.data.canComplete) {
+      const error: ErrorResponse = {
+        step: '6. Check Photos',
+        code: 'MISSING_PHOTOS',
+        message: `Missing required photos: ${completionCheck.data.missing.join(', ')}`,
+        userMessage: `Missing required photos: ${completionCheck.data.missing.join(', ')}`,
+      };
+      console.log(`[${timestamp}] ✗ Failed:`, error.code);
+      return NextResponse.json({ ok: false, error }, { status: 400 });
+    }
+
+    // Get accessories total
+    const accessoriesResult = await admin
+      .from('subject_accessories')
+      .select('total_price')
+      .eq('subject_id', subjectId)
+      .eq('is_deleted', false);
+
+    const accessories_total = (accessoriesResult.data ?? []).reduce(
+      (sum, row) => sum + toNumber((row as { total_price: number }).total_price),
+      0,
+    );
+
+    const visit_charge = toNumber(billInput.visit_charge);
+    const service_charge = toNumber(billInput.service_charge);
+    const grand_total = visit_charge + service_charge + accessories_total;
+
+    const isBrandDealerBill = subject.is_warranty_service || subject.is_amc_service;
+
+    if (!isBrandDealerBill && !billInput.payment_mode) {
+      const error: ErrorResponse = {
+        step: '6. Validate Payment',
+        code: 'MISSING_PAYMENT_MODE',
+        message: 'Payment mode is required for out-of-warranty jobs',
+        userMessage: 'Please select a payment mode',
+      };
+      console.log(`[${timestamp}] ✗ Failed:`, error.code);
+      return NextResponse.json({ ok: false, error }, { status: 400 });
+    }
+
+    // Generate bill number
+    const billNumberResult = await admin.rpc('generate_bill_number');
+    if (billNumberResult.error || !billNumberResult.data) {
+      const error: ErrorResponse = {
+        step: '6. Generate Bill Number',
+        code: 'BILL_NUMBER_GENERATION_FAILED',
+        message: billNumberResult.error?.message ?? 'Failed to generate bill number',
+        userMessage: 'Failed to generate bill number. Please try again.',
+        details: isDev ? { dbError: billNumberResult.error?.message } : undefined,
+      };
+      console.log(`[${timestamp}] ✗ Failed:`, error.code);
+      return NextResponse.json({ ok: false, error }, { status: 400 });
+    }
+
+    const bill_number = billNumberResult.data as string;
+
+    // Create bill
+    const billResult = await admin
+      .from('subject_bills')
+      .insert({
+        subject_id: subjectId,
+        bill_number,
+        bill_type: isBrandDealerBill ? 'brand_dealer_invoice' : 'customer_receipt',
+        issued_to: isBrandDealerBill ? subject.source_name : (subject.customer_name ?? 'Customer'),
+        issued_to_type: isBrandDealerBill ? 'brand_dealer' : 'customer',
+        brand_id: subject.brand_id ?? null,
+        dealer_id: subject.dealer_id ?? null,
+        visit_charge,
+        service_charge,
+        accessories_total,
+        grand_total,
+        payment_mode: isBrandDealerBill ? null : (billInput.payment_mode ?? null),
+        payment_status: isBrandDealerBill ? 'due' : 'paid',
+        payment_collected_at: isBrandDealerBill ? null : new Date().toISOString(),
+        created_by: userId,
+      })
+      .select('id,bill_number,grand_total,bill_type')
+      .single();
+
+    if (billResult.error) {
+      const error: ErrorResponse = {
+        step: '6. Create Bill',
+        code: 'BILL_CREATE_FAILED',
+        message: billResult.error.message,
+        userMessage: 'Failed to create bill. Please try again.',
+        details: isDev ? { dbError: billResult.error.message } : undefined,
+      };
+      console.log(`[${timestamp}] ✗ Failed:`, error.code);
+      return NextResponse.json({ ok: false, error }, { status: 400 });
+    }
+
+    console.log(`[${timestamp}] ✓✓✓ Bill generated successfully: ${bill_number}`);
+    return NextResponse.json({
+      ok: true,
+      data: {
+        id: billResult.data.id,
+        bill_number: billResult.data.bill_number,
+        bill_type: billResult.data.bill_type,
+        grand_total: billResult.data.grand_total,
+      },
+    });
+  }
+
+  const error: ErrorResponse = {
+    step: '5. Validate Action',
+    code: 'UNKNOWN_ACTION',
+    message: `Unknown action: '${body.action}'`,
+    userMessage: `Action '${body.action}' is not supported`,
+  };
+  console.log(`[${timestamp}] ✗ Failed:`, error.code);
+  return NextResponse.json({ ok: false, error }, { status: 400 });
+}

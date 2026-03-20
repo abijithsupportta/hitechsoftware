@@ -2,12 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/auth/useAuth';
 import {
-  addAccessory,
-  generateBill,
   getAccessoriesBySubject,
   getBillBySubject,
-  removeAccessory,
-  updateBillPaymentStatus,
 } from '@/modules/subjects/billing.service';
 import type { AddAccessoryInput, GenerateBillInput } from '@/modules/subjects/subject.types';
 
@@ -31,9 +27,21 @@ export function useAddAccessory(subjectId: string) {
   return useMutation({
     mutationFn: async (input: AddAccessoryInput) => {
       if (!user?.id) throw new Error('Not authenticated');
-      const result = await addAccessory(subjectId, user.id, input);
-      if (!result.ok) throw new Error(result.error.message);
-      return result.data;
+      
+      const res = await fetch(`/api/subjects/${subjectId}/billing`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'add_accessory', ...input }),
+      });
+      
+      const json = await res.json() as { 
+        ok: boolean
+        data?: { id: string; item_name: string; quantity: number; unit_price: number }
+        error?: { userMessage: string }
+      };
+      
+      if (!json.ok) throw new Error(json.error?.userMessage ?? 'Failed to add accessory');
+      return json.data!;
     },
     onSuccess: (item) => {
       queryClient.invalidateQueries({ queryKey: ['subject-accessories', subjectId] });
@@ -50,9 +58,20 @@ export function useRemoveAccessory(subjectId: string) {
   return useMutation({
     mutationFn: async (accessoryId: string) => {
       if (!user?.id) throw new Error('Not authenticated');
-      const result = await removeAccessory(accessoryId, user.id);
-      if (!result.ok) throw new Error(result.error.message);
-      return result.data;
+      
+      const res = await fetch(`/api/subjects/${subjectId}/billing`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'remove_accessory', accessoryId }),
+      });
+      
+      const json = await res.json() as { 
+        ok: boolean
+        error?: { userMessage: string }
+      };
+      
+      if (!json.ok) throw new Error(json.error?.userMessage ?? 'Failed to remove accessory');
+      return null;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subject-accessories', subjectId] });
@@ -69,9 +88,21 @@ export function useGenerateBill(subjectId: string) {
   return useMutation({
     mutationFn: async (input: GenerateBillInput) => {
       if (!user?.id) throw new Error('Not authenticated');
-      const result = await generateBill(subjectId, user.id, input);
-      if (!result.ok) throw new Error(result.error.message);
-      return result.data;
+      
+      const res = await fetch(`/api/subjects/${subjectId}/billing`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'generate_bill', ...input }),
+      });
+      
+      const json = await res.json() as { 
+        ok: boolean
+        data?: { id: string; bill_number: string; bill_type: string; grand_total: number }
+        error?: { userMessage: string }
+      };
+      
+      if (!json.ok) throw new Error(json.error?.userMessage ?? 'Failed to generate bill');
+      return json.data!;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subject', subjectId] });
@@ -136,9 +167,21 @@ export function useUpdateBillPaymentStatus(subjectId: string) {
   return useMutation({
     mutationFn: async ({ billId, paymentStatus }: { billId: string; paymentStatus: 'paid' | 'due' | 'waived' }) => {
       if (!user?.id) throw new Error('Not authenticated');
-      const result = await updateBillPaymentStatus(billId, paymentStatus, user.id);
-      if (!result.ok) throw new Error(result.error.message);
-      return result.data;
+      
+      const res = await fetch(`/api/subjects/${subjectId}/billing`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'update_payment_status', billId, paymentStatus }),
+      });
+      
+      const json = await res.json() as { 
+        ok: boolean
+        data?: { id: string; payment_status: 'paid' | 'due' | 'waived' }
+        error?: { userMessage: string }
+      };
+      
+      if (!json.ok) throw new Error(json.error?.userMessage ?? 'Failed to update payment status');
+      return json.data!;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subject-bill', subjectId] });
