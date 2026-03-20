@@ -3,6 +3,50 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-20 23:57:53 +05:30] Fix state display lag: immediate query refetch after workflow mutations
+
+- Summary: Fixed React Query cache behavior where UI state wasn't refreshing immediately after technician workflow mutations, even though backend was updating correctly.
+- Work done:
+  - Reduced `useSubjectDetail` query stale time from 5 minutes to 5 seconds so cache becomes stale faster.
+  - Changed `useJobWorkflow` mutations from invalidation-only to explicit refetch:
+    - `updateStatus`: now refetches detail + list + requirements upon success.
+    - `markIncomplete`: now refetches detail + list upon success.
+    - `markComplete`: now refetches detail + list upon success.
+  - Used `Promise.all()` to parallelize refetch operations.
+- Files changed:
+  - web/hooks/subjects/useSubjects.ts
+  - web/hooks/subjects/use-job-workflow.ts
+  - doc/WORK_LOG.md
+- Verification:
+  - Lint: `npm run lint` passed (0 errors).
+  - Build: `npm run build` passed successfully in `web`.
+- Issues:
+  - Root cause was that invalidation alone doesn't force immediate refetch if data is still considered "fresh" within 5-minute window; after invalidation, React Query only refetches on next read if stale.
+- Next:
+  - Test in UI with sequence: accept → arrived → start work and verify status updates show in real-time.
+
+## [2026-03-20 23:55:06 +05:30] Backend + UI trace: accept -> arrived -> start work payload verification
+
+- Summary: Ran a live end-to-end trace for one real subject ID and verified backend response payloads plus UI state gating at each technician transition step.
+- Work done:
+  - Executed authenticated technician API calls against live local routes for:
+    - accept via /api/subjects/:id/respond,
+    - arrived via /api/subjects/:id/workflow,
+    - start work via /api/subjects/:id/workflow.
+  - Captured and validated response payloads and post-step subject snapshots for each transition.
+  - Confirmed UI action gating alignment with resulting status and acceptance fields at each step.
+  - Removed temporary trace script after successful verification.
+- Files changed:
+  - doc/WORK_LOG.md
+- Verification:
+  - Accept response: HTTP 200, payload includes status ACCEPTED and technician_acceptance_status accepted.
+  - Arrived response: HTTP 200, payload includes status ARRIVED and arrived_at timestamp.
+  - Start work response: HTTP 200, payload includes status IN_PROGRESS and work_started_at timestamp.
+- Issues:
+  - Initial trace attempt failed due to foreign key requirement on subjects.assigned_technician_id -> technicians.id; resolved in trace run by ensuring a valid technician entity in setup.
+- Next:
+  - Optional: add a permanent automated integration test for this exact transition chain to prevent regressions.
+
 ## [2026-03-20 23:28:14 +05:30] Technician workflow fix: allow accept-arrived-start after reassignment
 
 - Summary: Fixed technician subject-detail access gating that could block reassigned/rescheduled jobs from progressing through accept -> arrived -> start work.

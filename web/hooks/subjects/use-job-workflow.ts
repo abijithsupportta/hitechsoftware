@@ -51,10 +51,12 @@ export function useJobWorkflow(subjectId: string) {
       if (!json.ok) throw new Error(json.error?.message ?? 'Failed to update status');
       return json.data!;
     },
-    onSuccess: (_, newStatus) => {
-      queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(subjectId) });
-      queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.list });
-      workflowRequirementsQuery.refetch();
+    onSuccess: async (_, newStatus) => {
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(subjectId) }),
+        queryClient.refetchQueries({ queryKey: SUBJECT_QUERY_KEYS.list }),
+        workflowRequirementsQuery.refetch(),
+      ]);
       const labels: Record<string, string> = {
         ARRIVED: 'Marked as Arrived',
         IN_PROGRESS: 'Work Started',
@@ -143,9 +145,11 @@ export function useJobWorkflow(subjectId: string) {
       if (!json.ok) throw new Error(json.error?.message ?? 'Failed to mark incomplete');
       return json.data!;
     },
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(subjectId) });
-        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.list });
+      onSuccess: async () => {
+        await Promise.all([
+          queryClient.refetchQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(subjectId) }),
+          queryClient.refetchQueries({ queryKey: SUBJECT_QUERY_KEYS.list }),
+        ]);
         toast.success('Job marked as incomplete');
       },
       onError: (err: Error) => toast.error(err.message),
@@ -163,9 +167,11 @@ export function useJobWorkflow(subjectId: string) {
       if (!json.ok) throw new Error(json.error?.message ?? 'Failed to mark complete');
       return json.data!;
     },
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(subjectId) });
-        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.list });
+      onSuccess: async () => {
+        await Promise.all([
+          queryClient.refetchQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(subjectId) }),
+          queryClient.refetchQueries({ queryKey: SUBJECT_QUERY_KEYS.list }),
+        ]);
         toast.success('Job completed successfully');
       },
       onError: (err: Error) => toast.error(err.message),
