@@ -3,6 +3,21 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-20 19:24:18 +05:30] Fix: Explain hidden photo uploads in subject details
+
+- Summary: Added an explicit availability message in subject details so users can see why photo upload controls are hidden instead of assuming the page is broken.
+- Work done:
+  - Added a Photo Upload Availability message to the job workflow section.
+  - Explained the three real gating conditions: technician-only access, assigned-technician-only access, and status must reach In Progress before uploads unlock.
+  - Added a specific message for Accepted and Arrived states telling the technician to click Start Work first.
+- Files changed:
+  - web/components/subjects/job-workflow-section.tsx
+- Verification:
+  - VS Code diagnostics: no errors.
+  - Targeted ESLint: `npx eslint components/subjects/job-workflow-section.tsx` -> `LINT_OK`.
+- Next:
+  - None.
+
 ## [2026-03-20 19:17:44 +05:30] Fix: Show required upload items inside billing flow
 
 - Summary: Added the missing required-photo upload options directly inside the billing panel so technicians can upload the exact items blocking Generate Bill & Complete Job instead of only seeing the validation error.

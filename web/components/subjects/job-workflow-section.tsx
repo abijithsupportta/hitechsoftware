@@ -98,6 +98,30 @@ export function JobWorkflowSection({ subject, userRole, userId }: Props) {
     }
   })();
 
+  const uploadAvailabilityMessage = (() => {
+    if (userRole !== 'technician') {
+      return 'Photo uploads are available only for the assigned technician.';
+    }
+
+    if (!subject.assigned_technician_id) {
+      return 'Photo uploads will be available after a technician is assigned.';
+    }
+
+    if (!isAssignedTechnician) {
+      return 'Photo uploads are available only to the technician assigned to this subject.';
+    }
+
+    if (subject.status === 'ACCEPTED' || subject.status === 'ARRIVED') {
+      return 'Photo uploads unlock after the technician clicks Start Work and the subject moves to In Progress.';
+    }
+
+    if (subject.status === 'PENDING' || subject.status === 'ALLOCATED') {
+      return 'Photo uploads become available after the technician accepts the service and starts work.';
+    }
+
+    return null;
+  })();
+
   return (
     <div className="mb-4 space-y-4">
       {/* ── PART A: Status Action Bar ───────────────────────────────────────── */}
@@ -224,6 +248,18 @@ export function JobWorkflowSection({ subject, userRole, userId }: Props) {
               <p className="text-sm font-medium text-emerald-800">✓ All required photos uploaded. You can now complete this job.</p>
             </div>
           )}
+        </div>
+      )}
+
+      {uploadAvailabilityMessage && subject.status !== 'COMPLETED' && (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+            <div>
+              <p className="text-sm font-semibold text-slate-700">Photo Upload Availability</p>
+              <p className="mt-1 text-sm text-slate-600">{uploadAvailabilityMessage}</p>
+            </div>
+          </div>
         </div>
       )}
 
