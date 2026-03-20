@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import {
+  getRequiredPhotos,
+  checkCompletionRequirements,
   updateJobStatus,
   markJobIncomplete,
   markJobComplete,
@@ -17,6 +19,135 @@ interface ErrorResponse {
   message: string;
   userMessage: string;
   details?: Record<string, unknown>;
+}
+
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id: subjectId } = await params;
+  const timestamp = new Date().toISOString();
+
+  console.log(`[${timestamp}] ✓ Workflow API: Loading requirements for subject ${subjectId}`);
+
+  if (!subjectId || typeof subjectId !== 'string' || subjectId.trim() === '') {
+    const error: ErrorResponse = {
+      step: '1. Validate Subject ID',
+      code: 'INVALID_SUBJECT_ID',
+      message: 'Subject ID is required and must be a non-empty string',
+      userMessage: 'Invalid subject ID format',
+    };
+    return NextResponse.json({ ok: false, error }, { status: 400 });
+  }
+
+  const supabase = await createServerClient();
+  const authState = await supabase.auth.getUser();
+
+  if (authState.error || !authState.data.user) {
+    const error: ErrorResponse = {
+      step: '2. Authentication',
+      code: 'UNAUTHORIZED',
+      message: authState.error?.message || 'No authenticated user found',
+      userMessage: 'You must be logged in to view workflow requirements',
+    };
+    return NextResponse.json({ ok: false, error }, { status: 401 });
+  }
+
+  const userId = authState.data.user.id;
+
+  const profileResult = await supabase
+    .from('profiles')
+    .select('id,role')
+    .eq('id', userId)
+    .maybeSingle<{ id: string; role: string }>();
+
+  if (profileResult.error || !profileResult.data) {
+    const error: ErrorResponse = {
+      step: '3. Load User Profile',
+      code: 'PROFILE_NOT_FOUND',
+      message: profileResult.error?.message || 'User profile record missing',
+      userMessage: 'Your profile could not be found. Please log out and log back in.',
+      details: isDev ? { dbError: profileResult.error?.message } : undefined,
+    };
+    return NextResponse.json({ ok: false, error }, { status: 400 });
+  }
+
+  const admin = await createAdminClient();
+  const subjectCheckResult = await admin
+    .from('subjects')
+    .select('id,assigned_technician_id')
+    .eq('id', subjectId)
+    .eq('is_deleted', false)
+    .maybeSingle<{ id: string; assigned_technician_id: string | null }>();
+
+  if (subjectCheckResult.error) {
+    const error: ErrorResponse = {
+      step: '4. Load Subject',
+      code: 'SUBJECT_QUERY_ERROR',
+      message: subjectCheckResult.error.message,
+      userMessage: 'Failed to load subject details. Please try again.',
+      details: isDev ? { dbError: subjectCheckResult.error.message } : undefined,
+    };
+    return NextResponse.json({ ok: false, error }, { status: 400 });
+  }
+
+  if (!subjectCheckResult.data) {
+    const error: ErrorResponse = {
+      step: '4. Load Subject',
+      code: 'SUBJECT_NOT_FOUND',
+      message: `No active subject found with ID ${subjectId}`,
+      userMessage: 'This subject could not be found.',
+      details: isDev ? { subjectId } : undefined,
+    };
+    return NextResponse.json({ ok: false, error }, { status: 404 });
+  }
+
+  if (
+    profileResult.data.role === 'technician'
+    && subjectCheckResult.data.assigned_technician_id !== userId
+  ) {
+    const error: ErrorResponse = {
+      step: '4. Verify Technician Assignment',
+      code: 'NOT_ASSIGNED_TO_SUBJECT',
+      message: `Subject is assigned to technician ${subjectCheckResult.data.assigned_technician_id}, not ${userId}`,
+      userMessage: 'You are not assigned to this subject.',
+      details: isDev ? { assignedTo: subjectCheckResult.data.assigned_technician_id, requestedBy: userId } : undefined,
+    };
+    return NextResponse.json({ ok: false, error }, { status: 403 });
+  }
+
+  const [requiredPhotosResult, completionRequirementsResult] = await Promise.all([
+    getRequiredPhotos(subjectId),
+    checkCompletionRequirements(subjectId),
+  ]);
+
+  if (!requiredPhotosResult.ok) {
+    const error: ErrorResponse = {
+      step: '5. Load Required Photos',
+      code: 'REQUIRED_PHOTOS_LOAD_FAILED',
+      message: requiredPhotosResult.error.message,
+      userMessage: requiredPhotosResult.error.message,
+    };
+    return NextResponse.json({ ok: false, error }, { status: 400 });
+  }
+
+  if (!completionRequirementsResult.ok) {
+    const error: ErrorResponse = {
+      step: '5. Load Completion Requirements',
+      code: 'COMPLETION_REQUIREMENTS_LOAD_FAILED',
+      message: completionRequirementsResult.error.message,
+      userMessage: completionRequirementsResult.error.message,
+    };
+    return NextResponse.json({ ok: false, error }, { status: 400 });
+  }
+
+  return NextResponse.json({
+    ok: true,
+    data: {
+      requiredPhotos: requiredPhotosResult.data,
+      completionRequirements: completionRequirementsResult.data,
+    },
+  });
 }
 
 export async function POST(

@@ -2,10 +2,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { SUBJECT_QUERY_KEYS } from '@/modules/subjects/subject.constants';
-import {
-  getRequiredPhotos,
-  checkCompletionRequirements,
-} from '@/modules/subjects/subject.job-workflow';
 import type {
   JobCompletionRequirements,
   PhotoType,
@@ -17,27 +13,30 @@ export function useJobWorkflow(subjectId: string) {
   const technicianId = user?.id;
   const queryClient = useQueryClient();
 
-  // Query: get required photos
-  const requiredPhotosQuery = useQuery({
-    queryKey: ['job-workflow', subjectId, 'required-photos'],
+  const workflowRequirementsQuery = useQuery({
+    queryKey: ['job-workflow', subjectId, 'requirements'],
     queryFn: async () => {
-      const result = await getRequiredPhotos(subjectId);
-      if (!result.ok) throw new Error(result.error.message);
-      return result.data;
-    },
-    enabled: !!subjectId,
-  });
+      const res = await fetch(`/api/subjects/${subjectId}/workflow`, {
+        method: 'GET',
+      });
 
-  // Query: check completion requirements
-  const completionRequirementsQuery = useQuery({
-    queryKey: ['job-workflow', subjectId, 'completion-requirements'],
-    queryFn: async () => {
-      const result = await checkCompletionRequirements(subjectId);
-      if (!result.ok) throw new Error(result.error.message);
-      return result.data;
+      const json = await res.json() as {
+        ok: boolean;
+        data?: {
+          requiredPhotos: PhotoType[];
+          completionRequirements: JobCompletionRequirements;
+        };
+        error?: { userMessage?: string; message?: string };
+      };
+
+      if (!json.ok) {
+        throw new Error(json.error?.userMessage ?? json.error?.message ?? 'Failed to load workflow requirements');
+      }
+
+      return json.data!;
     },
     enabled: !!subjectId,
-    refetchInterval: 5000, // Poll every 5 seconds for real-time requirements
+    refetchInterval: 5000,
   });
 
   // Mutation: update job status (runs via API route — admin client is server-side only)
@@ -55,8 +54,7 @@ export function useJobWorkflow(subjectId: string) {
     onSuccess: (_, newStatus) => {
       queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(subjectId) });
       queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.list });
-      requiredPhotosQuery.refetch();
-      completionRequirementsQuery.refetch();
+      workflowRequirementsQuery.refetch();
       const labels: Record<string, string> = {
         ARRIVED: 'Marked as Arrived',
         IN_PROGRESS: 'Work Started',
@@ -92,7 +90,7 @@ export function useJobWorkflow(subjectId: string) {
     },
     onSuccess: (_, { photoType }) => {
       queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(subjectId) });
-      completionRequirementsQuery.refetch();
+      workflowRequirementsQuery.refetch();
       toast.success(`${photoType.replace(/_/g, ' ')} uploaded`);
     },
     onError: (err: Error) => toast.error(err.message),
@@ -139,9 +137,9 @@ export function useJobWorkflow(subjectId: string) {
   });
 
   return {
-    requiredPhotos: requiredPhotosQuery.data ?? [],
-    completionRequirements: completionRequirementsQuery.data as JobCompletionRequirements | undefined,
-    isLoadingRequirements: requiredPhotosQuery.isLoading || completionRequirementsQuery.isLoading,
+    requiredPhotos: workflowRequirementsQuery.data?.requiredPhotos ?? [],
+    completionRequirements: workflowRequirementsQuery.data?.completionRequirements,
+    isLoadingRequirements: workflowRequirementsQuery.isLoading,
 
     updateStatus: updateStatusMutation.mutate,
     isUpdatingStatus: updateStatusMutation.isPending,

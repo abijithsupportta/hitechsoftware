@@ -3,6 +3,23 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-20 19:33:02 +05:30] Fix: Required upload items failed to load in browser
+
+- Summary: Fixed the `Unable to load required upload items.` state by moving workflow requirement reads from direct server-side module calls in a client hook to a proper API GET endpoint.
+- Work done:
+  - Added `GET /api/subjects/[id]/workflow` to return required photos and completion requirements.
+  - Kept technician assignment protection for technician callers while allowing authenticated viewing of requirements through the API.
+  - Updated `useJobWorkflow` to fetch workflow requirements from the API instead of importing server-side workflow functions into client code.
+  - Verified the billing and subject-details upload sections now consume the same API-backed requirement data path.
+- Files changed:
+  - web/app/api/subjects/[id]/workflow/route.ts
+  - web/hooks/subjects/use-job-workflow.ts
+- Verification:
+  - VS Code diagnostics: no errors in edited files.
+  - Targeted ESLint: `npx eslint hooks/subjects/use-job-workflow.ts app/api/subjects/[id]/workflow/route.ts components/subjects/BillingSection.tsx components/subjects/job-workflow-section.tsx` -> `LINT_OK`.
+- Next:
+  - Verify the upload checklist now renders live required items for a technician in the subject detail and billing sections.
+
 ## [2026-03-20 19:24:18 +05:30] Fix: Explain hidden photo uploads in subject details
 
 - Summary: Added an explicit availability message in subject details so users can see why photo upload controls are hidden instead of assuming the page is broken.
