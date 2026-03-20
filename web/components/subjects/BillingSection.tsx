@@ -55,7 +55,7 @@ export function BillingSection({ subject, userRole, userId }: Props) {
 
   const [visitCharge, setVisitCharge] = useState(subject.visit_charge ?? 0);
   const [serviceCharge, setServiceCharge] = useState(subject.service_charge ?? 0);
-  const [paymentMode, setPaymentMode] = useState<PaymentMode>('cash');
+  const [paymentMode, setPaymentMode] = useState<PaymentMode | ''>('');
 
   const isOutOfWarranty = !subject.is_warranty_service && !subject.is_amc_service;
   const isAssignedTechnician = userRole === 'technician' && userId === subject.assigned_technician_id;
@@ -169,7 +169,7 @@ export function BillingSection({ subject, userRole, userId }: Props) {
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <label className="text-sm text-slate-700">
-              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Visit Charge</span>
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Visit Charge (Optional)</span>
               <input
                 type="number"
                 min={0}
@@ -181,7 +181,7 @@ export function BillingSection({ subject, userRole, userId }: Props) {
             </label>
 
             <label className="text-sm text-slate-700">
-              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Service Charge</span>
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Service Charge (Optional)</span>
               <input
                 type="number"
                 min={0}
@@ -194,12 +194,13 @@ export function BillingSection({ subject, userRole, userId }: Props) {
 
             {isOutOfWarranty ? (
               <label className="text-sm text-slate-700">
-                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Payment Mode</span>
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Payment Mode (Optional)</span>
                 <select
                   value={paymentMode}
-                  onChange={(event) => setPaymentMode(event.target.value as PaymentMode)}
+                  onChange={(event) => setPaymentMode(event.target.value as PaymentMode | '')}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
                 >
+                  <option value="">Select later (mark as due)</option>
                   {PAYMENT_MODES.map((mode) => (
                     <option key={mode.value} value={mode.value}>{mode.label}</option>
                   ))}
@@ -229,7 +230,7 @@ export function BillingSection({ subject, userRole, userId }: Props) {
             onClick={() => generateMutation.mutate({
               visit_charge: visitCharge,
               service_charge: serviceCharge,
-              payment_mode: isOutOfWarranty ? paymentMode : undefined,
+              payment_mode: isOutOfWarranty && paymentMode ? paymentMode : undefined,
               accessories: accessories.map((item) => ({
                 item_name: item.item_name,
                 quantity: item.quantity,
@@ -240,6 +241,9 @@ export function BillingSection({ subject, userRole, userId }: Props) {
           >
             {generateMutation.isPending ? 'Generating Bill & Completing Job...' : 'Generate Bill & Complete Job'}
           </button>
+          <p className="text-xs text-slate-600">
+            Button activates when required photos are uploaded. Charges and payment mode are optional.
+          </p>
         </div>
       )}
 

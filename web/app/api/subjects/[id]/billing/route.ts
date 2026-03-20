@@ -328,16 +328,8 @@ export async function POST(
 
     const isBrandDealerBill = subject.is_warranty_service || subject.is_amc_service;
 
-    if (!isBrandDealerBill && !billInput.payment_mode) {
-      const error: ErrorResponse = {
-        step: '6. Validate Payment',
-        code: 'MISSING_PAYMENT_MODE',
-        message: 'Payment mode is required for out-of-warranty jobs',
-        userMessage: 'Please select a payment mode',
-      };
-      console.log(`[${timestamp}] ✗ Failed:`, error.code);
-      return NextResponse.json({ ok: false, error }, { status: 400 });
-    }
+    const hasPaymentMode = Boolean(billInput.payment_mode);
+    const customerPaymentStatus = hasPaymentMode ? 'paid' : 'due';
 
     // Generate bill number
     const billNumberResult = await admin.rpc('generate_bill_number');
@@ -371,8 +363,10 @@ export async function POST(
         accessories_total,
         grand_total,
         payment_mode: isBrandDealerBill ? null : (billInput.payment_mode ?? null),
-        payment_status: isBrandDealerBill ? 'due' : 'paid',
-        payment_collected_at: isBrandDealerBill ? null : new Date().toISOString(),
+        payment_status: isBrandDealerBill ? 'due' : customerPaymentStatus,
+        payment_collected_at: isBrandDealerBill
+          ? null
+          : (hasPaymentMode ? new Date().toISOString() : null),
         generated_by: userId,
       })
       .select('id,bill_number,grand_total,bill_type')
@@ -398,9 +392,11 @@ export async function POST(
         accessories_total,
         grand_total,
         payment_mode: isBrandDealerBill ? null : (billInput.payment_mode ?? null),
-        payment_collected: !isBrandDealerBill,
-        payment_collected_at: !isBrandDealerBill ? new Date().toISOString() : null,
-        billing_status: isBrandDealerBill ? 'due' : 'paid',
+        payment_collected: isBrandDealerBill ? false : hasPaymentMode,
+        payment_collected_at: isBrandDealerBill
+          ? null
+          : (hasPaymentMode ? new Date().toISOString() : null),
+        billing_status: isBrandDealerBill ? 'due' : customerPaymentStatus,
         bill_generated: true,
         bill_generated_at: new Date().toISOString(),
         bill_number,

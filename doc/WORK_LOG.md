@@ -3,6 +3,26 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-20 19:41:10 +05:30] Change: Keep completion gated by photos, make billing fields optional
+
+- Summary: Updated Generate Bill & Complete flow so the button is enabled based on required photo uploads, while visit charge, service charge, and payment mode remain optional.
+- Work done:
+  - Updated billing UI labels to mark visit/service charges and payment mode as optional.
+  - Added optional payment mode behavior in UI with `Select later (mark as due)`.
+  - Kept completion gating based on required photo checklist.
+  - Updated billing API for out-of-warranty jobs to allow missing payment mode:
+    - if payment mode provided -> payment/billing status `paid`
+    - if not provided -> payment/billing status `due`
+  - Preserved combined action behavior (generate bill + complete job).
+- Files changed:
+  - web/components/subjects/BillingSection.tsx
+  - web/app/api/subjects/[id]/billing/route.ts
+- Verification:
+  - VS Code diagnostics: no errors in edited files.
+  - Targeted ESLint: `npx eslint components/subjects/BillingSection.tsx app/api/subjects/[id]/billing/route.ts hooks/subjects/useBilling.ts` -> `LINT_OK`.
+- Next:
+  - Verify with technician flow that uploading required photos alone enables final completion with optional charges.
+
 ## [2026-03-20 19:33:02 +05:30] Fix: Required upload items failed to load in browser
 
 - Summary: Fixed the `Unable to load required upload items.` state by moving workflow requirement reads from direct server-side module calls in a client hook to a proper API GET endpoint.
