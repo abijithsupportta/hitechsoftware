@@ -311,6 +311,86 @@ export async function getSubjectById(id: string) {
     .single();
 }
 
+/**
+ * Get subject by ID using admin client (bypasses RLS).
+ * Used server-side for internal operations like status transitions.
+ */
+export async function getSubjectByIdAdmin(id: string) {
+  const admin = createAdminClient();
+  return admin
+    .from('subjects')
+    .select(
+      `
+      id,
+      subject_number,
+      source_type,
+      brand_id,
+      dealer_id,
+      assigned_technician_id,
+      priority,
+      priority_reason,
+      status,
+      allocated_date,
+      technician_allocated_date,
+      technician_allocated_notes,
+      technician_acceptance_status,
+      technician_rejection_reason,
+      rejected_by_technician_id,
+      is_rejected_pending_reschedule,
+      en_route_at,
+      arrived_at,
+      work_started_at,
+      completed_at,
+      incomplete_at,
+      incomplete_reason,
+      incomplete_note,
+      spare_parts_requested,
+      spare_parts_quantity,
+      completion_proof_uploaded,
+      completion_notes,
+      rescheduled_date,
+      type_of_service,
+      category_id,
+      customer_phone,
+      customer_name,
+      customer_address,
+      product_name,
+      serial_number,
+      product_description,
+      purchase_date,
+      warranty_period_months,
+      warranty_end_date,
+      warranty_status,
+      amc_end_date,
+      service_charge_type,
+      is_amc_service,
+      is_warranty_service,
+      billing_status,
+      visit_charge,
+      service_charge,
+      accessories_total,
+      grand_total,
+      payment_mode,
+      payment_collected,
+      payment_collected_at,
+      bill_generated,
+      bill_generated_at,
+      bill_number,
+      created_by,
+      assigned_by,
+      created_at,
+      brands:brand_id(name),
+      dealers:dealer_id(name),
+      rejected_by_profile:rejected_by_technician_id(display_name),
+      service_categories:category_id(name),
+      subject_photos(id,photo_type,storage_path,public_url,uploaded_by,uploaded_at,file_size_bytes,mime_type)
+      `,
+    )
+    .eq('id', id)
+    .eq('is_deleted', false)
+    .single();
+}
+
 export async function getSubjectTimeline(subjectId: string) {
   return supabase
     .from('subject_status_history')

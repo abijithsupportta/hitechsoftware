@@ -13,6 +13,7 @@ import {
 } from '@/repositories/photo.repository';
 import {
   getSubjectById as getSubjectRepo,
+  getSubjectByIdAdmin,
   markArrived as repoMarkArrived,
   markInProgress as repoMarkInProgress,
 } from '@/repositories/subject.repository';
@@ -31,17 +32,26 @@ export async function updateJobStatus(
   technicianId: string,
   newStatus: string,
 ): Promise<ServiceResult<{ id: string; status: string }>> {
-  // Get current subject
-  const subjectResult = await getSubjectRepo(subjectId);
+  // Get current subject using admin client (bypasses RLS)
+  // This is crucial - browser client with RLS may not see the subject
+  const subjectResult = await getSubjectByIdAdmin(subjectId);
   if (subjectResult.error || !subjectResult.data) {
-    return { ok: false, error: { message: 'Subject not found' } };
+    console.log(
+      `[updateJobStatus] Subject query failed: ${subjectResult.error?.message || 'No data returned'}`,
+    );
+    return { ok: false, error: { message: `Subject ${subjectId} not found or inaccessible` } };
   }
 
   const subject = subjectResult.data as { assigned_technician_id: string | null; status: string };
 
   // Verify technician owns this
   if (subject.assigned_technician_id !== technicianId) {
-    return { ok: false, error: { message: 'You are not assigned to this subject' } };
+    return {
+      ok: false,
+      error: {
+        message: `Cannot update status: you are not the assigned technician for this subject. (Assigned to: ${subject.assigned_technician_id})`,
+      },
+    };
   }
 
   // Map display status to enum (ALLOCATED -> ACCEPTED already done, but ensure in_progress exists)
@@ -49,7 +59,12 @@ export async function updateJobStatus(
   const allowedNextStates = VALID_TRANSITIONS[currentStatus] ?? [];
 
   if (!allowedNextStates.includes(newStatus)) {
-    return { ok: false, error: { message: `Cannot transition from ${currentStatus} to ${newStatus}` } };
+    return {
+      ok: false,
+      error: {
+        message: `Cannot mark as ${newStatus.toLowerCase()}: current status is ${currentStatus}. Allowed transitions: ${allowedNextStates.join(', ') || 'none'}`,
+      },
+    };
   }
 
   // Determine timestamp column to set
@@ -83,7 +98,8 @@ export async function updateJobStatus(
 }
 
 export async function getRequiredPhotos(subjectId: string): Promise<ServiceResult<PhotoType[]>> {
-  const subjectResult = await getSubjectRepo(subjectId);
+  // Use admin client to bypass RLS - this function is server-side only
+  const subjectResult = await getSubjectByIdAdmin(subjectId);
   if (subjectResult.error || !subjectResult.data) {
     return { ok: false, error: { message: 'Subject not found' } };
   }
@@ -197,15 +213,20 @@ export async function markJobIncomplete(
   technicianId: string,
   input: IncompleteJobInput,
 ): Promise<ServiceResult<{ id: string; status: string }>> {
-  // Verify technician owns subject
-  const subjectResult = await getSubjectRepo(subjectId);
+  // Verify technician owns subject using admin client (bypasses RLS)
+  const subjectResult = await getSubjectByIdAdmin(subjectId);
   if (subjectResult.error || !subjectResult.data) {
     return { ok: false, error: { message: 'Subject not found' } };
   }
 
   const subject = subjectResult.data as { assigned_technician_id: string | null };
   if (subject.assigned_technician_id !== technicianId) {
-    return { ok: false, error: { message: 'You are not assigned to this subject' } };
+    return {
+      ok: false,
+      error: {
+        message: `Cannot mark incomplete: you are not the assigned technician for this subject. (Assigned to: ${subject.assigned_technician_id})`,
+      },
+    };
   }
 
   // Validate reason
@@ -303,8 +324,8 @@ export async function markJobComplete(
     };
   }
 
-  // Verify technician owns subject
-  const subjectResult = await getSubjectRepo(subjectId);
+  // Verify technician owns subject using admin client (bypasses RLS)
+  const subjectResult = await getSubjectByIdAdmin(subjectId);
   if (subjectResult.error || !subjectResult.data) {
     return { ok: false, error: { message: 'Subject not found' } };
   }
@@ -315,7 +336,12 @@ export async function markJobComplete(
   };
 
   if (subject.assigned_technician_id !== technicianId) {
-    return { ok: false, error: { message: 'You are not assigned to this subject' } };
+    return {
+      ok: false,
+      error: {
+        message: `Cannot mark complete: you are not the assigned technician for this subject. (Assigned to: ${subject.assigned_technician_id})`,
+      },
+    };
   }
 
   const admin = createAdminClient();

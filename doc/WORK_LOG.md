@@ -3,6 +3,56 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-20 18:07:15 +05:30] CRITICAL FIX: Workflow API 400 "Subject not found" root cause analysis and resolution
+
+- Summary: Technician marking job as "arrived" was receiving 400 Bad Request with "Subject not found" error. Root cause was identified in the service layer using browser client instead of admin client, causing RLS policies to block subject queries. Fixed by adding admin-client versions of repository functions and updating service layer.
+
+- **Root cause identified (Investigation Step 2):**
+  - The workflow API route uses admin client correctly at step 6 to verify subject exists
+  - However, the service function `updateJobStatus()` was calling `getSubjectRepo()` which uses the **browser client** with RLS
+  - When browser client queries subjects table, RLS policies apply and may not return results
+  - Service function saw null result and returned "Subject not found"
+  - This despite the subject existing (verified by admin client in API route step 6!)
+
+- Work done:
+  1. **Added admin-client version of getSubjectById** in `web/repositories/subject.repository.ts`:
+     - New function `getSubjectByIdAdmin()` uses admin client (bypasses RLS)
+     - Used for server-side operations where RLS doesn't apply
+  2. **Updated service functions** in `web/modules/subjects/subject.job-workflow.ts`:
+     - Imported `getSubjectByIdAdmin` from repository
+     - Updated `updateJobStatus()` to use `getSubjectByIdAdmin()` instead of browser-client `getSubjectRepo()`
+     - Updated `getRequiredPhotos()` to use `getSubjectByIdAdmin()`
+     - Updated `markJobIncomplete()` to use `getSubjectByIdAdmin()`
+     - Updated `markJobComplete()` to use `getSubjectByIdAdmin()`
+     - Enhanced error messages with specific details (e.g., "Cannot mark arrived: current status is PENDING")
+  3. **Created RLS migration** in `supabase/migrations/20260320_014_technician_rls_workflow.sql`:
+     - Added policy `technician_update_own_subject_workflow` to allow technicians to UPDATE subjects assigned to them
+     - Provides secondary security layer (admin client bypasses anyway, but good practice)
+
+- Files changed:
+  - web/repositories/subject.repository.ts — Added `getSubjectByIdAdmin()` function
+  - web/modules/subjects/subject.job-workflow.ts — Updated all service functions to use admin client
+  - supabase/migrations/20260320_014_technician_rls_workflow.sql — New RLS policy for technicians
+  - doc/WORK_LOG.md — This entry
+
+- Verification:
+  - `npm run build --workspace=web` ✓ Compiled successfully in 11.4s
+  - All 31 API routes present
+  - No TypeScript errors
+  - Service layer now uses admin client for all internal subject queries
+
+- Testing notes:
+  - Technician should now be able to mark subject as "Arrived" without 400 error
+  - If still failing, check Network tab error response:
+    - If `code: 'SUBJECT_NOT_FOUND'` at step 6 → subject actually doesn't exist
+    - If `code: 'NOT_ASSIGNED_TO_SUBJECT'` → technician not assigned to this subject
+    - If `code: 'WORKFLOW_UPDATE_FAILED'` → check `details` in dev mode for workflow validation errors (status transition not allowed, etc.)
+
+- Next:
+  - Apply RLS migration in Supabase: Copy SQL from `20260320_014_technician_rls_workflow.sql` into SQL editor
+  - Test: Technician logs in → Go to subject → Mark as "Arrived" → Should succeed
+  - Monitor server logs for step-by-step progress checkmarks (✓)
+
 ## [2026-03-20 18:04:22 +05:30] Add structured error handling to job workflow API
 
 - Summary: Technicians marking job as "arrived" were getting vague "Subject not found" errors. Added comprehensive 7-step error handling to distinguish between missing subjects, wrong technician assignment, RLS denials, and database errors.
