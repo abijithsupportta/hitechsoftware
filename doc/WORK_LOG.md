@@ -3,6 +3,30 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-20 15:28:27 +05:30] Feat: Carry-Forward Pending Tasks for Technicians + Pending Visibility on Dashboard
+- Summary: Updated technician and admin dashboard behavior so unfinished assigned tasks remain visible as pending across days until completed/closed, including carry-forward visibility for overdue work.
+- Work done:
+  - Added `technician_pending_only` filter option in subject list filters and propagated it from `useSubjects` when role is technician.
+  - Updated subject repository list query to enforce technician active queue filtering (`status NOT IN (COMPLETED, CANCELLED)`), preventing completed/closed tasks from polluting pending queues.
+  - Removed hard today-only restriction from technician service list page; technician copy now reflects carry-forward pending queue behavior.
+  - Updated technician subject detail access guard to allow overdue pending carry-forward tasks (when not rescheduled), while still blocking non-active records outside today.
+  - Updated technician dashboard card/list from “Today’s Services” to “Pending Services” using pending-queue query.
+  - Added admin/staff dashboard pending subject count by aggregating active/pending status buckets.
+  - API documentation review completed: no API route contract changes were introduced in this task (behavior changed in UI/query filtering only), so `web/docs/API_DOCUMENTATION.md` did not require edits.
+- Files changed:
+  - web/modules/subjects/subject.types.ts
+  - web/hooks/subjects/useSubjects.ts
+  - web/repositories/subject.repository.ts
+  - web/app/dashboard/subjects/page.tsx
+  - web/app/dashboard/subjects/[id]/page.tsx
+  - web/app/dashboard/page.tsx
+  - doc/WORK_LOG.md
+- Verification:
+  - `npm run build --workspace=web` passed successfully (compile + TypeScript + route generation).
+  - `get_errors` check reported no diagnostics for all modified files.
+- Next:
+  - Optional: add a dedicated “Overdue Pending” badge/grouping in subject list for faster technician triage.
+
 ## [2026-03-20 15:21:47 +05:30] Chore: Pre-Inventory Cleanup — Migration Conflict Fix and API Docs Sync
 - Summary: Completed the requested pre-Inventory cleanup by resolving the job workflow migration duplication and syncing API documentation to current implemented web routes.
 - Work done:

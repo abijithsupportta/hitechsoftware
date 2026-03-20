@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { usePermission } from '@/hooks/auth/usePermission';
 import { assignSubjectToTechnician, assignTechnicianWithDate, createSubjectTicket, getSubjectDetails, getSubjects, removeSubject, saveSubjectWarranty, updateSubjectRecord } from '@/modules/subjects/subject.service';
 import { SUBJECT_DEFAULT_PAGE_SIZE, SUBJECT_QUERY_KEYS } from '@/modules/subjects/subject.constants';
 import type { AssignTechnicianInput, CreateSubjectInput, SubjectListFilters, UpdateSubjectInput } from '@/modules/subjects/subject.types';
 import { getAssignableTechnicians } from '@/modules/technicians/technician.service';
 
 export function useSubjects() {
+  const { role } = usePermission();
   const queryClient = useQueryClient();
   const [searchInput, setSearchInput] = useState('');
   const [page, setPage] = useState(1);
@@ -33,10 +35,11 @@ export function useSubjects() {
       from_date: fromDate || undefined,
       to_date: toDate || undefined,
       technician_date: technicianDate || undefined,
+      technician_pending_only: role === 'technician' ? true : undefined,
       page,
       page_size: pageSize,
     };
-  }, [searchInput, sourceType, priority, status, categoryId, brandId, dealerId, fromDate, toDate, technicianDate, page, pageSize]);
+  }, [searchInput, sourceType, priority, status, categoryId, brandId, dealerId, fromDate, toDate, technicianDate, role, page, pageSize]);
 
   const query = useQuery({
     queryKey: [...SUBJECT_QUERY_KEYS.list, filters],

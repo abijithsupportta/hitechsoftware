@@ -29,13 +29,13 @@ export default function DashboardPage() {
 
   const todayAttendanceQuery = useTodayAttendance(user?.id ?? '');
   const toggleAttendanceMutation = useToggleAttendance();
+  const pendingStatuses = ['PENDING', 'ALLOCATED', 'ACCEPTED', 'ARRIVED', 'IN_PROGRESS', 'INCOMPLETE', 'AWAITING_PARTS', 'RESCHEDULED'];
 
-  const technicianTodaySubjectsQuery = useQuery({
-    queryKey: [...SUBJECT_QUERY_KEYS.list, 'technician-dashboard-today', user?.id, today],
+  const technicianPendingSubjectsQuery = useQuery({
+    queryKey: [...SUBJECT_QUERY_KEYS.list, 'technician-dashboard-pending', user?.id],
     queryFn: async () => {
       const result = await getSubjects({
-        from_date: today,
-        to_date: today,
+        technician_pending_only: true,
         page: 1,
         page_size: 50,
       });
@@ -50,10 +50,29 @@ export default function DashboardPage() {
     staleTime: 30 * 1000,
   });
 
+  const adminPendingSubjectsCountQuery = useQuery({
+    queryKey: [...SUBJECT_QUERY_KEYS.list, 'admin-dashboard-pending-count'],
+    queryFn: async () => {
+      const counts = await Promise.all(
+        pendingStatuses.map(async (status) => {
+          const result = await getSubjects({ status, page: 1, page_size: 1 });
+          if (!result.ok) {
+            throw new Error(result.error.message);
+          }
+          return result.data.total;
+        }),
+      );
+
+      return counts.reduce((sum, value) => sum + value, 0);
+    },
+    enabled: userRole !== 'technician',
+    staleTime: 30 * 1000,
+  });
+
   if (userRole === 'technician') {
     const todayAttendance = todayAttendanceQuery.data?.ok ? todayAttendanceQuery.data.data : null;
     const isOnline = Boolean(todayAttendance?.toggled_on_at) && !todayAttendance?.toggled_off_at;
-    const todaysSubjects = technicianTodaySubjectsQuery.data ?? [];
+    const pendingSubjects = technicianPendingSubjectsQuery.data ?? [];
 
     return (
       <div className="p-4 md:p-6">
@@ -86,9 +105,9 @@ export default function DashboardPage() {
           </div>
 
           <div className="rounded-2xl border border-ht-border bg-white p-5 shadow-sm">
-            <p className="text-sm font-medium text-ht-text-500">Today&apos;s Services</p>
-            <p className="mt-2 text-2xl font-bold text-ht-text-900">{technicianTodaySubjectsQuery.isLoading ? '...' : todaysSubjects.length}</p>
-            <p className="mt-1 text-sm text-slate-600">Only current day assigned services are listed.</p>
+            <p className="text-sm font-medium text-ht-text-500">Pending Services</p>
+            <p className="mt-2 text-2xl font-bold text-ht-text-900">{technicianPendingSubjectsQuery.isLoading ? '...' : pendingSubjects.length}</p>
+            <p className="mt-1 text-sm text-slate-600">Includes carry-forward unfinished tasks not yet completed or closed.</p>
             <Link href={ROUTES.DASHBOARD_SUBJECTS} className="mt-4 inline-flex items-center text-sm font-medium text-ht-blue-600 hover:text-ht-navy-800">
               Open Service List
               <ArrowRight size={16} className="ml-2" />
@@ -97,14 +116,14 @@ export default function DashboardPage() {
         </div>
 
         <div className="mt-4 rounded-2xl border border-ht-border bg-white p-5 shadow-sm">
-          <h2 className="text-base font-semibold text-ht-text-900">Assigned Subject Numbers for Today</h2>
-          {technicianTodaySubjectsQuery.isLoading ? (
+          <h2 className="text-base font-semibold text-ht-text-900">Your Pending Subject Numbers</h2>
+          {technicianPendingSubjectsQuery.isLoading ? (
             <p className="mt-2 text-sm text-slate-500">Loading...</p>
-          ) : todaysSubjects.length === 0 ? (
-            <p className="mt-2 text-sm text-slate-500">No services assigned for today.</p>
+          ) : pendingSubjects.length === 0 ? (
+            <p className="mt-2 text-sm text-slate-500">No pending services assigned.</p>
           ) : (
             <div className="mt-3 flex flex-wrap gap-2">
-              {todaysSubjects.map((subject) => (
+              {pendingSubjects.map((subject) => (
                 <Link
                   key={subject.id}
                   href={ROUTES.DASHBOARD_SUBJECTS_DETAIL(subject.id)}
@@ -170,7 +189,7 @@ export default function DashboardPage() {
     },
     {
       label: 'Subjects',
-      value: '-',
+      value: adminPendingSubjectsCountQuery.isLoading ? '...' : adminPendingSubjectsCountQuery.data ?? 0,
       icon: ClipboardList,
       href: ROUTES.DASHBOARD_SUBJECTS,
     },

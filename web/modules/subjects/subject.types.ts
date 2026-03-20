@@ -95,6 +95,8 @@ export interface SubjectListFilters {
   to_date?: string;
   /** Filter by technician_allocated_date (used for technician role to see today's assignments) */
   technician_date?: string;
+  /** Restrict technician views to active work queue (non-terminal statuses). */
+  technician_pending_only?: boolean;
   page?: number;
   page_size?: number;
 }

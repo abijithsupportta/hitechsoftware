@@ -69,6 +69,11 @@ export async function listSubjects(filters: SubjectListFilters) {
     query = query.eq('status', filters.status.trim().toUpperCase());
   }
 
+  if (filters.technician_pending_only) {
+    // Active work queue for technicians: keep unfinished tasks visible across days.
+    query = query.not('status', 'in', '(COMPLETED,CANCELLED)');
+  }
+
   if (filters.category_id) {
     query = query.eq('category_id', filters.category_id);
   }

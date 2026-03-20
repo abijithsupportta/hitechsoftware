@@ -45,6 +45,10 @@ function formatDateOnly(value: string | null) {
   return new Date(value).toLocaleDateString('en-GB');
 }
 
+function isTechnicianCarryForwardPending(status: string) {
+  return ['PENDING', 'ALLOCATED', 'ACCEPTED', 'ARRIVED', 'IN_PROGRESS', 'INCOMPLETE', 'AWAITING_PARTS', 'RESCHEDULED'].includes(status);
+}
+
 export default function SubjectDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
@@ -122,12 +126,16 @@ export default function SubjectDetailPage() {
   if (userRole === 'technician') {
     const todayDate = new Date().toISOString().split('T')[0];
     const effectiveServiceDate = subject.technician_allocated_date ?? subject.allocated_date;
+    const isOverdue = effectiveServiceDate < todayDate;
+    const isCarryForwardVisible = isOverdue
+      && isTechnicianCarryForwardPending(subject.status)
+      && !subject.rescheduled_date;
 
-    if (effectiveServiceDate !== todayDate) {
+    if (effectiveServiceDate !== todayDate && !isCarryForwardVisible) {
       return (
         <div className="p-6">
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800">
-            Only current day allocated service details are visible to technicians.
+            This service is not in your active pending queue for today.
           </div>
         </div>
       );

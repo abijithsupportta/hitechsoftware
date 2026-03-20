@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { Filter, Plus } from 'lucide-react';
@@ -100,7 +100,6 @@ export default function SubjectsDashboardPage() {
   const { can, role } = usePermission();
   const queryClient = useQueryClient();
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  const today = new Date().toISOString().split('T')[0];
   const brands = useBrands();
   const dealers = useDealers();
   const categories = useServiceCategories();
@@ -133,16 +132,6 @@ export default function SubjectsDashboardPage() {
     setPage,
     setPageSize,
   } = useSubjects();
-
-  useEffect(() => {
-    if (role !== 'technician') {
-      return;
-    }
-
-    if (technicianDate !== today) {
-      setTechnicianDate(today);
-    }
-  }, [role, setTechnicianDate, technicianDate, today]);
 
   const advancedFilterCount = [
     sourceType !== 'all',
@@ -179,7 +168,7 @@ export default function SubjectsDashboardPage() {
         <h1 className="text-2xl font-bold text-slate-900">Service Subjects</h1>
         <p className="mt-1 text-sm text-slate-600">
           {role === 'technician'
-            ? "Showing only today's allocated services for technicians."
+            ? 'Showing your pending assigned services, including carry-forward unfinished tasks.'
             : 'Filter, track, and audit all service subjects.'}
         </p>
       </div>
