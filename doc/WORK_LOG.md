@@ -3,6 +3,29 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-20 17:22:23 +05:30] Fix: Auth createUser database error for team member creation
+
+- Summary: Super admin team-member creation was still failing at auth step with `Auth user creation failed: Database error creating new user`.
+- Work done:
+  - Hardened auth trigger migration in `20260320_012_auto_create_profile_on_auth.sql`:
+    - Added safe role parsing from `raw_user_meta_data` with enum validation and fallback.
+    - Switched trigger write to `ON CONFLICT (id) DO UPDATE` for idempotency.
+    - Added required grants for auth trigger execution:
+      - `GRANT USAGE ON SCHEMA public TO supabase_auth_admin;`
+      - `GRANT EXECUTE ON FUNCTION public.handle_new_user() TO supabase_auth_admin;`
+    - Added `SET search_path = public` for safer trigger execution.
+  - Updated `POST /api/team/members` flow in `web/app/api/team/members/route.ts`:
+    - `admin.auth.admin.createUser` now sends `user_metadata` (`display_name`, `role`) so trigger gets valid metadata.
+    - Changed profile write from `insert` to `upsert` with `onConflict: 'id'` so route works whether trigger pre-created profile or not.
+- Files changed:
+  - supabase/migrations/20260320_012_auto_create_profile_on_auth.sql
+  - web/app/api/team/members/route.ts
+  - doc/WORK_LOG.md
+- Verification:
+  - `npm run build --workspace=web` passed successfully.
+- Next:
+  - Apply migration SQL in Supabase environment (required for runtime fix).
+
 ## [2026-03-20 17:09:37 +05:30] Implement comprehensive error handling and detailed error messages
 
 - Summary: Replaced vague error messages with detailed, multi-step error reporting in team member creation API. Goal: enable clear debugging by showing WHAT failed, WHY it failed, WHERE in the process, and HOW to fix it. New error response format includes structured error codes, user-friendly messages, and (in dev mode) detailed debugging information.

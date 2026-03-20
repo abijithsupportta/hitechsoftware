@@ -184,6 +184,10 @@ export async function POST(request: Request) {
     email: parsed.data.email,
     password: parsed.data.password,
     email_confirm: true,
+    user_metadata: {
+      display_name: parsed.data.display_name,
+      role: parsed.data.role,
+    },
   });
 
   if (authCreate.error || !authCreate.data.user) {
@@ -216,7 +220,7 @@ export async function POST(request: Request) {
   console.log('[TEAM/MEMBERS API] 5. Creating profile...', { userId, role: parsed.data.role });
   const profileInsert = await admin
     .from('profiles')
-    .insert({
+    .upsert({
       id: userId,
       email: parsed.data.email,
       display_name: parsed.data.display_name,
@@ -224,7 +228,7 @@ export async function POST(request: Request) {
       role: parsed.data.role,
       is_active: parsed.data.is_active ?? true,
       is_deleted: false,
-    })
+    }, { onConflict: 'id' })
     .select('id,email,display_name,phone_number,role,is_active,is_deleted,created_at,updated_at')
     .single();
 
