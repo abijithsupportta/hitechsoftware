@@ -3,6 +3,25 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-20 20:39:10 +05:30] Enhancement: auto-compress uploaded images and clarify preview/remove flow
+
+- Summary: Added client-side image compression before upload (targeting roughly 90% reduction when possible) and reinforced that uploaded items are visible and removable in billing.
+- Work done:
+  - Implemented browser-side image compression in billing upload flow using canvas/webp conversion.
+  - Added iterative compression strategy (quality + resolution reduction) targeting about 10% of original size where possible.
+  - Kept video uploads unchanged.
+  - Updated upload handler to send compressed image files to upload API.
+  - Added helper text in UI stating images are auto-compressed before upload.
+  - Added explicit UI hint that uploaded media previews can be removed with the X action.
+- Files changed:
+  - web/components/subjects/BillingSection.tsx
+- Verification:
+  - VS Code diagnostics: no TypeScript/compile errors in edited file.
+- Issues:
+  - none
+- Next:
+  - If needed, we can show original vs compressed file size in the UI before upload.
+
 ## [2026-03-20 20:31:18 +05:30] UX: customer-chargeable billing highlighted in light yellow with payment guidance
 
 - Summary: Updated billing UI so customer-chargeable jobs are clearly understandable with a light-yellow theme and explicit payment collection guidance.
