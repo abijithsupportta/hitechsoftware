@@ -1,8 +1,10 @@
 'use client';
 
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
-import type { PaymentMode, SubjectDetail } from '@/modules/subjects/subject.types';
+import { AlertCircle, Upload, Video, X } from 'lucide-react';
+import type { PaymentMode, SubjectDetail, SubjectPhoto } from '@/modules/subjects/subject.types';
+import { SUBJECT_QUERY_KEYS } from '@/modules/subjects/subject.constants';
 import { PAYMENT_MODES } from '@/modules/subjects/subject.constants';
 import {
   useDownloadBill,
@@ -11,9 +13,7 @@ import {
   useSubjectBill,
   useUpdateBillPaymentStatus,
 } from '@/hooks/subjects/useBilling';
-import { useJobWorkflow } from '@/hooks/subjects/use-job-workflow';
 import { BillCard } from '@/components/subjects/BillCard';
-import { PhotoUploadGrid } from '@/components/subjects/photo-upload-grid';
 
 interface Props {
   subject: SubjectDetail;
@@ -29,21 +29,17 @@ function formatMoney(value: number) {
 }
 
 export function BillingSection({ subject, userRole, userId }: Props) {
+  const queryClient = useQueryClient();
   const accessoriesQuery = useSubjectAccessories(subject.id);
   const billQuery = useSubjectBill(subject.id);
   const generateMutation = useGenerateBill(subject.id);
   const updatePaymentMutation = useUpdateBillPaymentStatus(subject.id);
   const downloadBill = useDownloadBill();
-  const {
-    completionRequirements,
-    isLoadingRequirements,
-    uploadPhotoAsync,
-    removePhotoAsync,
-  } = useJobWorkflow(subject.id);
 
   const [visitCharge, setVisitCharge] = useState(subject.visit_charge ?? 0);
   const [serviceCharge, setServiceCharge] = useState(subject.service_charge ?? 0);
   const [paymentMode, setPaymentMode] = useState<PaymentMode | ''>('');
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const isOutOfWarranty = !subject.is_warranty_service && !subject.is_amc_service;
   const isAssignedTechnician = userRole === 'technician' && userId === subject.assigned_technician_id;
@@ -52,8 +48,63 @@ export function BillingSection({ subject, userRole, userId }: Props) {
 
   const accessories = accessoriesQuery.data?.items ?? [];
   const accessoriesTotal = accessoriesQuery.data?.total ?? 0;
-  const canGenerateAndComplete = canGenerate && (completionRequirements?.canComplete ?? false);
-  const [uploadAttempted, setUploadAttempted] = useState(false);
+  const uploadedMedia = subject.photos ?? [];
+  const canGenerateAndComplete = canGenerate && uploadedMedia.length > 0;
+
+  const uploadMediaMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('photoType', file.type.startsWith('video/') ? 'service_video' : 'machine');
+
+      const res = await fetch(`/api/subjects/${subject.id}/photos/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const json = await res.json() as {
+        ok: boolean;
+        error?: { userMessage?: string; message?: string };
+      };
+
+      if (!json.ok) {
+        throw new Error(json.error?.userMessage ?? json.error?.message ?? 'Failed to upload media');
+      }
+    },
+    onSuccess: () => {
+      setUploadError(null);
+      queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(subject.id) });
+    },
+    onError: (err: Error) => {
+      setUploadError(err.message);
+    },
+  });
+
+  const removeMediaMutation = useMutation({
+    mutationFn: async (photo: SubjectPhoto) => {
+      const res = await fetch(`/api/subjects/${subject.id}/photos`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ photoId: photo.id, storagePath: photo.storage_path }),
+      });
+
+      const json = await res.json() as {
+        ok: boolean;
+        error?: { userMessage?: string; message?: string };
+      };
+
+      if (!json.ok) {
+        throw new Error(json.error?.userMessage ?? json.error?.message ?? 'Failed to remove media');
+      }
+    },
+    onSuccess: () => {
+      setUploadError(null);
+      queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(subject.id) });
+    },
+    onError: (err: Error) => {
+      setUploadError(err.message);
+    },
+  });
 
   const grandTotal = useMemo(() => {
     return Number(visitCharge || 0) + Number(serviceCharge || 0) + Number(accessoriesTotal || 0);
@@ -91,55 +142,95 @@ export function BillingSection({ subject, userRole, userId }: Props) {
           <div className="rounded-lg border border-slate-200 bg-white p-4">
             <div className="mb-3 flex items-center gap-2">
               <AlertCircle className="h-4 w-4 text-amber-600" />
-              <p className="text-sm font-semibold text-slate-900">Required Photos Before Billing</p>
+              <p className="text-sm font-semibold text-slate-900">Upload Documents / Photos / Videos</p>
             </div>
 
-            {isLoadingRequirements ? (
-              <p className="text-sm text-slate-500">Loading required upload items...</p>
-            ) : completionRequirements ? (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-xs font-medium text-slate-600">
-                  <span>
-                    Uploaded {completionRequirements.uploaded.length} of {completionRequirements.required.length}
-                  </span>
-                  <span>
-                    {completionRequirements.canComplete ? 'Ready for billing' : 'Upload remaining items'}
-                  </span>
-                </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-xs font-medium text-slate-600">
+                <span>Uploaded {uploadedMedia.length} of 12 items</span>
+                <span>{uploadedMedia.length > 0 ? 'Ready for billing' : 'Upload at least one item'}</span>
+              </div>
 
-                <div className="h-2 overflow-hidden rounded-full bg-slate-200">
-                  <div
-                    className="h-full bg-emerald-500 transition-all"
-                    style={{
-                      width: `${
-                        completionRequirements.required.length > 0
-                          ? (completionRequirements.uploaded.length / completionRequirements.required.length) * 100
-                          : 0
-                      }%`,
+              <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+                <div
+                  className="h-full bg-emerald-500 transition-all"
+                  style={{ width: `${Math.min(100, (uploadedMedia.length / 12) * 100)}%` }}
+                />
+              </div>
+
+              <div className="flex items-center gap-3">
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                  <Upload className="h-4 w-4" />
+                  <span>{uploadMediaMutation.isPending ? 'Uploading...' : 'Upload Media'}</span>
+                  <input
+                    type="file"
+                    className="hidden"
+                    disabled={uploadMediaMutation.isPending || uploadedMedia.length >= 12}
+                    multiple
+                    accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime"
+                    onChange={async (event) => {
+                      const files = Array.from(event.currentTarget.files ?? []);
+                      event.currentTarget.value = '';
+
+                      if (files.length === 0) return;
+
+                      const availableSlots = Math.max(0, 12 - uploadedMedia.length);
+                      if (availableSlots === 0) {
+                        setUploadError('Maximum 12 uploads allowed for one job.');
+                        return;
+                      }
+
+                      const filesToUpload = files.slice(0, availableSlots);
+                      for (const file of filesToUpload) {
+                        try {
+                          await uploadMediaMutation.mutateAsync(file);
+                        } catch {
+                          break;
+                        }
+                      }
                     }}
                   />
-                </div>
+                </label>
+                <span className="text-xs text-slate-500">Maximum 12 items</span>
+              </div>
 
-                <PhotoUploadGrid
-                  requiredTypes={completionRequirements.required}
-                  uploadedTypes={completionRequirements.uploaded}
-                  photos={subject.photos}
-                  canEdit={subject.status !== 'COMPLETED'}
-                  uploadAttempted={uploadAttempted}
-                  onUpload={uploadPhotoAsync}
-                  onRemove={removePhotoAsync}
-                />
+              {uploadError && (
+                <p className="text-xs text-rose-600">{uploadError}</p>
+              )}
 
-                {completionRequirements.canComplete && (
-                  <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-                    <CheckCircle2 className="h-4 w-4" />
-                    <span>All required photos uploaded. You can now generate the bill and complete the job.</span>
-                  </div>
+              <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                {uploadedMedia.length === 0 ? (
+                  <p className="col-span-full rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-500">
+                    No uploads yet. Add at least one photo/video before generating bill.
+                  </p>
+                ) : (
+                  uploadedMedia.map((item) => {
+                    const isVideo = item.mime_type?.startsWith('video/');
+                    return (
+                      <div key={item.id} className="group relative overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                        {isVideo ? (
+                          <div className="relative flex h-24 items-center justify-center bg-slate-200">
+                            <Video className="h-6 w-6 text-slate-600" />
+                          </div>
+                        ) : (
+                          <img src={item.public_url} alt="Uploaded item" className="h-24 w-full object-cover" />
+                        )}
+                        {subject.status !== 'COMPLETED' && (
+                          <button
+                            type="button"
+                            className="absolute right-1 top-1 rounded-full bg-rose-600 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                            onClick={() => removeMediaMutation.mutate(item)}
+                            disabled={removeMediaMutation.isPending}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })
                 )}
               </div>
-            ) : (
-              <p className="text-sm text-slate-500">Unable to load required upload items.</p>
-            )}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -201,10 +292,10 @@ export function BillingSection({ subject, userRole, userId }: Props) {
 
           <button
             type="button"
-            disabled={generateMutation.isPending || isLoadingRequirements}
+            disabled={generateMutation.isPending || uploadMediaMutation.isPending || uploadedMedia.length === 0}
             onClick={() => {
               if (!canGenerateAndComplete) {
-                setUploadAttempted(true);
+                setUploadError('Upload at least one photo or video before generating bill.');
                 return;
               }
 
@@ -224,7 +315,7 @@ export function BillingSection({ subject, userRole, userId }: Props) {
             {generateMutation.isPending ? 'Generating Bill & Completing Job...' : 'Generate Bill & Complete Job'}
           </button>
           <p className="text-xs text-slate-600">
-            Button activates when required photos are uploaded. Charges and payment mode are optional.
+            Charges and payment mode are optional. Upload at least one media item to continue.
           </p>
         </div>
       )}

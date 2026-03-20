@@ -4,9 +4,7 @@ import { useState } from 'react';
 import { MapPin, Wrench, CheckCircle2, XCircle, Clock, AlertCircle } from 'lucide-react';
 import { useJobWorkflow } from '@/hooks/subjects/use-job-workflow';
 import { CannotCompleteModal } from '@/components/subjects/cannot-complete-modal';
-import { CompleteJobPanel } from '@/components/subjects/complete-job-panel';
 import { PhotoGallery } from '@/components/subjects/photo-gallery';
-import { PhotoUploadGrid } from '@/components/subjects/photo-upload-grid';
 import { INCOMPLETE_REASONS } from '@/modules/subjects/subject.constants';
 import type { SubjectDetail } from '@/modules/subjects/subject.types';
 
@@ -50,23 +48,15 @@ const TIMESTAMP_MAP: Partial<Record<string, keyof SubjectDetail>> = {
 const WORKFLOW_STATUSES = new Set(['ACCEPTED', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED', 'INCOMPLETE', 'AWAITING_PARTS']);
 
 export function JobWorkflowSection({ subject, userRole, userId }: Props) {
-  const [showCompletePanel, setShowCompletePanel] = useState(false);
   const [showIncompleteModal, setShowIncompleteModal] = useState(false);
 
   const isAssignedTechnician = userRole === 'technician' && userId === subject.assigned_technician_id;
 
   const {
-    completionRequirements,
-    isLoadingRequirements,
     updateStatus,
     isUpdatingStatus,
-    uploadPhotoAsync,
-    removePhotoAsync,
     markIncomplete,
     isMarkingIncomplete,
-    markComplete,
-    isMarkingComplete,
-    markCompleteError,
   } = useJobWorkflow(subject.id);
 
   // Only render for workflow-relevant statuses
@@ -152,20 +142,13 @@ export function JobWorkflowSection({ subject, userRole, userId }: Props) {
               <>
                 <button
                   type="button"
-                  onClick={() => setShowCompletePanel(true)}
-                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
-                >
-                  <CheckCircle2 className="h-4 w-4" />
-                  Complete Job
-                </button>
-                <button
-                  type="button"
                   onClick={() => setShowIncompleteModal(true)}
                   className="inline-flex items-center gap-2 rounded-lg border border-rose-300 bg-white px-5 py-2.5 text-sm font-semibold text-rose-700 hover:bg-rose-50"
                 >
                   <XCircle className="h-4 w-4" />
                   Cannot Complete
                 </button>
+                <p className="text-sm text-slate-600">Use the Billing section below to upload media, add charges/items, generate bill, and complete the job.</p>
               </>
             )}
 
@@ -182,47 +165,7 @@ export function JobWorkflowSection({ subject, userRole, userId }: Props) {
         )}
       </div>
 
-      {/* ── PART B: Photo Upload Section (during IN_PROGRESS) ──────────────── */}
-      {isAssignedTechnician && subject.status === 'IN_PROGRESS' && completionRequirements && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
-          <div className="mb-4 flex items-center gap-2">
-            <AlertCircle className="h-5 w-5 text-amber-600" />
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-amber-800">Upload Required Photos</h3>
-          </div>
-          
-          {/* Progress indicator */}
-          <div className="mb-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-amber-700">
-                {completionRequirements.uploaded.length} of {completionRequirements.required.length} uploaded
-              </span>
-            </div>
-            <div className="h-2 bg-amber-200 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-emerald-500 transition-all"
-                style={{
-                  width: `${
-                    completionRequirements.required.length > 0
-                      ? (completionRequirements.uploaded.length / completionRequirements.required.length) * 100
-                      : 0
-                  }%`,
-                }}
-              />
-            </div>
-          </div>
-
-          <PhotoUploadGrid
-            requiredTypes={completionRequirements.required}
-            uploadedTypes={completionRequirements.uploaded}
-            photos={subject.photos}
-            canEdit
-            onUpload={uploadPhotoAsync}
-            onRemove={removePhotoAsync}
-          />
-        </div>
-      )}
-
-      {uploadAvailabilityMessage && subject.status !== 'COMPLETED' && (
+      {uploadAvailabilityMessage && subject.status !== 'COMPLETED' && subject.status !== 'IN_PROGRESS' && (
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
           <div className="flex items-start gap-2">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
@@ -365,24 +308,6 @@ export function JobWorkflowSection({ subject, userRole, userId }: Props) {
           });
         }}
       />
-
-      {showCompletePanel && (
-        <CompleteJobPanel
-          subject={subject}
-          requirements={completionRequirements}
-          isLoadingRequirements={isLoadingRequirements}
-          isConfirming={isMarkingComplete}
-          confirmError={markCompleteError}
-          onUploadPhoto={uploadPhotoAsync}
-          onRemovePhoto={removePhotoAsync}
-          onConfirmComplete={(notes) => {
-            markComplete(notes, {
-              onSuccess: () => setShowCompletePanel(false),
-            });
-          }}
-          onClose={() => setShowCompletePanel(false)}
-        />
-      )}
     </div>
   );
 }

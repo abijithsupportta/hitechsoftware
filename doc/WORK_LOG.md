@@ -3,6 +3,30 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-20 20:06:12 +05:30] Workflow simplification: single media upload section before billing + completion
+
+- Summary: Simplified the technician completion flow to one upload area only (inside Billing) with one Upload Media button, uploaded media gallery, 12-item max, then optional charges/items and Generate Bill & Complete.
+- Work done:
+  - Removed separate in-workflow upload section and separate complete-job modal usage from job workflow flow.
+  - Updated workflow action area to direct technicians to Billing for the complete end-to-end process.
+  - Reworked Billing section upload area to:
+    - single Upload Media button (images/videos)
+    - uploaded media preview grid
+    - remove button per uploaded item (before completion)
+    - hard UI cap of 12 uploads with inline message
+    - at least one uploaded media required before Generate Bill & Complete
+  - Updated billing API validation to require only at least one uploaded media item (not specific named photo types).
+- Files changed:
+  - web/components/subjects/BillingSection.tsx
+  - web/components/subjects/job-workflow-section.tsx
+  - web/app/api/subjects/[id]/billing/route.ts
+- Verification:
+  - VS Code diagnostics: no compile/type errors in edited files.
+  - Targeted ESLint: no errors (single non-blocking `<img>` performance warning in billing gallery).
+  - Full production build: `npm run build` completed successfully.
+- Next:
+  - If needed, we can replace gallery `<img>` with `next/image` to remove the warning.
+
 ## [2026-03-20 19:56:40 +05:30] Redesign: Mobile-first photo upload card grid across workflow and billing
 
 - Summary: Replaced the old per-item upload button list with a full card-grid uploader optimized for technicians (tap-card upload, thumbnail states, progress, retry/remove, and submit-attempt highlighting).

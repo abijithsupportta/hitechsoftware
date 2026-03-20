@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { GenerateBillInput, AddAccessoryInput } from '@/modules/subjects/subject.types';
-import { checkCompletionRequirements } from '@/modules/subjects/subject.job-workflow';
 
 interface ErrorResponse {
   step: string;
@@ -286,25 +285,30 @@ export async function POST(
       return NextResponse.json({ ok: false, error }, { status: 400 });
     }
 
-    // Check completion requirements
-    const completionCheck = await checkCompletionRequirements(subjectId);
-    if (!completionCheck.ok) {
+    const photosCountResult = await admin
+      .from('subject_photos')
+      .select('id', { count: 'exact', head: true })
+      .eq('subject_id', subjectId)
+      .eq('is_deleted', false);
+
+    if (photosCountResult.error) {
       const error: ErrorResponse = {
-        step: '6. Check Completion',
-        code: 'COMPLETION_CHECK_FAILED',
-        message: completionCheck.error.message,
-        userMessage: completionCheck.error.message,
+        step: '6. Validate Uploads',
+        code: 'UPLOAD_COUNT_CHECK_FAILED',
+        message: photosCountResult.error.message,
+        userMessage: 'Could not verify uploads. Please try again.',
+        details: isDev ? { dbError: photosCountResult.error.message } : undefined,
       };
       console.log(`[${timestamp}] ✗ Failed:`, error.code);
       return NextResponse.json({ ok: false, error }, { status: 400 });
     }
 
-    if (!completionCheck.data.canComplete) {
+    if ((photosCountResult.count ?? 0) < 1) {
       const error: ErrorResponse = {
-        step: '6. Check Photos',
-        code: 'MISSING_PHOTOS',
-        message: `Missing required photos: ${completionCheck.data.missing.join(', ')}`,
-        userMessage: `Missing required photos: ${completionCheck.data.missing.join(', ')}`,
+        step: '6. Validate Uploads',
+        code: 'NO_UPLOADS',
+        message: 'At least one upload is required before billing',
+        userMessage: 'Upload at least one photo or video before generating bill',
       };
       console.log(`[${timestamp}] ✗ Failed:`, error.code);
       return NextResponse.json({ ok: false, error }, { status: 400 });
