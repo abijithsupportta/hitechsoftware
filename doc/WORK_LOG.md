@@ -3,6 +3,32 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-20 17:08:05 +05:30] Fix: Team member creation database error - improve error handling and RLS
+
+- Summary: Creating new team members (technicians, office staff) was failing with vague "Database error creating new user" message. Root causes: (1) Missing INSERT policy on profiles RLS table, (2) No friendly error messages for constraint violations (email/phone uniqueness), (3) Lack of error logging for debugging.
+- Root causes identified:
+  1. **RLS Missing INSERT Policy**: profiles table had SELECT and UPDATE policies but no INSERT. Added explicit INSERT policy for super_admin role.
+  2. **Unhelpful Error Messages**: Auth, profile, technician insert errors showed raw database/Supabase errors instead of user-friendly messages.
+  3. **No Error Logging**: Server-side error details were not logged, making it impossible to debug production issues.
+  4. **Constraint Violations**: Email/phone uniqueness violations were not identified in error messages.
+- Work done:
+  - Created migration `20260320_013_add_profiles_insert_policy.sql` to add INSERT policy on profiles table for super_admin and system operations
+  - Enhanced error handling in `POST /api/team/members` to:
+    - Log full error details to console (message, code, details)
+    - Return friendly, actionable error messages to client (e.g., "Email already in use" instead of "duplicate key value violates unique constraint")
+    - Identify and handle email/phone/technician_code duplicates
+    - Improved error messages for auth creation failures
+- Files changed:
+  - supabase/migrations/20260320_013_add_profiles_insert_policy.sql (new)
+  - web/app/api/team/members/route.ts
+- Verification:
+  - `npm run build --workspace=web` compiled successfully (✓)
+- Issues encountered: None
+- Next:
+  - Apply migration `20260320_013_add_profiles_insert_policy.sql` via Supabase SQL editor
+  - Retry team member creation and check for new user-friendly error messages
+  - If still failing, check browser Network tab for error response body (now will include detailed message)
+
 ## [2026-03-20 17:00:06 +05:30] Fix: Team member creation failing with 400 Bad Request
 
 - Summary: Creating a new team member (technician, office staff, stock manager) via `/dashboard/team` was returning "Failed to load resource: 400 Bad Request". Root cause: overly strict phone number validation (Indian regex) + schema didn't handle empty phone gracefully + API only returned first error, making debugging hard.

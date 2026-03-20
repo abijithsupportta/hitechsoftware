@@ -59,8 +59,20 @@ export async function POST(request: Request) {
   });
 
   if (authCreate.error || !authCreate.data.user) {
+    const authErrorMsg = authCreate.error?.message ?? 'Failed to create auth user';
+    console.error('[TEAM API] Auth creation error:', {
+      message: authErrorMsg,
+      code: authCreate.error?.code,
+      status: authCreate.error?.status,
+    });
+    
+    let userMessage = authErrorMsg;
+    if (/User already exists/.test(authErrorMsg)) {
+      userMessage = 'Email already registered. Please use a different email.';
+    }
+    
     return NextResponse.json(
-      { ok: false, error: { message: authCreate.error?.message ?? 'Failed to create auth user' } },
+      { ok: false, error: { message: userMessage } },
       { status: 400 },
     );
   }
@@ -83,8 +95,26 @@ export async function POST(request: Request) {
 
   if (profileInsert.error || !profileInsert.data) {
     await admin.auth.admin.deleteUser(userId);
+    const profileErrorMsg = profileInsert.error?.message ?? 'Failed to create profile';
+    // Log full error for debugging
+    console.error('[TEAM API] Profile insert error:', {
+      message: profileErrorMsg,
+      code: profileInsert.error?.code,
+      details: (profileInsert.error as any)?.details,
+    });
+    
+    // Return helpful error messages based on error type
+    let userMessage = profileErrorMsg;
+    if (/duplicate key value violates unique constraint/.test(profileErrorMsg)) {
+      if (/profiles_email_key/.test(profileErrorMsg)) {
+        userMessage = 'Email already in use. Please use a different email address.';
+      } else if (/profiles_phone_number_key/.test(profileErrorMsg)) {
+        userMessage = 'Phone number already in use. Please use a different phone number.';
+      }
+    }
+    
     return NextResponse.json(
-      { ok: false, error: { message: profileInsert.error?.message ?? 'Failed to create profile' } },
+      { ok: false, error: { message: userMessage } },
       { status: 400 },
     );
   }
@@ -109,8 +139,23 @@ export async function POST(request: Request) {
 
     if (technicianInsert.error) {
       await admin.auth.admin.deleteUser(userId);
+      const techErrorMsg = technicianInsert.error.message ?? 'Failed to create technician record';
+      // Log full error for debugging
+      console.error('[TEAM API] Technician insert error:', {
+        message: techErrorMsg,
+        code: technicianInsert.error.code,
+        details: (technicianInsert.error as any)?.details,
+      });
+      
+      let userMessage = techErrorMsg;
+      if (/duplicate key value violates unique constraint/.test(techErrorMsg)) {
+        if (/technicians_technician_code_key/.test(techErrorMsg)) {
+          userMessage = 'Technician code already exists. Please use a unique code.';
+        }
+      }
+      
       return NextResponse.json(
-        { ok: false, error: { message: technicianInsert.error.message } },
+        { ok: false, error: { message: userMessage } },
         { status: 400 },
       );
     }
