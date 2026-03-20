@@ -3,6 +3,22 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-20 15:56:11 +05:30] Feat: Backdated Badge in Subject Rows for Admin Visibility
+- Summary: Added a small `Backdated` badge in subject rows when technician assigned date is earlier than today, helping admin/staff quickly spot manual backdated assignments.
+- Work done:
+  - Updated subjects list row rendering to compute `isBackdatedAssignment` when `technician_allocated_date < today`.
+  - Added conditional `Backdated` badge for non-technician users only.
+  - Kept existing overdue-pending badge logic intact.
+  - API documentation review completed: no backend contract change in this UI-only enhancement, so no update required in `web/docs/API_DOCUMENTATION.md`.
+- Files changed:
+  - web/app/dashboard/subjects/page.tsx
+  - doc/WORK_LOG.md
+- Verification:
+  - `npm run build --workspace=web` passed successfully.
+  - No diagnostics in modified files.
+- Next:
+  - Optional: add tooltip on `Backdated` badge to show exact technician assigned date and who changed it.
+
 ## [2026-03-20 15:54:43 +05:30] Feat: Technician Workflow Alignment — Accept Date/Time + Multi-Part Incomplete Capture
 - Summary: Aligned implementation to confirmed technician workflow by requiring visit date/time on accept and supporting detailed multi-item spare-part capture when job cannot be completed.
 - Work done:

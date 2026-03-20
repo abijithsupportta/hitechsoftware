@@ -598,6 +598,7 @@ export default function SubjectsDashboardPage() {
                   const serviceTypeMeta = getServiceTypeMeta(subject);
                   const needsAttentionBorder = isUnassigned || subject.priority === 'critical';
                   const effectiveDate = subject.technician_allocated_date ?? subject.allocated_date;
+                  const isBackdatedAssignment = Boolean(subject.technician_allocated_date) && effectiveDate < today;
                   const isOverduePending = isPendingStatus(subject.status)
                     && Boolean(subject.technician_allocated_date)
                     && effectiveDate < today;
@@ -621,6 +622,11 @@ export default function SubjectsDashboardPage() {
                         {subject.is_rejected_pending_reschedule && (
                           <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold text-rose-700">
                             ⚠ Reschedule Urgently
+                          </span>
+                        )}
+                        {role !== 'technician' && isBackdatedAssignment && (
+                          <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-800">
+                            Backdated
                           </span>
                         )}
                         {isOverduePending && (
