@@ -139,14 +139,26 @@ export async function POST(
       service_charge_type: string;
     }>();
 
-  if (subjectResult.error || !subjectResult.data) {
+  if (subjectResult.error) {
+    const error: ErrorResponse = {
+      step: '5. Load Subject',
+      code: 'SUBJECT_QUERY_ERROR',
+      message: `Subject query failed: ${subjectResult.error.message}`,
+      userMessage: 'Failed to load subject details. Please try again.',
+      details: isDev ? { dbError: subjectResult.error.message } : undefined,
+    };
+    console.log(`[${timestamp}] ✗ Step 5 failed (database error):`, error.code, subjectResult.error.message);
+    return NextResponse.json({ ok: false, error }, { status: 500 });
+  }
+
+  if (!subjectResult.data) {
     const error: ErrorResponse = {
       step: '5. Load Subject',
       code: 'SUBJECT_NOT_FOUND',
-      message: `Subject ${subjectId} not found`,
+      message: `Subject ${subjectId} does not exist or is deleted`,
       userMessage: 'This subject could not be found',
     };
-    console.log(`[${timestamp}] ✗ Step 5 failed:`, error.code);
+    console.log(`[${timestamp}] ✗ Step 5 failed (not found):`, error.code);
     return NextResponse.json({ ok: false, error }, { status: 404 });
   }
 
@@ -156,7 +168,7 @@ export async function POST(
     const error: ErrorResponse = {
       step: '5. Verify Assignment',
       code: 'NOT_ASSIGNED_TO_SUBJECT',
-      message: `Not assigned to subject ${subjectId}`,
+      message: `Not assigned to subject ${subjectId}. Assigned to: ${subject.assigned_technician_id ?? 'no one'}`,
       userMessage: 'You can only manage billing for subjects assigned to you',
     };
     console.log(`[${timestamp}] ✗ Step 5 failed:`, error.code);

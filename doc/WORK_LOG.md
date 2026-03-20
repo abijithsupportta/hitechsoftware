@@ -3,6 +3,32 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-20 18:50:32 +05:30] Fix: Add missing photo upload UI and improve billing error messages
+
+- Summary: Resolved two issues: (1) Photo upload interface was hidden during IN_PROGRESS status, only appearing when completing the job, making it undiscoverable for technicians; (2) Bill generation error message "This subject could not be found" was generic and unhelpful. Added visible photo upload section during IN_PROGRESS and improved billing API error diagnostics.
+- Work done:
+  1. **Added visible photo upload section to JobWorkflowSection**:
+     - Shows during IN_PROGRESS status (when assigned technician is viewing)
+     - Displays progress bar: "X of Y photos uploaded"
+     - Uses PhotoUploadRow component for each required photo
+     - Shows green success alert when all photos are uploaded
+     - Directly calls uploadPhoto mutation without requiring job completion first
+  2. **Improved billing API error handling**:
+     - Split SUBJECT_NOT_FOUND error into two cases: database query error (500) and actual not-found (404)
+     - Added detailed logging with database error messages for debugging
+     - Clarified assignment verification error to show who subject is assigned to
+     - Better error responses distinguish database errors from missing subjects
+- Files changed:
+  - web/components/subjects/job-workflow-section.tsx
+  - web/app/api/subjects/[id]/billing/route.ts
+- Verification:
+  - TypeScript: No new errors in job-workflow-section.tsx
+  - Photo upload section now visible and functional during IN_PROGRESS
+  - Error messages clearly distinguish between database errors vs not-found
+- Next:
+  - Test photo uploads during IN_PROGRESS status end-to-end
+  - Monitor billing error responses in logs
+
 ## [2026-03-20 18:42:15 +05:30] Migrate billing hooks to API routes
 
 - Summary: Updated billing mutations in useBilling.ts hook to use dedicated API routes instead of direct service function calls. Ensures all billing operations follow the standard API pattern and improves separation of concerns.
