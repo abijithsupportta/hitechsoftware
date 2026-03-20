@@ -3,6 +3,55 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-20 17:09:37 +05:30] Implement comprehensive error handling and detailed error messages
+
+- Summary: Replaced vague error messages with detailed, multi-step error reporting in team member creation API. Goal: enable clear debugging by showing WHAT failed, WHY it failed, WHERE in the process, and HOW to fix it. New error response format includes structured error codes, user-friendly messages, and (in dev mode) detailed debugging information.
+- What was changed:
+  - **Structured Error Responses**: Every error now has:
+    - `step`: Which API step failed (e.g., "4. Create Auth User")
+    - `code`: Machine-readable error code (e.g., "EMAIL_ALREADY_EXISTS")
+    - `message`: Technical error message (raw DB/auth error)
+    - `userMessage`: User-friendly, actionable message (e.g., "Email already registered...")
+    - `details`: Debug info (available in development mode)
+  - **Step-by-step Logging**: Each major step is logged with checkmarks:
+    - ✓ Authorization passed
+    - ✓ JSON parsed
+    - ✓ Input validation
+    - ✓ Auth user created
+    - ✓ Profile created
+    - ✓ (Optional) Technician record created
+  - **Intelligent Error Detection**: System identifies common errors by pattern matching:
+    - Duplicate email/phone in table → specific "EMAIL_DUPLICATE_IN_PROFILE" code
+    - RLS policy denied → "PROFILE_RLS_DENIED" code with clear message
+    - Technician code duplicate → "TECHNICIAN_CODE_DUPLICATE" code
+    - Invalid validation → lists all fields with errors
+  - **Rollback on Failure**: If profile or technician creation fails, automatically deletes the created auth user (atomic transaction-like behavior)
+  - **Development vs Production**: In dev mode, responses include full `details` object for deep debugging; in production, only high-level error info is shown
+- Files changed:
+  - web/app/api/team/members/route.ts (complete rewrite with structured error handling)
+- Verification:
+  - `npm run build --workspace=web` compiled successfully (✓)
+- Error scenarios now debuggable:
+  1. **Authorization fails** → Gets step='1. Authorization Check', code='AUTH_NOT_FOUND' or 'FORBIDDEN_NOT_SUPER_ADMIN'
+  2. **Invalid JSON** → step='2. Parse Request Body', code='INVALID_JSON'
+  3. **Validation fails** → step='3. Validate Input Schema', lists all field errors with types
+  4. **Email already exists in auth** → step='4. Create Auth User', code='EMAIL_ALREADY_EXISTS'
+  5. **Email duplicate in profiles table** → step='5. Create Profile Record', code='EMAIL_DUPLICATE_IN_PROFILE'
+  6. **Phone duplicate in profiles table** → step='5. Create Profile Record', code='PHONE_DUPLICATE_IN_PROFILE'
+  7. **RLS policy blocked** → step='5. Create Profile Record', code='PROFILE_RLS_DENIED' (explains to contact support)
+  8. **Technician code duplicate** → step='6. Create Technician Record', code='TECHNICIAN_CODE_DUPLICATE'
+  9. **Unexpected errors** → Auto-logged with full stack trace; user sees clear message
+- How to use for debugging:
+  - Open browser Developer Tools → Network tab
+  - Create team member and watch for errors
+  - Response will show `step`, `code`, `message` (technical), `userMessage` (friendly)
+  - Server console will show detailed logs with timestamps and context
+  - In dev mode, response includes `details` object with database codes and full error text
+- Next:
+  - Deploy and test: try creating team members and check error messages clearly show step/reason
+  - Apply pending migrations: `20260320_012_auto_create_profile_on_auth.sql` and `20260320_013_add_profiles_insert_policy.sql` to Supabase
+  - Monitor server logs for any patterns of recurring errors
+
 ## [2026-03-20 17:08:05 +05:30] Fix: Team member creation database error - improve error handling and RLS
 
 - Summary: Creating new team members (technicians, office staff) was failing with vague "Database error creating new user" message. Root causes: (1) Missing INSERT policy on profiles RLS table, (2) No friendly error messages for constraint violations (email/phone uniqueness), (3) Lack of error logging for debugging.
