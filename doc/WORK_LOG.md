@@ -3,6 +3,22 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-20 21:44:40 +05:30] Build verification check after latest billing/upload updates
+
+- Summary: Ran a full production build to verify current project health after recent API/UI billing and upload changes.
+- Work done:
+  - Executed `npm run build` in `web` workspace.
+  - Confirmed compile, TypeScript checks, route generation, and static page generation all completed successfully.
+- Files changed:
+  - doc/WORK_LOG.md
+- Verification:
+  - Build status: PASS (no compile/type/build errors).
+  - Dynamic routes including billing/photos/workflow APIs compiled successfully.
+- Issues:
+  - none
+- Next:
+  - Optional: address non-blocking lint warning for `<img>` optimization in billing preview UI if desired.
+
 ## [2026-03-20 21:36:44 +05:30] Upload diagnostics: show exact failure reason and preview-access issue in billing
 
 - Summary: Improved upload error handling so users can see exact backend failure code/step/reason instead of only a generic 400, and added explicit preview-access diagnostics for uploaded images.
