@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Eye, EyeOff, ShieldCheck, UserPlus, X } from 'lucide-react';
 import { usePermission } from '@/hooks/auth/usePermission';
 import { useTeam } from '@/hooks/team/useTeam';
+import { useTeamCompletedCounts } from '@/hooks/team/useTeamCompletedCounts';
 import { useAllTechnicianStatus } from '@/hooks/attendance/useAttendance';
 import { ROUTES } from '@/lib/constants/routes';
 import type { CreateTeamMemberInput } from '@/modules/technicians/technician.types';
@@ -44,6 +45,8 @@ export default function TeamManagementPage() {
   const liveStatusQuery = useAllTechnicianStatus();
   const liveStatus = liveStatusQuery.data?.ok ? liveStatusQuery.data.data : [];
   const liveByTechnicianId = new Map(liveStatus.map((item) => [item.id, item]));
+  const completedCountsQuery = useTeamCompletedCounts();
+  const completedCounts = completedCountsQuery.data ?? {};
 
   const [form, setForm] = useState<CreateTeamMemberInput>(INITIAL_FORM);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -244,6 +247,7 @@ export default function TeamManagementPage() {
               <th className="px-4 py-3">Role</th>
               <th className="px-4 py-3">Phone</th>
               <th className="px-4 py-3">Technician code</th>
+              <th className="px-4 py-3">Completed</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>
@@ -251,13 +255,13 @@ export default function TeamManagementPage() {
           <tbody>
             {isLoading ? (
               <tr>
-                <td className="px-4 py-6 text-slate-500" colSpan={7}>
+                <td className="px-4 py-6 text-slate-500" colSpan={8}>
                   Loading team members...
                 </td>
               </tr>
             ) : members.length === 0 ? (
               <tr>
-                <td className="px-4 py-6 text-slate-500" colSpan={7}>
+                <td className="px-4 py-6 text-slate-500" colSpan={8}>
                   No team members found.
                 </td>
               </tr>
@@ -288,6 +292,13 @@ export default function TeamManagementPage() {
                     <td className="px-4 py-3 text-slate-700">{member.phone_number ?? '-'}</td>
                     <td className="px-4 py-3 text-slate-700">{member.technician?.technician_code ?? '-'}</td>
                     <td className="px-4 py-3">
+                      {member.role === 'technician' ? (
+                        <span className="font-semibold text-emerald-700">{completedCounts[member.id] ?? 0}</span>
+                      ) : (
+                        <span className="text-slate-400">-</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
                       <span className={`rounded-full px-2 py-1 text-xs font-medium ${member.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>
                         {member.is_active ? 'Active' : 'Inactive'}
                       </span>
@@ -303,7 +314,7 @@ export default function TeamManagementPage() {
             )}
             {error ? (
               <tr>
-                <td className="px-4 py-4 text-sm text-rose-600" colSpan={7}>
+                <td className="px-4 py-4 text-sm text-rose-600" colSpan={8}>
                   {error}
                 </td>
               </tr>

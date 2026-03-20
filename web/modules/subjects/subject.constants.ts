@@ -1,3 +1,5 @@
+import type { PhotoType } from '@/modules/subjects/subject.types';
+
 export const SUBJECT_QUERY_KEYS = {
   all: ['subjects'] as const,
   list: ['subjects', 'list'] as const,
@@ -35,3 +37,46 @@ export const WARRANTY_PERIODS = [
   { label: '5 Years', value: '5_years', months: 60 },
   { label: 'Custom', value: 'custom', months: null },
 ] as const;
+
+export const INCOMPLETE_REASONS = [
+  { value: 'customer_cannot_afford', label: 'Customer Cannot Afford' },
+  { value: 'power_issue', label: 'Power or Electricity Issue' },
+  { value: 'door_locked', label: 'Door Locked or Customer Unavailable' },
+  { value: 'spare_parts_not_available', label: 'Spare Parts Not Available' },
+  { value: 'site_not_ready', label: 'Site Not Ready' },
+  { value: 'other', label: 'Other' },
+] as const;
+
+/** Photos required for in-warranty and AMC jobs before completion is allowed. */
+export const REQUIRED_PHOTOS_WARRANTY: PhotoType[] = [
+  'serial_number',
+  'machine',
+  'bill',
+  'job_sheet',
+  'defective_part',
+  'service_video',
+];
+
+/** Photos required for out-of-warranty jobs before completion is allowed. */
+export const REQUIRED_PHOTOS_OUT_OF_WARRANTY: PhotoType[] = [
+  'serial_number',
+  'machine',
+  'bill',
+];
+
+/**
+ * Allowed forward-only status transitions for the job workflow.
+ * Only the assigned technician triggers these; office-staff transitions
+ * (PENDING ↔ ALLOCATED) are handled separately.
+ */
+export const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
+  ACCEPTED: ['ARRIVED'],
+  ARRIVED: ['IN_PROGRESS'],
+  IN_PROGRESS: ['COMPLETED', 'INCOMPLETE', 'AWAITING_PARTS'],
+};
+
+/** Maximum file sizes enforced in the service layer before upload. */
+export const PHOTO_SIZE_LIMITS = {
+  images: 2 * 1024 * 1024,  // 2 MB
+  videos: 50 * 1024 * 1024, // 50 MB
+} as const;

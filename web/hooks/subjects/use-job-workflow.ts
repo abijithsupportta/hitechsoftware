@@ -1,5 +1,7 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { useAuth } from '@/hooks/auth/useAuth';
+import { SUBJECT_QUERY_KEYS } from '@/modules/subjects/subject.constants';
 import {
   updateJobStatus,
   markJobIncomplete,
@@ -17,6 +19,7 @@ import type {
 export function useJobWorkflow(subjectId: string) {
   const { user } = useAuth();
   const technicianId = user?.id;
+  const queryClient = useQueryClient();
 
   // Query: get required photos
   const requiredPhotosQuery = useQuery({
@@ -49,11 +52,19 @@ export function useJobWorkflow(subjectId: string) {
       if (!result.ok) throw new Error(result.error.message);
       return result.data;
     },
-    onSuccess: () => {
-      // Invalidate related queries
+    onSuccess: (_, newStatus) => {
+      queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(subjectId) });
+      queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.list });
       requiredPhotosQuery.refetch();
       completionRequirementsQuery.refetch();
+      const labels: Record<string, string> = {
+        ARRIVED: 'Marked as Arrived',
+        IN_PROGRESS: 'Work Started',
+        AWAITING_PARTS: 'Marked as Awaiting Parts',
+      };
+      toast.success(labels[newStatus] ?? 'Status updated');
     },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   // Mutation: upload photo with progress tracking
@@ -64,10 +75,12 @@ export function useJobWorkflow(subjectId: string) {
       if (!result.ok) throw new Error(result.error.message);
       return result.data;
     },
-    onSuccess: () => {
-      // Refresh completion requirements after photo upload
+    onSuccess: (_, { photoType }) => {
+      queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(subjectId) });
       completionRequirementsQuery.refetch();
+      toast.success(`${photoType.replace(/_/g, ' ')} uploaded`);
     },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   // Mutation: mark job incomplete
@@ -78,6 +91,12 @@ export function useJobWorkflow(subjectId: string) {
       if (!result.ok) throw new Error(result.error.message);
       return result.data;
     },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(subjectId) });
+        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.list });
+        toast.success('Job marked as incomplete');
+      },
+      onError: (err: Error) => toast.error(err.message),
   });
 
   // Mutation: mark job complete
@@ -88,6 +107,12 @@ export function useJobWorkflow(subjectId: string) {
       if (!result.ok) throw new Error(result.error.message);
       return result.data;
     },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(subjectId) });
+        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.list });
+        toast.success('Job completed successfully');
+      },
+      onError: (err: Error) => toast.error(err.message),
   });
 
   return {

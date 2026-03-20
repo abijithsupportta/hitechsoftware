@@ -13,15 +13,17 @@ import {
 } from '@/repositories/photo.repository';
 import {
   getSubjectById as getSubjectRepo,
+  markArrived as repoMarkArrived,
+  markInProgress as repoMarkInProgress,
 } from '@/repositories/subject.repository';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 // Valid status transitions for job workflow
+// EN_ROUTE was removed — flow goes directly ACCEPTED → ARRIVED
 const VALID_TRANSITIONS: Record<string, string[]> = {
-  'ACCEPTED': ['EN_ROUTE'],
-  'EN_ROUTE': ['ARRIVED'],
-  'IN_PROGRESS': ['COMPLETED', 'INCOMPLETE'],
-  'ARRIVED': ['IN_PROGRESS'],
+  ACCEPTED: ['ARRIVED'],
+  ARRIVED: ['IN_PROGRESS'],
+  IN_PROGRESS: ['COMPLETED', 'INCOMPLETE', 'AWAITING_PARTS'],
 };
 
 export async function updateJobStatus(
@@ -51,36 +53,33 @@ export async function updateJobStatus(
   }
 
   // Determine timestamp column to set
-  let updateData: Record<string, unknown> = { status: newStatus };
+  // Delegate to specialised repository function (sets the correct timestamp)
+  let repoResult: { data: { id: string; status: string } | null; error: { message: string } | null };
 
-  switch (newStatus) {
-    case 'EN_ROUTE':
-      updateData.en_route_at = new Date().toISOString();
-      break;
-    case 'ARRIVED':
-      updateData.arrived_at = new Date().toISOString();
-      break;
-    case 'IN_PROGRESS':
-      updateData.work_started_at = new Date().toISOString();
-      break;
-    case 'COMPLETED':
-      updateData.completed_at = new Date().toISOString();
-      break;
+  if (newStatus === 'ARRIVED') {
+    repoResult = await repoMarkArrived(subjectId);
+  } else if (newStatus === 'IN_PROGRESS') {
+    repoResult = await repoMarkInProgress(subjectId);
+  } else {
+    // Fallback for other allowed transitions (e.g. AWAITING_PARTS)
+    const admin = createAdminClient();
+    repoResult = await admin
+      .from('subjects')
+      .update({ status: newStatus })
+      .eq('id', subjectId)
+      .select('id,status')
+      .single<{ id: string; status: string }>();
   }
 
-  const admin = createAdminClient();
-  const result = await admin
-    .from('subjects')
-    .update(updateData)
-    .eq('id', subjectId)
-    .select('id,status')
-    .single<{ id: string; status: string }>();
-
-  if (result.error) {
-    return { ok: false, error: { message: result.error.message } };
+  if (repoResult.error) {
+    return { ok: false, error: { message: repoResult.error.message } };
   }
 
-  return { ok: true, data: result.data };
+  if (!repoResult.data) {
+    return { ok: false, error: { message: 'Status update returned no data' } };
+  }
+
+  return { ok: true, data: repoResult.data };
 }
 
 export async function getRequiredPhotos(subjectId: string): Promise<ServiceResult<PhotoType[]>> {

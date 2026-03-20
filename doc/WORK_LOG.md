@@ -3,6 +3,178 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-20 15:21:47 +05:30] Chore: Pre-Inventory Cleanup — Migration Conflict Fix and API Docs Sync
+- Summary: Completed the requested pre-Inventory cleanup by resolving the job workflow migration duplication and syncing API documentation to current implemented web routes.
+- Work done:
+  - Resolved job-workflow migration duplication by keeping a single authoritative tracked migration file and removing the duplicate variant.
+  - Updated `web/docs/API_DOCUMENTATION.md` implemented endpoint inventory from 2 routes to all currently implemented routes.
+  - Documented current behavior for technician subject response, attendance toggle, team performance/completed-count endpoints, and attendance cron endpoints.
+  - Aligned API documentation to current reject behavior (`status = 'RESCHEDULED'` on reject) as implemented in route handlers.
+- Files changed:
+  - supabase/migrations/20260317_011_job_workflow.sql
+  - web/docs/API_DOCUMENTATION.md
+  - doc/WORK_LOG.md
+- Verification:
+  - Verified migration folder no longer contains duplicate `20260317_010_job_workflow.sql` variant.
+  - Verified API docs now list all active handlers under `web/app/api/**`.
+- Next:
+  - Commit all pending repository changes as a clean checkpoint before starting Inventory module.
+
+## [2026-03-20 15:14:24 +05:30] Analysis: Project Architecture, Documentation Health, and Workflow/User Flow Snapshot
+- Summary: Completed a full read-only architecture and documentation audit of the monorepo and mapped implemented workflow/user flow from active code paths.
+- Work done:
+  - Reviewed root architecture and module boundaries across web, Flutter apps, scripts, and Supabase migrations.
+  - Cross-checked implemented Next.js route handlers under `web/app/api/**` against `web/docs/API_DOCUMENTATION.md` and identified drift (docs list fewer implemented routes than actual code).
+  - Reviewed workflow implementation files for subjects/job lifecycle (`subject.job-workflow`, workflow hook, workflow UI section, and subject detail page wiring).
+  - Confirmed current in-progress focus from git working tree (job workflow, team completed metrics, subject detail flow, migration files).
+  - API documentation review completed: contract appears stale and requires update to reflect currently implemented endpoints and current reject/reschedule behavior.
+  - Issues found:
+    - Documentation drift: API docs and frontend reference contain behavior that conflicts with live code (for example REJECTED vs RESCHEDULED reject outcome).
+    - Migration history risk: duplicate-numbered migration files remain in repository history (`010` and `011` variants of job workflow) and should be normalized in documentation and deployment runbook.
+- Files changed:
+  - doc/WORK_LOG.md
+- Verification:
+  - Read-only verification performed by inspecting repository files, API route handlers, dashboard pages, workflow modules, and current git status.
+  - No runtime/build/test command was executed as part of this analysis-only task.
+- Next:
+  - Update `web/docs/API_DOCUMENTATION.md` to include all implemented `/api/**` routes and correct auth/response/error behavior.
+  - Reconcile workflow/status terminology across docs (`REJECTED` vs `RESCHEDULED` and post-accept transitions).
+  - Add a migration deployment note clarifying which job workflow migration file/version is authoritative per environment.
+
+## [2026-03-18 11:45:00 +05:30] Fix: Resolve Build Failures from Job Workflow Implementation
+- Summary: Fixed 5 duplicate-import and misplaced-code errors that prevented the build from passing after the job workflow feature was added across two sessions.
+- Work done:
+  - `subject.constants.ts`: File had `import type { PhotoType }` injected twice (inside `SUBJECT_QUERY_KEYS` object and inside `WARRANTY_PERIODS` array) along with a stray `] as const;` at EOF. Deleted and cleanly recreated with correct structure.
+  - `subject.repository.ts`: `markArrived`, `markInProgress`, `markIncomplete`, `markComplete` were nested inside `deleteSubject` function body. Extracted and placed at module level after `deleteSubject`.
+  - `photo.repository.ts`: `uploadToStorage`, `savePhotoRecord`, `findPhotosBySubjectId`, `findPhotoByType` were nested inside `findById` function body. Extracted and placed at module level after `findById`.
+  - `app/dashboard/subjects/[id]/page.tsx`: Duplicate `useAuth()` destructuring (`userRole` declared twice). Merged into single `const { userRole, user } = useAuth()`.
+  - `hooks/subjects/use-job-workflow.ts`: Duplicate `import { useMutation, useQuery }` from `@tanstack/react-query`. Merged into single import with `useQueryClient`.
+  - `components/subjects/status-action-bar.tsx`: Duplicate `lucide-react` import (old one with `Truck`, new one without). Removed old line.
+- Files changed:
+  - `web/modules/subjects/subject.constants.ts` (deleted + recreated)
+  - `web/repositories/subject.repository.ts`
+  - `web/repositories/photo.repository.ts`
+  - `web/app/dashboard/subjects/[id]/page.tsx`
+  - `web/hooks/subjects/use-job-workflow.ts`
+  - `web/components/subjects/status-action-bar.tsx`
+- Verification:
+  - `npm run build` passes cleanly — compiled in 11.5s, TypeScript in 8.0s, all 26 routes generated with no errors or warnings.
+- Next:
+  - Apply the DB migration (`20260317_010_job_workflow.sql`) on the Supabase project.
+  - Create the `subject-photos` storage bucket via Supabase Dashboard (public, 50 MB max).
+  - Test the full workflow on a real subject: ACCEPTED → ARRIVED → IN_PROGRESS → COMPLETED with photos.
+
+## [2026-03-17 20:30:00 +05:30] Feat: Job Workflow System Implementation (Layers)
+- Summary: Implemented the complete job status workflow and job completion system across all layers of the stack as specified. Note: build was not yet passing at end of this session due to patch misapplication (fixed in next session above).
+- Work done:
+  - Created DB migration `20260317_010_job_workflow.sql` — adds `ARRIVED` and `CANCELLED` to `subject_status` enum, adds timestamp columns (`arrived_at`, `work_started_at`, `completed_at`, `incomplete_at`), creates `subject_photos` table with RLS (all idempotent).
+  - Added types to `subject.types.ts`: `JobWorkflowStatus`, `MarkIncompleteInput`, `CompleteJobInput`, `PhotoUploadResult`, `RequiredPhotosCheck`.
+  - Added constants to `subject.constants.ts`: `INCOMPLETE_REASONS`, `REQUIRED_PHOTOS_WARRANTY`, `REQUIRED_PHOTOS_OUT_OF_WARRANTY`, `VALID_STATUS_TRANSITIONS`, `PHOTO_SIZE_LIMITS`.
+  - Added repository functions to `subject.repository.ts`: `markArrived`, `markInProgress`, `markIncomplete`, `markComplete` (all use admin client to bypass RLS).
+  - Added repository functions to `photo.repository.ts`: `uploadToStorage`, `savePhotoRecord`, `findPhotosBySubjectId`, `findPhotoByType`.
+  - Updated `subject.job-workflow.ts`: Removed EN_ROUTE from VALID_TRANSITIONS (ACCEPTED → ARRIVED now), `updateJobStatus` uses repo helpers.
+  - Updated `use-job-workflow.ts`: Added React Query cache invalidation and sonner toast notifications for all mutations.
+  - Updated `status-action-bar.tsx`: Removed EN_ROUTE from STATUS_FLOW, added ARRIVED step, correct button labels.
+  - Created `components/subjects/cannot-complete-modal.tsx` — modal for marking job incomplete with reason/notes/spare-parts.
+  - Created `components/subjects/photo-upload-row.tsx` — per-photo-type upload row with thumbnail and validation.
+  - Created `components/subjects/complete-job-panel.tsx` — full-screen job completion panel showing photo checklist.
+  - Created `components/subjects/job-workflow-section.tsx` — master orchestrator section rendering status bar, timeline, and completion panels.
+  - Updated `app/dashboard/subjects/[id]/page.tsx` to render `<JobWorkflowSection>`.
+- Files changed:
+  - `supabase/migrations/20260317_010_job_workflow.sql` (new)
+  - `web/modules/subjects/subject.types.ts`
+  - `web/modules/subjects/subject.constants.ts`
+  - `web/modules/subjects/subject.job-workflow.ts`
+  - `web/repositories/subject.repository.ts`
+  - `web/repositories/photo.repository.ts`
+  - `web/hooks/subjects/use-job-workflow.ts`
+  - `web/components/subjects/status-action-bar.tsx`
+  - `web/components/subjects/cannot-complete-modal.tsx` (new)
+  - `web/components/subjects/photo-upload-row.tsx` (new)
+  - `web/components/subjects/complete-job-panel.tsx` (new)
+  - `web/components/subjects/job-workflow-section.tsx` (new)
+  - `web/app/dashboard/subjects/[id]/page.tsx`
+- Verification:
+  - Build was failing at end of session — fixed in follow-up session above.
+- Next:
+  - See entry above.
+
+## [2026-03-17 19:05:35 +05:30] Feat: Completed Services Column in Team List Page
+- Summary: Added a "Completed" column to the main team list table so superadmin can compare all technicians' completed service counts at a glance without opening each profile.
+- Work done:
+  - Created `GET /api/team/members/completed-counts` API route (super_admin only) that queries `subjects` where `status = 'COMPLETED'`, groups results by `assigned_technician_id`, and returns a `Record<string, number>` map.
+  - Created `web/hooks/team/useTeamCompletedCounts.ts` React Query hook that fetches from the new endpoint (1-minute stale time).
+  - Updated `web/app/dashboard/team/page.tsx`: imported hook, added "Completed" column header, rendered count per technician row in emerald green (shows `-` for non-technician roles), updated all `colSpan` from 7 → 8.
+- Files changed:
+  - `web/app/api/team/members/completed-counts/route.ts` (created)
+  - `web/hooks/team/useTeamCompletedCounts.ts` (created)
+  - `web/app/dashboard/team/page.tsx`
+  - `doc/WORK_LOG.md`
+- Verification:
+  - `npm run build` ✓ Compiled successfully in 10.4s, 0 TypeScript errors
+- Next:
+  - Git commit outstanding changes
+
+## [2026-03-17 18:57:37 +05:30] Feat: Track Technician Completed Services in Superadmin Panel
+- Summary: Added completed-service tracking for each technician and exposed it in the superadmin technician detail performance panel with monthly and all-time metrics.
+- Work done:
+  - Extended superadmin performance API to calculate completed services from `subjects` where `status = 'COMPLETED'` and `assigned_technician_id = technician id`.
+  - Added monthly completed counts for last 6 months using `completed_at` timestamp.
+  - Added totals payload fields: `completedLast6Months` and `completedAllTime`.
+  - Updated superadmin technician detail UI to render:
+    - Completed Services (All Time) stat card
+    - Completed column in monthly performance table
+  - Updated local response typing in page query to include new completed metrics.
+- Files changed:
+  - web/app/api/team/members/[id]/performance/route.ts
+  - web/app/dashboard/team/[id]/page.tsx
+  - doc/WORK_LOG.md
+- Verification:
+  - Build status: `npm run build` successful (compiled + TypeScript passed).
+  - API route `/api/team/members/[id]/performance` now returns completed metrics in `monthly` and `totals`.
+- Issues:
+  - none
+- Next:
+  - Optionally add completed-service count column to team list table for at-a-glance comparison across technicians.
+
+## [2026-03-17 18:49:18 +05:30] Fix: Reassigning to Same Technician Re-enables Accept/Reject
+- Summary: Fixed reassignment workflow so when staff/superadmin reassigns a previously rejected service (including to the same technician), the technician can respond again with Accept or Reject.
+- Work done:
+  - Updated assignment update path to always reset technician response fields during (re)assignment:
+    - `technician_acceptance_status = 'pending'`
+    - `technician_rejection_reason = null`
+    - `rejected_by_technician_id = null`
+    - `is_rejected_pending_reschedule = false`
+  - Kept status transition behavior intact (`ALLOCATED` when technician assigned, `PENDING` when unassigned).
+  - Ran one-time backfill for existing affected rows where reassigned subjects were stuck in rejected/rescheduled state with a technician assigned.
+- Files changed:
+  - web/repositories/subject.repository.ts
+  - doc/WORK_LOG.md
+- Verification:
+  - Build status: `npm run build` successful (compiled + TypeScript passed).
+  - Data backfill updated rows: 1
+- Issues:
+  - none
+- Next:
+  - Verify from UI by rejecting, reassigning same technician, and confirming Accept/Reject buttons render again on service details.
+
+## [2026-03-17 18:33:41 +05:30] Fix: Rejected Services Now Move to Rescheduled Status
+- Summary: Fixed technician rejection flow so rejected services no longer remain in Allocated state on the service list. Reject action now sets a valid enum status (`RESCHEDULED`) and preserves rejection metadata for admin reassignment workflow.
+- Work done:
+  - Updated reject branch in API route to write `status = 'RESCHEDULED'` with rejection fields.
+  - Ran one-time service-role backfill to correct existing data where `technician_acceptance_status = 'rejected'` and `is_rejected_pending_reschedule = true`.
+  - Verified build success after change.
+- Files changed:
+  - web/app/api/subjects/[id]/respond/route.ts
+  - doc/WORK_LOG.md
+- Verification:
+  - Backfill updated rows: 1
+  - Build status: `npm run build` successful (compiled + TypeScript passed).
+- Issues:
+  - none
+- Next:
+  - Monitor new reject actions in service list to confirm all newly rejected services display as Rescheduled.
+
 ## [2026-03-17 18:15:00 +05:30] Fix: Apply Job Workflow Migration to Supabase — Resolve 400 Error
 
 - Summary: Diagnosed and documented root cause of "column subjects.en_route_at does not exist" 400 error in superadmin. The `20260317_011_job_workflow.sql` migration was never applied to the live Supabase database, but `subject.repository.ts` already queries those columns. Also fixed a duplicate migration numbering conflict (both `technician_customer_visibility.sql` and `job_workflow.sql` were numbered `010`).

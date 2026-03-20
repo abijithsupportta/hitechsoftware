@@ -60,7 +60,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   const months = buildLastMonths(6);
   const startIso = `${months[0]?.key ?? toMonthKey(new Date().toISOString())}-01T00:00:00.000Z`;
 
-  const [rejectionEventsResult, rejectedSubjectsResult] = await Promise.all([
+  const [rejectionEventsResult, rejectedSubjectsResult, monthlyCompletedResult, totalCompletedResult] = await Promise.all([
     admin
       .from('subject_status_history')
       .select('changed_at')
@@ -72,6 +72,20 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
       .select('id')
       .eq('is_deleted', false)
       .eq('rejected_by_technician_id', id),
+    admin
+      .from('subjects')
+      .select('completed_at')
+      .eq('is_deleted', false)
+      .eq('assigned_technician_id', id)
+      .eq('status', 'COMPLETED')
+      .not('completed_at', 'is', null)
+      .gte('completed_at', startIso),
+    admin
+      .from('subjects')
+      .select('id', { count: 'exact', head: true })
+      .eq('is_deleted', false)
+      .eq('assigned_technician_id', id)
+      .eq('status', 'COMPLETED'),
   ]);
 
   if (rejectionEventsResult.error) {
@@ -80,6 +94,14 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
 
   if (rejectedSubjectsResult.error) {
     return NextResponse.json({ ok: false, error: { message: rejectedSubjectsResult.error.message } }, { status: 500 });
+  }
+
+  if (monthlyCompletedResult.error) {
+    return NextResponse.json({ ok: false, error: { message: monthlyCompletedResult.error.message } }, { status: 500 });
+  }
+
+  if (totalCompletedResult.error) {
+    return NextResponse.json({ ok: false, error: { message: totalCompletedResult.error.message } }, { status: 500 });
   }
 
   const rejectedSubjectIds = (rejectedSubjectsResult.data ?? []).map((row) => row.id as string);
@@ -99,6 +121,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
 
   const rejectionsByMonth = new Map<string, number>();
   const reschedulesByMonth = new Map<string, number>();
+  const completedByMonth = new Map<string, number>();
 
   for (const row of rejectionEventsResult.data ?? []) {
     const key = toMonthKey(row.changed_at as string);
@@ -110,11 +133,19 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
     reschedulesByMonth.set(key, (reschedulesByMonth.get(key) ?? 0) + 1);
   }
 
+  for (const row of monthlyCompletedResult.data ?? []) {
+    const completedAt = row.completed_at as string | null;
+    if (!completedAt) continue;
+    const key = toMonthKey(completedAt);
+    completedByMonth.set(key, (completedByMonth.get(key) ?? 0) + 1);
+  }
+
   const monthly = months.map((month) => ({
     month: month.key,
     label: month.label,
     rejections: rejectionsByMonth.get(month.key) ?? 0,
     reschedules: reschedulesByMonth.get(month.key) ?? 0,
+    completed: completedByMonth.get(month.key) ?? 0,
   }));
 
   return NextResponse.json({
@@ -124,6 +155,8 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
       totals: {
         rejections: monthly.reduce((sum, item) => sum + item.rejections, 0),
         reschedules: monthly.reduce((sum, item) => sum + item.reschedules, 0),
+        completedLast6Months: monthly.reduce((sum, item) => sum + item.completed, 0),
+        completedAllTime: totalCompletedResult.count ?? 0,
       },
     },
   });

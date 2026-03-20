@@ -99,7 +99,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const updateResult = await admin
     .from('subjects')
     .update({
-      status: 'REJECTED',
+      status: 'RESCHEDULED',
       technician_acceptance_status: 'rejected',
       technician_rejection_reason: rejection_reason!.trim(),
       rejected_by_technician_id: userId,

@@ -176,3 +176,46 @@ export interface IncompleteJobInput {
   rescheduledDate?: string; // ISO date string YYYY-MM-DD
 }
 
+/** All valid status values for the job workflow. */
+export type JobWorkflowStatus =
+  | 'PENDING'
+  | 'ALLOCATED'
+  | 'ACCEPTED'
+  | 'ARRIVED'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'INCOMPLETE'
+  | 'AWAITING_PARTS'
+  | 'RESCHEDULED'
+  | 'CANCELLED';
+
+/** Service-layer input for marking a job incomplete (camelCase field names). */
+export interface MarkIncompleteInput {
+  reason: IncompleteReason;
+  note?: string;
+  spare_parts_requested?: string;
+  spare_parts_quantity?: number;
+  rescheduled_date?: string;
+}
+
+/** Service-layer input for completing a job. */
+export interface CompleteJobInput {
+  completion_notes?: string;
+}
+
+/** Return value from a successful photo upload. */
+export interface PhotoUploadResult {
+  storage_path: string;
+  public_url: string;
+  photo_type: PhotoType;
+  file_size_bytes: number;
+}
+
+/** Result of a completion requirements check (snake_case variant). */
+export interface RequiredPhotosCheck {
+  required: PhotoType[];
+  uploaded: PhotoType[];
+  missing: PhotoType[];
+  can_complete: boolean;
+}
+

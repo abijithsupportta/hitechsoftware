@@ -38,8 +38,8 @@ export default function TeamMemberDetailPage() {
       const payload = (await response.json()) as {
         ok: boolean;
         data?: {
-          monthly: Array<{ month: string; label: string; rejections: number; reschedules: number }>;
-          totals: { rejections: number; reschedules: number };
+          monthly: Array<{ month: string; label: string; rejections: number; reschedules: number; completed: number }>;
+          totals: { rejections: number; reschedules: number; completedLast6Months: number; completedAllTime: number };
         };
         error?: { message?: string };
       };
@@ -194,7 +194,7 @@ export default function TeamMemberDetailPage() {
       {member.role === 'technician' && member.technician && (
         <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Performance Stats</h2>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
               <p className="text-xs uppercase tracking-wide text-slate-500">Total Rejections</p>
               <p className={`mt-1 text-2xl font-bold ${member.technician.total_rejections > 0 ? 'text-rose-600' : 'text-slate-900'}`}>
@@ -214,6 +214,13 @@ export default function TeamMemberDetailPage() {
                 {performanceQuery.data?.totals.reschedules ?? 0}
               </p>
             </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs uppercase tracking-wide text-slate-500">Completed Services (All Time)</p>
+              <p className={`mt-1 text-2xl font-bold ${(performanceQuery.data?.totals.completedAllTime ?? 0) > 0 ? 'text-emerald-700' : 'text-slate-900'}`}>
+                {performanceQuery.data?.totals.completedAllTime ?? 0}
+              </p>
+              <p className="mt-0.5 text-xs text-slate-400">Successfully completed by technician</p>
+            </div>
           </div>
 
           <div className="mt-4 overflow-x-auto rounded-lg border border-slate-200">
@@ -223,6 +230,7 @@ export default function TeamMemberDetailPage() {
                   <th className="px-3 py-2 text-left font-semibold text-slate-600">Month</th>
                   <th className="px-3 py-2 text-right font-semibold text-slate-600">Rejections</th>
                   <th className="px-3 py-2 text-right font-semibold text-slate-600">Reschedules</th>
+                  <th className="px-3 py-2 text-right font-semibold text-slate-600">Completed</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
@@ -231,16 +239,17 @@ export default function TeamMemberDetailPage() {
                     <td className="px-3 py-2 text-slate-700">{row.label}</td>
                     <td className="px-3 py-2 text-right font-medium text-rose-700">{row.rejections}</td>
                     <td className="px-3 py-2 text-right font-medium text-amber-700">{row.reschedules}</td>
+                    <td className="px-3 py-2 text-right font-medium text-emerald-700">{row.completed}</td>
                   </tr>
                 ))}
                 {performanceQuery.isLoading && (
                   <tr>
-                    <td className="px-3 py-3 text-slate-500" colSpan={3}>Loading monthly performance...</td>
+                    <td className="px-3 py-3 text-slate-500" colSpan={4}>Loading monthly performance...</td>
                   </tr>
                 )}
                 {performanceQuery.error && (
                   <tr>
-                    <td className="px-3 py-3 text-rose-600" colSpan={3}>Unable to load monthly stats.</td>
+                    <td className="px-3 py-3 text-rose-600" colSpan={4}>Unable to load monthly stats.</td>
                   </tr>
                 )}
               </tbody>

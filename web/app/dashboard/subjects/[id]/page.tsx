@@ -13,6 +13,7 @@ import { SubjectInfoCard } from '@/components/subjects/SubjectInfoCard';
 import { ProductInfoCard } from '@/components/subjects/ProductInfoCard';
 import { ActivityTimeline } from '@/components/subjects/ActivityTimeline';
 import { AttendanceGuard } from '@/components/attendance/AttendanceGuard';
+import { JobWorkflowSection } from '@/components/subjects/job-workflow-section';
 import { useContractsBySubject } from '@/hooks/contracts/useContracts';
 import { useSubjectDetail } from '@/hooks/subjects/useSubjects';
 import { useAuth } from '@/hooks/auth/useAuth';
@@ -49,7 +50,7 @@ export default function SubjectDetailPage() {
   const id = params.id;
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { userRole } = useAuth();
+  const { userRole, user } = useAuth();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
@@ -182,8 +183,8 @@ export default function SubjectDetailPage() {
 
       <AssignTechnicianForm subject={subject} userRole={userRole} />
 
-      {/* Urgent reschedule warning — visible to admin/staff when technician has rejected */}
-      {userRole !== 'technician' && subject.is_rejected_pending_reschedule && (
+      {/* Urgent reschedule warning — visible to admin/staff when technician has rejected and not yet reassigned */}
+      {userRole !== 'technician' && subject.is_rejected_pending_reschedule && subject.assigned_technician_id === subject.rejected_by_technician_id && (
         <div className="mb-4 flex items-start gap-3 rounded-xl border border-rose-300 bg-rose-50 p-4">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" />
           <div>
@@ -258,6 +259,9 @@ export default function SubjectDetailPage() {
         <SubjectInfoCard subject={subject} />
         <ProductInfoCard subject={subject} />
         <ActivityTimeline timeline={subject.timeline} />
+
+        {/* Job Workflow — shown when technician has accepted or beyond */}
+        <JobWorkflowSection subject={subject} userRole={userRole ?? ''} userId={user?.id ?? ''} />
       </div>
 
       <DeleteConfirmModal

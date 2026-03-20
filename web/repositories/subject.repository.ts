@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
-import type { CreateSubjectInput, SubjectListFilters, UpdateSubjectInput } from '@/modules/subjects/subject.types';
+import type { CreateSubjectInput, IncompleteReason, SubjectListFilters, UpdateSubjectInput } from '@/modules/subjects/subject.types';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 const supabase = createClient();
 
@@ -209,6 +210,10 @@ export async function assignTechnicianFull(
       technician_allocated_notes: technicianAllocatedNotes,
       assigned_by: assignedBy,
       status: newStatus,
+      technician_acceptance_status: 'pending',
+      technician_rejection_reason: null,
+      rejected_by_technician_id: null,
+      is_rejected_pending_reschedule: false,
     })
     .eq('id', subjectId)
     .eq('is_deleted', false)
@@ -273,7 +278,7 @@ export async function getSubjectById(id: string) {
       dealers:dealer_id(name),
       rejected_by_profile:rejected_by_technician_id(display_name),
       service_categories:category_id(name),
-      subject_photos!inner(id,photo_type,storage_path,public_url,uploaded_by,uploaded_at,file_size_bytes,mime_type)
+      subject_photos(id,photo_type,storage_path,public_url,uploaded_by,uploaded_at,file_size_bytes,mime_type)
       `,
     )
     .eq('id', id)
@@ -325,7 +330,85 @@ export async function deleteSubject(id: string) {
   return supabase
     .from('subjects')
     .delete()
+
     .eq('id', id)
     .select('id')
     .single<{ id: string }>();
+}
+
+// ---------------------------------------------------------------------------
+// Job workflow — status-change helpers (admin client bypasses technician RLS)
+// ---------------------------------------------------------------------------
+
+export async function markArrived(subjectId: string) {
+  const admin = createAdminClient();
+  return admin
+    .from('subjects')
+    .update({ status: 'ARRIVED', arrived_at: new Date().toISOString() })
+    .eq('id', subjectId)
+    .eq('is_deleted', false)
+    .select('id,status,arrived_at')
+    .single<{ id: string; status: string; arrived_at: string }>();
+}
+
+export async function markInProgress(subjectId: string) {
+  const admin = createAdminClient();
+  return admin
+    .from('subjects')
+    .update({ status: 'IN_PROGRESS', work_started_at: new Date().toISOString() })
+    .eq('id', subjectId)
+    .eq('is_deleted', false)
+    .select('id,status,work_started_at')
+    .single<{ id: string; status: string; work_started_at: string }>();
+}
+
+export async function markIncomplete(
+  subjectId: string,
+  data: {
+    incomplete_reason: IncompleteReason;
+    incomplete_note: string | null;
+    spare_parts_requested: string | null;
+    spare_parts_quantity: number | null;
+    rescheduled_date: string | null;
+  },
+) {
+  const admin = createAdminClient();
+  return admin
+    .from('subjects')
+    .update({
+      status: 'INCOMPLETE',
+      incomplete_at: new Date().toISOString(),
+      incomplete_reason: data.incomplete_reason,
+      incomplete_note: data.incomplete_note,
+      spare_parts_requested: data.spare_parts_requested,
+      spare_parts_quantity: data.spare_parts_quantity,
+      rescheduled_date: data.rescheduled_date,
+    })
+    .eq('id', subjectId)
+    .eq('is_deleted', false)
+    .select('id,status')
+    .single<{ id: string; status: string }>();
+}
+
+export async function markComplete(
+  subjectId: string,
+  data: {
+    completion_notes: string | null;
+    billing_status: 'not_applicable' | 'due' | 'partially_paid' | 'paid' | 'waived';
+  },
+) {
+  const admin = createAdminClient();
+  return admin
+    .from('subjects')
+    .update({
+      status: 'COMPLETED',
+      completed_at: new Date().toISOString(),
+      completion_proof_uploaded: true,
+      completion_notes: data.completion_notes,
+      billing_status: data.billing_status,
+    })
+    .eq('id', subjectId)
+    .eq('is_deleted', false)
+    .select('id,status,completed_at,billing_status')
+    .single<{ id: string; status: string; completed_at: string; billing_status: string }>();
 }

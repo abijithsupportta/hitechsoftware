@@ -30,6 +30,12 @@ This document previously contained a planned `/api/v1` contract. The currently i
 As of now, implemented routes are:
 - `POST /api/team/members`
 - `DELETE /api/team/members/{id}`
+- `GET /api/team/members/completed-counts`
+- `GET /api/team/members/{id}/performance`
+- `POST /api/subjects/{id}/respond`
+- `POST /api/attendance/toggle`
+- `GET /api/cron/attendance-absent-flag`
+- `GET /api/cron/attendance-reset`
 
 Important notes:
 - Most read/list/create/update operations in the web app are currently executed directly via Supabase client/repository services (not through REST route handlers).
@@ -134,6 +140,113 @@ Response shape:
   "data": null
 }
 ```
+
+### Get Team Completed Counts
+
+- Method/Path: `GET /api/team/members/completed-counts`
+- AuthZ: `super_admin` only
+- Behavior:
+  - Reads all `subjects` where `status = 'COMPLETED'` and `assigned_technician_id IS NOT NULL`.
+  - Returns all-time completed counts grouped by technician id.
+
+Response shape:
+
+```json
+{
+  "counts": {
+    "<technician_id>": 12
+  }
+}
+```
+
+### Get Team Member Performance
+
+- Method/Path: `GET /api/team/members/{id}/performance`
+- AuthZ: `super_admin` only
+- Behavior:
+  - Returns last 6 months monthly metrics for the technician.
+  - Computes `rejections` from `subject_status_history` (`event_type = 'rejection'`).
+  - Computes `reschedules` from `subject_status_history` (`event_type = 'reschedule'`) for subjects rejected by that technician.
+  - Computes `completed` monthly plus all-time completed totals from `subjects` where `status = 'COMPLETED'`.
+
+Response shape:
+
+```json
+{
+  "ok": true,
+  "data": {
+    "monthly": [
+      {
+        "month": "2026-03",
+        "label": "Mar 2026",
+        "rejections": 2,
+        "reschedules": 1,
+        "completed": 9
+      }
+    ],
+    "totals": {
+      "rejections": 5,
+      "reschedules": 3,
+      "completedLast6Months": 24,
+      "completedAllTime": 41
+    }
+  }
+}
+```
+
+### Technician Response to Subject
+
+- Method/Path: `POST /api/subjects/{id}/respond`
+- AuthZ: `technician` only, and only when the subject is assigned to the current technician
+- Request body:
+
+```json
+{
+  "action": "accept"
+}
+```
+
+or
+
+```json
+{
+  "action": "reject",
+  "rejection_reason": "Customer unavailable"
+}
+```
+
+- Behavior:
+  - Reject/accept is allowed only when `technician_acceptance_status = 'pending'`.
+  - `accept` updates subject to `status = 'ACCEPTED'` and `technician_acceptance_status = 'accepted'`.
+  - `reject` updates subject to `status = 'RESCHEDULED'`, stores reason, sets `rejected_by_technician_id`, and marks `is_rejected_pending_reschedule = true`.
+
+### Technician Attendance Toggle
+
+- Method/Path: `POST /api/attendance/toggle`
+- AuthZ: `technician` only
+- Behavior:
+  - First toggle of the day marks technician online and creates/updates today's attendance row with `toggled_on_at`.
+  - Toggle off is allowed only after 18:00 local server time.
+  - Toggle off marks profile offline and sets `toggled_off_at`.
+
+### Cron: Attendance Absent Flag
+
+- Method/Path: `GET /api/cron/attendance-absent-flag`
+- AuthZ: Bearer token with `CRON_SECRET`
+- Behavior:
+  - Finds technicians without `toggled_on_at` for current date.
+  - Inserts missing absent attendance rows.
+  - Queues `ATTENDANCE_ABSENT_FLAG` notifications to office staff and super admins.
+
+### Cron: Attendance Reset
+
+- Method/Path: `GET /api/cron/attendance-reset`
+- AuthZ: Bearer token with `CRON_SECRET`
+- Behavior:
+  - Operates on previous date.
+  - Inserts absent records for technicians with no ON toggle.
+  - Auto-closes open attendance rows by setting `toggled_off_at`.
+  - Resets technician online status (`profiles.is_online = false`).
 
 Common error shape for implemented handlers:
 

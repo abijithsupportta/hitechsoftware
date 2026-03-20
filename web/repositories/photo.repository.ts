@@ -109,3 +109,64 @@ export async function findById(photoId: string) {
     .eq('is_deleted', false)
     .maybeSingle<SubjectPhoto>();
 }
+
+// ---------------------------------------------------------------------------
+// Separate storage upload / DB record helpers (used by photo service layer)
+// ---------------------------------------------------------------------------
+
+/** Upload file to Supabase Storage only — does NOT write a DB record. */
+export async function uploadToStorage(
+  subjectId: string,
+  photoType: PhotoType,
+  file: File,
+): Promise<{ storagePath: string; publicUrl: string }> {
+  const timestamp = Date.now();
+  const ext = file.name.split('.').pop() ?? 'jpg';
+  const path = `${subjectId}/${photoType}_${timestamp}.${ext}`;
+
+  const uploadResult = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .upload(path, file, { contentType: file.type, upsert: false });
+
+  if (uploadResult.error) {
+    throw new Error(`Storage upload failed: ${uploadResult.error.message}`);
+  }
+
+  const { data: publicUrlData } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
+
+  return {
+    storagePath: path,
+    publicUrl: publicUrlData?.publicUrl ?? '',
+  };
+}
+
+/** Insert a photo metadata record into subject_photos. */
+export async function savePhotoRecord(data: {
+  subjectId: string;
+  photoType: PhotoType;
+  storagePath: string;
+  publicUrl: string;
+  uploadedBy: string | null;
+  fileSizeBytes: number;
+  mimeType: string;
+}) {
+  return supabase
+    .from('subject_photos')
+    .insert({
+      subject_id: data.subjectId,
+      photo_type: data.photoType,
+      storage_path: data.storagePath,
+      public_url: data.publicUrl,
+      uploaded_by: data.uploadedBy,
+      file_size_bytes: data.fileSizeBytes,
+      mime_type: data.mimeType,
+    })
+    .select('id,subject_id,photo_type,storage_path,public_url,uploaded_by,uploaded_at,file_size_bytes,mime_type')
+    .single<SubjectPhoto>();
+}
+
+/** Alias: find all photos for a subject (spec name). */
+export const findPhotosBySubjectId = findBySubjectId;
+
+/** Alias: find single photo by subject + type (spec name). */
+export const findPhotoByType = findBySubjectAndType;

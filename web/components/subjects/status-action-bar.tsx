@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, Input, Label, Alert, AlertDescription } from '@/components/ui/form';
-import { AlertCircle, CheckCircle2, Truck, MapPin, Wrench } from 'lucide-react';
+import { AlertCircle, CheckCircle2, MapPin, Wrench } from 'lucide-react';
 import type { IncompleteJobInput } from '@/modules/subjects/subject.types';
 
 interface StatusActionBarProps {
@@ -20,12 +20,17 @@ interface StatusActionBarProps {
 }
 
 const STATUS_FLOW = {
-  ACCEPTED: { label: 'Accepted', icon: CheckCircle2, next: 'EN_ROUTE' },
-  EN_ROUTE: { label: 'En Route', icon: Truck, next: 'ARRIVED' },
-  ARRIVED: { label: 'Arrived', icon: MapPin, next: 'IN_PROGRESS' },
-  IN_PROGRESS: { label: 'Work Started', icon: Wrench, next: 'COMPLETED' },
-  COMPLETED: { label: 'Completed', icon: CheckCircle2, next: null },
-  INCOMPLETE: { label: 'Incomplete', icon: AlertCircle, next: null },
+  ACCEPTED: { label: 'Accepted', icon: CheckCircle2, next: 'ARRIVED', buttonLabel: 'Mark as Arrived' },
+  ARRIVED: { label: 'Arrived', icon: MapPin, next: 'IN_PROGRESS', buttonLabel: 'Start Work' },
+  IN_PROGRESS: { label: 'Work in Progress', icon: Wrench, next: null, buttonLabel: null },
+  COMPLETED: { label: 'Completed', icon: CheckCircle2, next: null, buttonLabel: null },
+  INCOMPLETE: { label: 'Incomplete', icon: AlertCircle, next: null, buttonLabel: null },
+  AWAITING_PARTS: { label: 'Awaiting Parts', icon: AlertCircle, next: null, buttonLabel: null },
+};
+
+const TRANSITION_BUTTON_LABEL: Record<string, string> = {
+  ARRIVED: 'Mark as Arrived',
+  IN_PROGRESS: 'Start Work',
 };
 
 const INCOMPLETE_REASONS = [
@@ -134,13 +139,13 @@ export function StatusActionBar({
         </div>
 
         <div className="flex gap-2">
-          {currentStatus !== 'COMPLETED' && currentStatus !== 'INCOMPLETE' && statusInfo?.next && (
+          {currentStatus !== 'COMPLETED' && currentStatus !== 'INCOMPLETE' && currentStatus !== 'AWAITING_PARTS' && statusInfo?.next && (
             <Button
               onClick={handleTransitionClick}
               disabled={isLoading || !canTransition}
               className="bg-blue-600 hover:bg-blue-700"
             >
-              {isLoading ? 'Updating...' : `Move to ${STATUS_FLOW[statusInfo.next as keyof typeof STATUS_FLOW]?.label || 'Next'}`}
+              {isLoading ? 'Updating...' : (TRANSITION_BUTTON_LABEL[statusInfo.next] ?? `Move to ${STATUS_FLOW[statusInfo.next as keyof typeof STATUS_FLOW]?.label ?? 'Next'}`)}
             </Button>
           )}
 
