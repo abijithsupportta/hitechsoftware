@@ -3,6 +3,22 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-20 15:41:59 +05:30] Feat: Admin Queue Chips in Service List (All / Pending / Overdue)
+- Summary: Added visible filter chips directly in subject/service list so admin can switch queue mode without URL editing.
+- Work done:
+  - Added queue chips in subjects list header: `All`, `Pending`, `Overdue`.
+  - Wired chips to existing queue mode behavior using router push with query param sync (`queue=...`).
+  - Preserved compatibility with dashboard card navigation so chips and deep links stay in sync.
+  - API documentation review completed: no backend API contract/path/auth/payload change in this UI-only enhancement, so no update required in `web/docs/API_DOCUMENTATION.md`.
+- Files changed:
+  - web/app/dashboard/subjects/page.tsx
+  - doc/WORK_LOG.md
+- Verification:
+  - `npm run build --workspace=web` passed successfully.
+  - No diagnostics in modified file via error checks.
+- Next:
+  - Optional: show queue counts inside chips (e.g., `Pending (14)`, `Overdue (5)`) for faster triage.
+
 ## [2026-03-20 15:38:06 +05:30] Feat: Admin Overdue Pending Queue + Click-through Navigation + Pending Sorting
 - Summary: Added an explicit overdue-pending queue for admin dashboard based on technician-assigned date older than current date, with direct navigation to service list and overdue-first pending sorting.
 - Work done:

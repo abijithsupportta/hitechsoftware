@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { Filter, Plus } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useSearchParams } from 'next/navigation';
 import { usePermission } from '@/hooks/auth/usePermission';
 import { useSubjects } from '@/hooks/subjects/useSubjects';
@@ -104,6 +105,7 @@ function isPendingStatus(status: string) {
 }
 
 export default function SubjectsDashboardPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { can, role } = usePermission();
   const queryClient = useQueryClient();
@@ -144,6 +146,24 @@ export default function SubjectsDashboardPage() {
   } = useSubjects();
 
   const queueParam = searchParams.get('queue');
+  const queueMode: 'all' | 'pending' | 'overdue' = queueParam === 'overdue'
+    ? 'overdue'
+    : queueParam === 'pending'
+      ? 'pending'
+      : 'all';
+
+  function setQueueMode(mode: 'all' | 'pending' | 'overdue') {
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (mode === 'all') {
+      params.delete('queue');
+    } else {
+      params.set('queue', mode);
+    }
+
+    const query = params.toString();
+    router.push(query ? `/dashboard/subjects?${query}` : '/dashboard/subjects');
+  }
 
   useEffect(() => {
     if (role === 'technician') {
@@ -237,6 +257,44 @@ export default function SubjectsDashboardPage() {
                 : 'Filter, track, and audit all service subjects.'}
         </p>
       </div>
+
+      {role !== 'technician' ? (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setQueueMode('all')}
+            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+              queueMode === 'all'
+                ? 'border-slate-700 bg-slate-700 text-white'
+                : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            All
+          </button>
+          <button
+            type="button"
+            onClick={() => setQueueMode('pending')}
+            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+              queueMode === 'pending'
+                ? 'border-amber-700 bg-amber-700 text-white'
+                : 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100'
+            }`}
+          >
+            Pending
+          </button>
+          <button
+            type="button"
+            onClick={() => setQueueMode('overdue')}
+            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+              queueMode === 'overdue'
+                ? 'border-rose-700 bg-rose-700 text-white'
+                : 'border-rose-300 bg-rose-50 text-rose-800 hover:bg-rose-100'
+            }`}
+          >
+            Overdue
+          </button>
+        </div>
+      ) : null}
 
       {role !== 'technician' && queueParam === 'overdue' ? (
         <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
