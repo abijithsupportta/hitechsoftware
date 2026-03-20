@@ -43,10 +43,6 @@ async function respondToSubjectApi(
   return response.json() as Promise<{ ok: boolean; error?: { message: string } }>;
 }
 
-function formatDate(value: string) {
-  return value;
-}
-
 function formatStatus(value: string) {
   return value.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
 }
@@ -295,10 +291,9 @@ export default function SubjectDetailPage() {
 
       <WarrantyAndContractsSection subject={subject} userRole={userRole} />
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <SubjectInfoCard subject={subject} />
         <ProductInfoCard subject={subject} />
-        <ActivityTimeline timeline={subject.timeline} />
       </div>
 
       <div className="mt-4 space-y-4">
@@ -306,6 +301,7 @@ export default function SubjectDetailPage() {
         <JobWorkflowSection subject={subject} userRole={userRole ?? ''} userId={user?.id ?? ''} />
         <AccessoriesSection subject={subject} userRole={userRole} userId={user?.id ?? null} />
         <BillingSection subject={subject} userRole={userRole} userId={user?.id ?? null} />
+        <ActivityTimeline timeline={subject.timeline} />
       </div>
 
       <DeleteConfirmModal

@@ -3,6 +3,22 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-20 20:46:52 +05:30] Layout fix: keep Activity Timeline as last section in subject details
+
+- Summary: Reordered the subject details page so Activity Timeline always appears below all other sections.
+- Work done:
+  - Removed Activity Timeline from the top summary grid.
+  - Appended Activity Timeline to the bottom section stack after Job Workflow, Accessories, and Billing.
+  - Adjusted top info grid from 3 columns to 2 columns after removing timeline from that row.
+- Files changed:
+  - web/app/dashboard/subjects/[id]/page.tsx
+- Verification:
+  - VS Code diagnostics: no TypeScript/compile errors in edited file.
+- Issues:
+  - none
+- Next:
+  - If needed, apply the same bottom placement convention to any other detail pages that use timelines.
+
 ## [2026-03-20 20:39:10 +05:30] Enhancement: auto-compress uploaded images and clarify preview/remove flow
 
 - Summary: Added client-side image compression before upload (targeting roughly 90% reduction when possible) and reinforced that uploaded items are visible and removable in billing.
