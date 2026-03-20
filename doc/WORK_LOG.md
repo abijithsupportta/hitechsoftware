@@ -3,6 +3,30 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-20 21:03:40 +05:30] Fix: enable accessory removal from billing API (resolve 405) and add PATCH support
+
+- Summary: Fixed billing accessory removal failing with `405 Method Not Allowed` by implementing `DELETE /api/subjects/[id]/billing` and aligned API methods with the `useBilling` hook.
+- Work done:
+  - Added shared billing auth/subject context helper in billing API route.
+  - Implemented `DELETE` handler for `action: remove_accessory` with validations:
+    - authenticated technician only
+    - must be assigned technician
+    - subject must be `IN_PROGRESS` and not billed
+    - accessory must belong to the subject
+    - soft-delete accessory (`is_deleted = true`)
+  - Implemented `PATCH` handler for `action: update_payment_status` to match existing hook behavior:
+    - office_staff/super_admin authorization
+    - updates `subject_bills.payment_status` and subject billing fields
+  - Kept existing `POST` behavior unchanged for add accessory and generate bill.
+- Files changed:
+  - web/app/api/subjects/[id]/billing/route.ts
+- Verification:
+  - VS Code diagnostics: no TypeScript/compile errors in edited file.
+- Issues:
+  - Root issue: client hook called DELETE/PATCH on billing API but route only exposed POST, causing 405 responses.
+- Next:
+  - Verify in UI that removing manually added parts/accessories now works end-to-end and list refreshes immediately.
+
 ## [2026-03-20 20:54:28 +05:30] Upload update: allow any image format selection in billing flow
 
 - Summary: Expanded image upload acceptance so technicians can select any image type without client-side format blocking.

@@ -18,6 +18,81 @@ function toNumber(value: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+async function authenticateBillingRequest(subjectId: string) {
+  const supabase = await createServerClient();
+  const authState = await supabase.auth.getUser();
+
+  if (authState.error || !authState.data.user) {
+    const error: ErrorResponse = {
+      step: '2. Authentication',
+      code: 'UNAUTHORIZED',
+      message: 'No authenticated user found',
+      userMessage: 'You must be logged in',
+    };
+    return { ok: false as const, status: 401, error };
+  }
+
+  const userId = authState.data.user.id;
+
+  const profileResult = await supabase
+    .from('profiles')
+    .select('id,role')
+    .eq('id', userId)
+    .maybeSingle<{ id: string; role: string }>();
+
+  if (profileResult.error || !profileResult.data) {
+    const error: ErrorResponse = {
+      step: '3. Load Profile',
+      code: 'PROFILE_NOT_FOUND',
+      message: 'User profile missing',
+      userMessage: 'Your profile could not be found. Please log out and log back in.',
+    };
+    return { ok: false as const, status: 400, error };
+  }
+
+  const admin = await createAdminClient();
+  const subjectResult = await admin
+    .from('subjects')
+    .select('id,assigned_technician_id,status,bill_generated')
+    .eq('id', subjectId)
+    .eq('is_deleted', false)
+    .maybeSingle<{
+      id: string;
+      assigned_technician_id: string | null;
+      status: string;
+      bill_generated: boolean;
+    }>();
+
+  if (subjectResult.error) {
+    const error: ErrorResponse = {
+      step: '5. Load Subject',
+      code: 'SUBJECT_QUERY_ERROR',
+      message: `Subject query failed: ${subjectResult.error.message}`,
+      userMessage: 'Failed to load subject details. Please try again.',
+      details: isDev ? { dbError: subjectResult.error.message } : undefined,
+    };
+    return { ok: false as const, status: 500, error };
+  }
+
+  if (!subjectResult.data) {
+    const error: ErrorResponse = {
+      step: '5. Load Subject',
+      code: 'SUBJECT_NOT_FOUND',
+      message: `Subject ${subjectId} does not exist or is deleted`,
+      userMessage: 'This subject could not be found',
+    };
+    return { ok: false as const, status: 404, error };
+  }
+
+  return {
+    ok: true as const,
+    userId,
+    role: profileResult.data.role,
+    admin,
+    subject: subjectResult.data,
+  };
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -448,4 +523,238 @@ export async function POST(
   };
   console.log(`[${timestamp}] ✗ Failed:`, error.code);
   return NextResponse.json({ ok: false, error }, { status: 400 });
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id: subjectId } = await params;
+  const timestamp = new Date().toISOString();
+
+  if (!subjectId || typeof subjectId !== 'string' || subjectId.trim() === '') {
+    const error: ErrorResponse = {
+      step: '1. Validate Subject ID',
+      code: 'INVALID_SUBJECT_ID',
+      message: 'Subject ID is required',
+      userMessage: 'Invalid subject ID',
+    };
+    return NextResponse.json({ ok: false, error }, { status: 400 });
+  }
+
+  let body: { action?: string; accessoryId?: string };
+  try {
+    body = await request.json();
+  } catch (err) {
+    const error: ErrorResponse = {
+      step: '4. Parse Request',
+      code: 'INVALID_JSON',
+      message: err instanceof Error ? err.message : 'Invalid JSON',
+      userMessage: 'Request body must be valid JSON',
+    };
+    return NextResponse.json({ ok: false, error }, { status: 400 });
+  }
+
+  if (body.action !== 'remove_accessory') {
+    const error: ErrorResponse = {
+      step: '5. Validate Action',
+      code: 'UNKNOWN_ACTION',
+      message: `Unknown action: '${body.action ?? ''}'`,
+      userMessage: `Action '${body.action ?? ''}' is not supported`,
+    };
+    return NextResponse.json({ ok: false, error }, { status: 400 });
+  }
+
+  if (!body.accessoryId || typeof body.accessoryId !== 'string') {
+    const error: ErrorResponse = {
+      step: '6. Validate Accessory',
+      code: 'MISSING_ACCESSORY_ID',
+      message: 'accessoryId is required',
+      userMessage: 'Accessory ID is required',
+    };
+    return NextResponse.json({ ok: false, error }, { status: 400 });
+  }
+
+  const auth = await authenticateBillingRequest(subjectId);
+  if (!auth.ok) {
+    return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+  }
+
+  if (auth.role !== 'technician') {
+    const error: ErrorResponse = {
+      step: '3. Verify Role',
+      code: 'INVALID_ROLE',
+      message: `User role is '${auth.role}', expected 'technician'`,
+      userMessage: 'Only technicians can remove accessories',
+    };
+    return NextResponse.json({ ok: false, error }, { status: 403 });
+  }
+
+  if (auth.subject.assigned_technician_id !== auth.userId) {
+    const error: ErrorResponse = {
+      step: '5. Verify Assignment',
+      code: 'NOT_ASSIGNED_TO_SUBJECT',
+      message: `Not assigned to subject ${subjectId}`,
+      userMessage: 'You can only manage accessories for subjects assigned to you',
+    };
+    return NextResponse.json({ ok: false, error }, { status: 403 });
+  }
+
+  if (auth.subject.status !== 'IN_PROGRESS' || auth.subject.bill_generated) {
+    const error: ErrorResponse = {
+      step: '6. Check Status',
+      code: 'INVALID_STATUS',
+      message: `Cannot remove accessories when status is ${auth.subject.status}`,
+      userMessage: 'Accessories can only be removed while job is in progress before billing',
+    };
+    return NextResponse.json({ ok: false, error }, { status: 400 });
+  }
+
+  const existingAccessory = await auth.admin
+    .from('subject_accessories')
+    .select('id')
+    .eq('id', body.accessoryId)
+    .eq('subject_id', subjectId)
+    .eq('is_deleted', false)
+    .maybeSingle<{ id: string }>();
+
+  if (existingAccessory.error || !existingAccessory.data) {
+    const error: ErrorResponse = {
+      step: '6. Load Accessory',
+      code: 'ACCESSORY_NOT_FOUND',
+      message: `Accessory ${body.accessoryId} not found for subject ${subjectId}`,
+      userMessage: 'Accessory item was not found',
+      details: isDev && existingAccessory.error ? { dbError: existingAccessory.error.message } : undefined,
+    };
+    return NextResponse.json({ ok: false, error }, { status: 404 });
+  }
+
+  const removeResult = await auth.admin
+    .from('subject_accessories')
+    .update({ is_deleted: true })
+    .eq('id', body.accessoryId)
+    .eq('subject_id', subjectId);
+
+  if (removeResult.error) {
+    const error: ErrorResponse = {
+      step: '6. Remove Accessory',
+      code: 'ACCESSORY_REMOVE_FAILED',
+      message: removeResult.error.message,
+      userMessage: 'Failed to remove accessory. Please try again.',
+      details: isDev ? { dbError: removeResult.error.message } : undefined,
+    };
+    console.log(`[${timestamp}] ✗ Failed:`, error.code);
+    return NextResponse.json({ ok: false, error }, { status: 400 });
+  }
+
+  return NextResponse.json({ ok: true, data: { id: body.accessoryId } });
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id: subjectId } = await params;
+
+  if (!subjectId || typeof subjectId !== 'string' || subjectId.trim() === '') {
+    const error: ErrorResponse = {
+      step: '1. Validate Subject ID',
+      code: 'INVALID_SUBJECT_ID',
+      message: 'Subject ID is required',
+      userMessage: 'Invalid subject ID',
+    };
+    return NextResponse.json({ ok: false, error }, { status: 400 });
+  }
+
+  let body: { action?: string; billId?: string; paymentStatus?: 'paid' | 'due' | 'waived' };
+  try {
+    body = await request.json();
+  } catch (err) {
+    const error: ErrorResponse = {
+      step: '4. Parse Request',
+      code: 'INVALID_JSON',
+      message: err instanceof Error ? err.message : 'Invalid JSON',
+      userMessage: 'Request body must be valid JSON',
+    };
+    return NextResponse.json({ ok: false, error }, { status: 400 });
+  }
+
+  if (body.action !== 'update_payment_status') {
+    const error: ErrorResponse = {
+      step: '5. Validate Action',
+      code: 'UNKNOWN_ACTION',
+      message: `Unknown action: '${body.action ?? ''}'`,
+      userMessage: `Action '${body.action ?? ''}' is not supported`,
+    };
+    return NextResponse.json({ ok: false, error }, { status: 400 });
+  }
+
+  if (!body.billId || !body.paymentStatus || !['paid', 'due', 'waived'].includes(body.paymentStatus)) {
+    const error: ErrorResponse = {
+      step: '6. Validate Payment Update',
+      code: 'INVALID_PAYMENT_UPDATE',
+      message: 'billId and valid paymentStatus are required',
+      userMessage: 'Please provide a valid bill and payment status',
+    };
+    return NextResponse.json({ ok: false, error }, { status: 400 });
+  }
+
+  const auth = await authenticateBillingRequest(subjectId);
+  if (!auth.ok) {
+    return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+  }
+
+  if (!['office_staff', 'super_admin'].includes(auth.role)) {
+    const error: ErrorResponse = {
+      step: '3. Verify Role',
+      code: 'INVALID_ROLE',
+      message: `User role is '${auth.role}', expected office_staff or super_admin`,
+      userMessage: 'Only office staff or super admin can update payment status',
+    };
+    return NextResponse.json({ ok: false, error }, { status: 403 });
+  }
+
+  const nowIso = new Date().toISOString();
+  const paymentCollectedAt = body.paymentStatus === 'paid' ? nowIso : null;
+
+  const billUpdate = await auth.admin
+    .from('subject_bills')
+    .update({
+      payment_status: body.paymentStatus,
+      payment_collected_at: paymentCollectedAt,
+    })
+    .eq('id', body.billId)
+    .eq('subject_id', subjectId)
+    .eq('is_deleted', false)
+    .select('id,payment_status')
+    .single();
+
+  if (billUpdate.error) {
+    const error: ErrorResponse = {
+      step: '6. Update Bill Payment',
+      code: 'PAYMENT_UPDATE_FAILED',
+      message: billUpdate.error.message,
+      userMessage: 'Failed to update payment status',
+      details: isDev ? { dbError: billUpdate.error.message } : undefined,
+    };
+    return NextResponse.json({ ok: false, error }, { status: 400 });
+  }
+
+  await auth.admin
+    .from('subjects')
+    .update({
+      billing_status: body.paymentStatus,
+      payment_collected: body.paymentStatus === 'paid',
+      payment_collected_at: paymentCollectedAt,
+    })
+    .eq('id', subjectId)
+    .eq('is_deleted', false);
+
+  return NextResponse.json({
+    ok: true,
+    data: {
+      id: billUpdate.data.id,
+      payment_status: billUpdate.data.payment_status,
+    },
+  });
 }
