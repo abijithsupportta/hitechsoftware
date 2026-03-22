@@ -1,3 +1,11 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// SubjectInfoCard.tsx
+//
+// Read-only card showing service meta: source, category, priority, type,
+// customer contact. Used in the Subject Detail page main column.
+// All data is derived from the already-loaded SubjectDetail object —
+// no additional fetching happens inside this component.
+// ─────────────────────────────────────────────────────────────────────────────
 'use client';
 
 import type { SubjectDetail } from '@/modules/subjects/subject.types';

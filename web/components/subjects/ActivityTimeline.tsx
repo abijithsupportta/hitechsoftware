@@ -1,3 +1,16 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// ActivityTimeline.tsx
+//
+// Renders the chronological audit trail of all events for a subject:
+// status changes, technician assignments, rejections, reschedules, etc.
+//
+// EVENT_META provides the icon, colours, and label for each event_type.
+// Unknown event_types fall back to the 'status_change' style to prevent
+// a blank or broken entry if a new DB event type is added in the future.
+//
+// TimelineEventDetail handles the per-type content row — each case
+// formats old_value / new_value in a way meaningful for that event type.
+// ─────────────────────────────────────────────────────────────────────────────
 'use client';
 
 import { Activity, Calendar, CheckCircle2, Flag, UserCheck, UserMinus, UserPlus, XCircle } from 'lucide-react';

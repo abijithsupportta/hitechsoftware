@@ -1,3 +1,17 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// cannot-complete-modal.tsx
+//
+// Modal dialog for marking a job as INCOMPLETE (Cannot Complete).
+// The technician must select one of the INCOMPLETE_REASONS values.
+//
+// Conditional fields:
+//   spare_parts_not_available  → requires at least one spare-part row with
+//                                name, quantity, and price filled in
+//   other                      → requires a free-text note (min 10 chars)
+//
+// canSubmit gate prevents submission until all required fields are valid,
+// ensuring the backend receives a complete IncompleteJobInput payload.
+// ─────────────────────────────────────────────────────────────────────────────
 'use client';
 
 import React, { useState } from 'react';

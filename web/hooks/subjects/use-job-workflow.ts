@@ -1,3 +1,19 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// use-job-workflow.ts
+//
+// Client-side React Query hook that wraps the job lifecycle API routes.
+// The technician uses these mutations exclusively for workflow transitions;
+// admins/office staff do NOT call these — they use assignment hooks.
+//
+// All mutations call the Next.js API routes (/api/subjects/[id]/workflow and
+// /api/subjects/[id]/photos/*) rather than the Supabase client directly,
+// because the workflow service needs the admin Supabase client (service-role
+// key) which is only available server-side. The API route authenticates the
+// request, verifies ownership, and delegates to the service layer.
+//
+// After every mutation succeeds, the subject detail query is invalidated so
+// the UI reflects the new status immediately without a manual page refresh.
+// ─────────────────────────────────────────────────────────────────────────────
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/auth/useAuth';
@@ -8,11 +24,25 @@ import type {
   IncompleteJobInput,
 } from '@/modules/subjects/subject.types';
 
+/**
+ * Job lifecycle hook for the Subject Detail page.
+ * Returns:
+ *   workflowRequirementsQuery — required photo types + completion check (GET)
+ *   updateStatusMutation      — ARRIVED / IN_PROGRESS / AWAITING_PARTS (POST update_status)
+ *   uploadPhotoMutation       — file upload via multipart form (POST photos/upload)
+ *   removePhotoMutation       — soft-delete a photo (DELETE photos)
+ *   markIncompleteMutation    — mark job incomplete with reason (POST mark_incomplete)
+ *   markCompleteMutation      — mark job complete (POST mark_complete)
+ */
 export function useJobWorkflow(subjectId: string) {
   const { user } = useAuth();
   const technicianId = user?.id;
   const queryClient = useQueryClient();
 
+  // ── Requirements query ──────────────────────────────────────────────
+  // Fetches requiredPhotos + completionRequirements from the server on mount
+  // and after any photo upload/delete, so the completion checklist is always
+  // in sync with what the technician has actually uploaded.
   const workflowRequirementsQuery = useQuery({
     queryKey: ['job-workflow', subjectId, 'requirements'],
     staleTime: 30 * 1000,
@@ -40,6 +70,7 @@ export function useJobWorkflow(subjectId: string) {
   });
 
   // Mutation: update job status (runs via API route — admin client is server-side only)
+  // label map translates the raw status enum to a toast-friendly message.
   const updateStatusMutation = useMutation({
     mutationFn: async (newStatus: string) => {
       const res = await fetch(`/api/subjects/${subjectId}/workflow`, {
@@ -68,6 +99,8 @@ export function useJobWorkflow(subjectId: string) {
   });
 
   // Mutation: upload photo with progress tracking (via API route for storage access)
+  // FormData is used instead of JSON because the file binary must be sent as
+  // multipart/form-data — JSON cannot carry raw file bytes.
   const uploadPhotoMutation = useMutation({
     mutationFn: async ({ file, photoType }: { file: File; photoType: PhotoType }) => {
       if (!technicianId) throw new Error('Not authenticated');
@@ -134,6 +167,8 @@ export function useJobWorkflow(subjectId: string) {
   });
 
   // Mutation: mark job incomplete (runs via API route)
+  // Full IncompleteJobInput (reason, note, spare parts) is spread into the body
+  // rather than nested because the API route reads top-level fields.
   const markIncompleteMutation = useMutation({
     mutationFn: async (input: IncompleteJobInput) => {
       const res = await fetch(`/api/subjects/${subjectId}/workflow`, {
@@ -156,6 +191,7 @@ export function useJobWorkflow(subjectId: string) {
   });
 
   // Mutation: mark job complete (runs via API route)
+  // Optional notes are saved as completion_notes on the subject record.
   const markCompleteMutation = useMutation({
     mutationFn: async (notes?: string) => {
       const res = await fetch(`/api/subjects/${subjectId}/workflow`, {

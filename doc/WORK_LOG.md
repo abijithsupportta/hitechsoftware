@@ -3,6 +3,112 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-23 14:45:00 +05:30] Inventory Management Module — Full Implementation
+
+- Summary: Built a complete Inventory Management module with 3 sub-sections (Categories, Product Types, Products) plus a Stock Entry system. Integrated into dashboard sidebar as a collapsible sub-menu mirroring the Service Module pattern.
+- Work done:
+  - **DB Migration** (`20260322_016_product_inventory.sql`): 5 new tables — `product_categories`, `product_types`, `products`, `stock_entries`, `stock_entry_items` — with full RLS policies (read for all authenticated, write for super_admin/office_staff/stock_manager). Soft delete on all tables. Unique index on `upper(material_code)` for products.
+  - **Routes** (`web/lib/constants/routes.ts`): Added 7 new route constants — categories, product-types, products, products/new, products/[id]/edit, stock, stock/new.
+  - **Repositories** (4 files): `product-categories`, `product-types`, `products` (with search/filter/pagination + category & product_type joins), `stock-entries` (two-step insert for header + items, expandable item joins).
+  - **Modules** (12 files across 4 modules): Types, Zod validation, and service layer for product-categories, product-types, products, and stock-entries. Material code validated as alphanumeric+hyphens regex. Refurbished label conditionally required via `.refine()`. Duplicate key error mapping per service.
+  - **Hooks** (5 files): `useProductCategories`, `useProductTypes`, `useProducts` (with filter state + mutations), `useProduct` (single fetch by id), `useStockEntries` (with filter state + mutations). All use TanStack Query with invalidation on mutations.
+  - **Pages** (9 files): `inventory/layout.tsx` (sub-nav tabs), `inventory/page.tsx` (redirect to /products), `inventory/categories/page.tsx` (inline CRUD), `inventory/product-types/page.tsx` (inline CRUD), `inventory/products/page.tsx` (filterable table), `inventory/products/new/page.tsx`, `inventory/products/[id]/edit/page.tsx`, `inventory/stock/page.tsx` (expandable rows), `inventory/stock/new/page.tsx` (useFieldArray + inline product creation form).
+  - **ProductForm component** (`web/components/inventory/ProductForm.tsx`): Reusable RHF+Zod form for create/edit. Toggle switches for `is_refurbished` and `is_active`. Refurbished label section shown conditionally.
+  - **Dashboard sidebar** (`web/app/dashboard/layout.tsx`): Added `INVENTORY_MODULE_ITEMS` array, `inventoryMenuExpanded` state, `isInventoryModuleActive` computed flag. Added Inventory as collapsible sidebar entry (expand/collapse button). Added sub-menu items (Products, Categories, Product Types, Stock Entries) with active highlighting.
+  - **Type safety fix**: Removed `.default()` from Zod boolean fields to align input/output types. Added `Resolver<T>` cast on `zodResolver` calls in `ProductForm.tsx` and `stock/new/page.tsx` to resolve `ZodEffects` + RHF resolver type mismatch (known issue when using `.refine()`).
+- Files changed:
+  - supabase/migrations/20260322_016_product_inventory.sql (created)
+  - web/lib/constants/routes.ts
+  - web/repositories/product-categories.repository.ts (created)
+  - web/repositories/product-types.repository.ts (created)
+  - web/repositories/products.repository.ts (created)
+  - web/repositories/stock-entries.repository.ts (created)
+  - web/modules/product-categories/product-category.types.ts (created)
+  - web/modules/product-categories/product-category.validation.ts (created)
+  - web/modules/product-categories/product-category.service.ts (created)
+  - web/modules/product-types/product-type.types.ts (created)
+  - web/modules/product-types/product-type.validation.ts (created)
+  - web/modules/product-types/product-type.service.ts (created)
+  - web/modules/products/product.types.ts (created)
+  - web/modules/products/product.validation.ts (created)
+  - web/modules/products/product.service.ts (created)
+  - web/modules/products/product.constants.ts (created)
+  - web/modules/stock-entries/stock-entry.types.ts (created)
+  - web/modules/stock-entries/stock-entry.validation.ts (created)
+  - web/modules/stock-entries/stock-entry.service.ts (created)
+  - web/hooks/product-categories/useProductCategories.ts (created)
+  - web/hooks/product-types/useProductTypes.ts (created)
+  - web/hooks/products/useProducts.ts (created)
+  - web/hooks/products/useProduct.ts (created)
+  - web/hooks/stock-entries/useStockEntries.ts (created)
+  - web/app/dashboard/inventory/layout.tsx (created)
+  - web/app/dashboard/inventory/page.tsx (replaced — now redirects to /products)
+  - web/app/dashboard/inventory/categories/page.tsx (created)
+  - web/app/dashboard/inventory/product-types/page.tsx (created)
+  - web/app/dashboard/inventory/products/page.tsx (created)
+  - web/app/dashboard/inventory/products/new/page.tsx (created)
+  - web/app/dashboard/inventory/products/[id]/edit/page.tsx (created)
+  - web/app/dashboard/inventory/stock/page.tsx (created)
+  - web/app/dashboard/inventory/stock/new/page.tsx (created)
+  - web/components/inventory/ProductForm.tsx (created)
+  - web/app/dashboard/layout.tsx
+- Verification:
+  - TypeScript: 0 errors across all new and modified files
+  - RHF resolver type mismatch (ZodEffects + boolean fields) identified and fixed with `Resolver<T>` cast
+  - All pages use permission checks via `usePermission()` hook matching existing RBAC config
+  - Sidebar Inventory submenu renders parallel to Service Module submenu with identical UX pattern
+- Issues encountered:
+  - `z.boolean().default(false)` inside `.refine()` causes input/output type divergence in `zodResolver` — fixed by removing `.default()` from schema and providing defaults only in `useForm({ defaultValues })`, plus adding `as Resolver<T>` cast
+  - `z.string().uuid().nullable().default(null)` in `stockEntryItemSchema` similarly caused type mismatch — fixed by removing `.default(null)`
+- Next:
+  - Push to GitHub main
+  - Run DB migration on Supabase project to create the 5 new tables
+
+## [2026-03-22 21:29:09 +05:30] Commenting: Subject Detail Feature — Full Codebase Documentation (Phases 1–5)
+
+- Summary: Added comprehensive JSDoc file headers and inline business-logic comments to all 27+ Subject Detail feature files across types, validation, service, hooks, API routes, UI components, and pages. All comments explain *why* (business rules, design decisions) rather than just *what*.
+- Work done:
+  - **Phase 1 — Foundation** (3 files): Added JSDoc to `common.types.ts` (ServiceResult discriminated union rationale), `subject.validation.ts` (all 4 superRefine cross-field rules), `subject.validation.test.ts` (describe structure + per-it comments)
+  - **Phase 2 — Service & Hooks** (4 files): File headers + key inline comments to `billing.service.ts` (bill generation flow, brand_dealer vs customer billing, photo completion guard), `useSubjects.ts` (filter state design, technician auto-filter, queue modes), `use-job-workflow.ts` (why API routes needed for admin client, invalidation strategy per mutation), `useBilling.ts` (each hook purpose, blob download pattern, null-vs-error in useSubjectBill)
+  - **Phase 3 — API Routes** (3 files): Headers + inline comments to `respond/route.ts` (idempotency guard, rejection counter RPC), `photos/route.ts` (soft-delete pattern, two-phase delete, access control), `billing/route.ts` (HTTP method→action routing table, authenticateBillingRequest helper, billboard rollback on subject update failure)
+  - **Phase 4 — UI Components** (11 files): File headers to `SubjectStatusBadge.tsx`, `SubjectPriorityBadge.tsx`, `SubjectInfoCard.tsx`, `ActivityTimeline.tsx`, `photo-gallery.tsx`, `job-workflow-section.tsx`, `BillingSection.tsx`, `AccessoriesSection.tsx`, `BillCard.tsx`, `BillEditPanel.tsx`, `cannot-complete-modal.tsx`
+  - **Phase 5 — Pages & Form** (5 files): Headers + inline comments to `SubjectForm.tsx` (source toggle, warranty auto-calc, phone debounce), `subjects/page.tsx` (queue modes, sort logic, prefetch on hover), `subjects/new/page.tsx`, `subjects/[id]/edit/page.tsx`, `subjects/[id]/page.tsx` (technician access guard, accept/reject modals, billingTypeMeta)
+- Files changed:
+  - web/types/common.types.ts
+  - web/modules/subjects/subject.validation.ts
+  - web/modules/subjects/subject.validation.test.ts
+  - web/modules/subjects/billing.service.ts
+  - web/hooks/subjects/useSubjects.ts
+  - web/hooks/subjects/use-job-workflow.ts
+  - web/hooks/subjects/useBilling.ts
+  - web/app/api/subjects/[id]/respond/route.ts
+  - web/app/api/subjects/[id]/photos/route.ts
+  - web/app/api/subjects/[id]/billing/route.ts
+  - web/components/subjects/SubjectStatusBadge.tsx
+  - web/components/subjects/SubjectPriorityBadge.tsx
+  - web/components/subjects/SubjectInfoCard.tsx
+  - web/components/subjects/ActivityTimeline.tsx
+  - web/components/subjects/photo-gallery.tsx
+  - web/components/subjects/job-workflow-section.tsx
+  - web/components/subjects/BillingSection.tsx
+  - web/components/subjects/AccessoriesSection.tsx
+  - web/components/subjects/BillCard.tsx
+  - web/components/subjects/BillEditPanel.tsx
+  - web/components/subjects/cannot-complete-modal.tsx
+  - web/components/subjects/SubjectForm.tsx
+  - web/app/dashboard/subjects/page.tsx
+  - web/app/dashboard/subjects/new/page.tsx
+  - web/app/dashboard/subjects/[id]/edit/page.tsx
+  - web/app/dashboard/subjects/[id]/page.tsx
+  - doc/WORK_LOG.md
+- Verification:
+  - `npx tsc --noEmit`: errors only in unrelated inventory module (pre-existing, not in any Subject file)
+  - `npx vitest run`: 39 passed / 8 failed — same 6 failing suites as recorded in vitest-results-final.json (pre-existing failures in auth/performance tests); no Subject module test regressions
+  - All changes are comment-only; no runtime logic was modified
+- Issues encountered: none caused by this task; pre-existing TS errors in inventory module and vitest failures in performance/auth suites
+- Next:
+  - Push to GitHub main (including WORK_LOG)
+
 ## [2026-03-22 23:45:00 +05:30] Feature: Inventory Module — Phase 1 (Parts Catalogue + Stock)
 
 - Summary: Full inventory module built from scratch on top of the existing database schema. Covers parts catalogue CRUD, real-time stock level tracking (on-hand / reserved / available), inline stock adjustments, and permission-gated UI. Navigation entry is now live.

@@ -1,3 +1,15 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// subject.service.ts
+//
+// Client-side service layer for the Subject (service job) domain.
+// Sits between the UI / React Query hooks and the repository layer.
+// Responsibilities:
+//   • Input validation via Zod schemas before any DB write
+//   • Data normalisation (trim, uppercase, strip empty strings)
+//   • Business-rule enforcement (warranty dates, assignment guards)
+//   • Error message mapping from raw DB/Supabase codes to user-friendly text
+//   • Technician-name enrichment on list results (joined in-memory)
+// ─────────────────────────────────────────────────────────────────────────────
 import { assignSubjectTechnician, assignTechnicianFull, createSubject, deleteSubject, getSubjectById, getSubjectTimeline, listSubjects, recalculateSubjectBillingType, updateSubject, updateSubjectWarranty } from '@/repositories/subject.repository';
 import { getAssignableTechnicianById, getAssignableTechnicians } from '@/modules/technicians/technician.service';
 import type { ServiceResult } from '@/types/common.types';
@@ -17,26 +29,46 @@ import type {
 import { createSubjectSchema, updateSubjectSchema } from '@/modules/subjects/subject.validation';
 import { SUBJECT_DEFAULT_PAGE_SIZE, WARRANTY_PERIODS } from '@/modules/subjects/subject.constants';
 
+// ── Private helpers ──────────────────────────────────────────────────────────
+
+/**
+ * Returns undefined for empty/whitespace-only strings so that optional fields
+ * stored as NULL in the DB stay NULL rather than being saved as empty strings.
+ */
 function normalizeOptional(value?: string) {
   const trimmed = value?.trim();
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
 }
 
+/** Trims and uppercases the subject number (e.g. 'ht-001' → 'HT-001'). */
 function normalizeSubjectNumber(value: string) {
   return value.trim().toUpperCase();
 }
 
+/**
+ * Adds `months` months to a date string and returns the result as YYYY-MM-DD.
+ * Used for calculating warranty_end_date from purchase_date + warranty_period.
+ */
 function addMonths(dateText: string, months: number) {
   const date = new Date(dateText);
   date.setMonth(date.getMonth() + months);
   return date.toISOString().split('T')[0];
 }
 
+/**
+ * Looks up the numeric month count for a WarrantyPeriod enum value.
+ * Returns null for 'custom' (manual end date entered by the admin instead).
+ */
 function monthsForWarrantyPeriod(period: WarrantyPeriod): number | null {
   const periodOption = WARRANTY_PERIODS.find((item) => item.value === period);
   return periodOption?.months ?? null;
 }
 
+/**
+ * Type guard — narrows an unknown string to the IncompleteReason union.
+ * Used when mapping raw DB rows to the SubjectDetail type so the compiler
+ * knows the field is a valid reason instead of just string | null.
+ */
 function isIncompleteReason(value: string | null | undefined): value is IncompleteReason {
   return value === 'customer_cannot_afford'
     || value === 'power_issue'
@@ -46,6 +78,11 @@ function isIncompleteReason(value: string | null | undefined): value is Incomple
     || value === 'other';
 }
 
+/**
+ * Type guard — narrows a string to the PhotoType union.
+ * Applied when filtering subject_photos from the DB so only known photo
+ * categories are included in the SubjectDetail.photos array.
+ */
 function isPhotoType(value: string): value is PhotoType {
   return value === 'serial_number'
     || value === 'machine'
@@ -58,6 +95,12 @@ function isPhotoType(value: string): value is PhotoType {
     || value === 'service_video';
 }
 
+/**
+ * Builds the clean DB write payload from raw form values.
+ * Applies normalizeOptional() to every nullable field so empty strings
+ * become undefined (written as NULL) rather than empty strings in the DB.
+ * Also normalises the subject_number to uppercase.
+ */
 function normalizeSubjectPayload(input: SubjectFormValues) {
   return {
     subject_number: normalizeSubjectNumber(input.subject_number),
@@ -83,6 +126,12 @@ function normalizeSubjectPayload(input: SubjectFormValues) {
   };
 }
 
+/**
+ * Converts raw Supabase / PostgreSQL error codes into sentences the UI can
+ * display to the user.
+ *   23505 → duplicate subject_number constraint violation
+ *   23514 → CHECK constraint violation (bad enum value, invalid date ordering, etc.)
+ */
 function mapRepositoryError(message?: string, code?: string) {
   const safeMessage = message?.trim() ?? 'Failed to process subject';
 
@@ -97,6 +146,13 @@ function mapRepositoryError(message?: string, code?: string) {
   return safeMessage;
 }
 
+/**
+ * Converts raw Supabase select rows into typed SubjectListItem objects.
+ * The raw select joins brands/dealers/service_categories as nested objects;
+ * this mapper flattens them so the rest of the app sees a simple flat record.
+ * assigned_technician_name and code start as null — they are enriched later
+ * in getSubjects() once the full technician list has been fetched.
+ */
 function mapRawSubjectList(data: unknown[]): SubjectListItem[] {
   return data.map((row) => {
     const typed = row as {
@@ -148,6 +204,16 @@ function mapRawSubjectList(data: unknown[]): SubjectListItem[] {
   });
 }
 
+// ── Public service functions ─────────────────────────────────────────────────
+
+/**
+ * Fetches a paginated, filtered list of subjects.
+ * After loading the raw rows, it fetches the full technician list and
+ * enriches each subject with the technician's display_name and code.
+ * This in-memory join is used because the subjects table stores only the UUID;
+ * the name lives in the profiles table and is not directly joinable via the
+ * browser Supabase client due to RLS on profiles.
+ */
 export async function getSubjects(filters: SubjectListFilters = {}): Promise<ServiceResult<SubjectListResponse>> {
   const safeFilters: SubjectListFilters = {
     ...filters,
@@ -190,6 +256,16 @@ export async function getSubjects(filters: SubjectListFilters = {}): Promise<Ser
   };
 }
 
+/**
+ * Creates a new service job ticket.
+ * Flow:
+ *   1. Zod validates the full input (cross-field rules included).
+ *   2. Payload is normalised (trim, uppercase, strip empties).
+ *   3. Supabase RPC 'create_subject_with_customer' is called — the RPC
+ *      handles upsert of the customer record and inserts the subject row
+ *      atomically, returning the new subject UUID.
+ *   4. Returns { id } on success so the caller can redirect to the detail page.
+ */
 export async function createSubjectTicket(input: CreateSubjectInput): Promise<ServiceResult<{ id: string }>> {
   const parsed = createSubjectSchema.safeParse(input);
 
@@ -214,6 +290,12 @@ export async function createSubjectTicket(input: CreateSubjectInput): Promise<Se
   return { ok: true, data: { id: result.data } };
 }
 
+/**
+ * Updates an existing subject record.
+ * Validates with the same Zod schema as create (sans created_by).
+ * Only the fields on SubjectFormValues are updated; workflow/billing fields
+ * are never touched here — those have dedicated API routes.
+ */
 export async function updateSubjectRecord(id: string, input: UpdateSubjectInput): Promise<ServiceResult<{ id: string }>> {
   const parsed = updateSubjectSchema.safeParse(input);
 
@@ -233,6 +315,17 @@ export async function updateSubjectRecord(id: string, input: UpdateSubjectInput)
   return { ok: true, data: result.data };
 }
 
+/**
+ * Loads the full SubjectDetail for the detail page.
+ * Fires the subject row fetch and the timeline fetch in parallel to reduce
+ * waterfall latency. After both resolve:
+ *   - The subject row is cast from the raw Supabase type to our typed shape.
+ *   - Photos are filtered to only known PhotoType values (guards against
+ *     stale DB data with old photo_type strings).
+ *   - The assigned technician's name is resolved via a separate call to
+ *     getAssignableTechnicianById() (profiles are not directly joinable).
+ *   - Timeline entries are mapped to SubjectTimelineItem with changed_by_name.
+ */
 export async function getSubjectDetails(id: string): Promise<ServiceResult<SubjectDetail>> {
   const [subjectResult, timelineResult] = await Promise.all([
     getSubjectById(id),
@@ -448,6 +541,12 @@ export async function getSubjectDetails(id: string): Promise<ServiceResult<Subje
   };
 }
 
+/**
+ * Soft-deletes a subject (sets is_deleted=true).
+ * If the delete fails with PostgreSQL code 23503 (foreign key violation),
+ * returns a user-friendly message explaining that linked records must be
+ * removed first (e.g. bill records or photo rows).
+ */
 export async function removeSubject(id: string): Promise<ServiceResult<{ id: string }>> {
   const result = await deleteSubject(id);
 
@@ -465,6 +564,12 @@ export async function removeSubject(id: string): Promise<ServiceResult<{ id: str
   return { ok: true, data: result.data };
 }
 
+/**
+ * Quick technician assignment — updates only assigned_technician_id.
+ * Used by the inline quick-assign dropdown on the list page.
+ * Does NOT reset completion/billing fields; use assignTechnicianWithDate()
+ * for a proper re-assignment after a rejection.
+ */
 export async function assignSubjectToTechnician(subjectId: string, technicianId?: string): Promise<ServiceResult<{ id: string; assigned_technician_id: string | null }>> {
   const result = await assignSubjectTechnician(subjectId, technicianId ?? null);
 
@@ -487,6 +592,17 @@ export async function assignSubjectToTechnician(subjectId: string, technicianId?
   };
 }
 
+/**
+ * Full technician assignment with date, notes, and status reset.
+ * Used by the AssignTechnicianForm on the Subject Detail page.
+ * Business rules enforced here:
+ *   - Cannot re-assign a COMPLETED job.
+ *   - The new technician must be active in the system.
+ *   - All completion, billing, and timestamp fields are reset so the
+ *     re-assigned technician starts with a clean slate (no stale
+ *     bill_generated=true or completed_at that would hide the job
+ *     from the pending queue).
+ */
 export async function assignTechnicianWithDate(input: AssignTechnicianInput): Promise<ServiceResult<{ id: string }>> {
   const { subject_id, technician_id, technician_allocated_date, technician_allocated_notes, assigned_by } = input;
 

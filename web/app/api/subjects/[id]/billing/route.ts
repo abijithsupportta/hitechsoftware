@@ -1,3 +1,20 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// /api/subjects/[id]/billing — Billing API route
+//
+// HTTP method → action mapping:
+//   POST   action='add_accessory'       — add a spare-part line (technician)
+//   POST   action='generate_bill'       — generate final bill + complete job
+//   DELETE action='remove_accessory'    — remove a spare-part line (technician)
+//   PATCH  action='update_payment_status' — mark paid/due/waived (office staff)
+//   PUT    (no action field)            — edit existing bill charges (super_admin)
+//
+// All writes use the admin Supabase client (service-role key) so that Row-Level
+// Security does not block the technician from writing to tables like
+// subject_bills or subjects.
+//
+// `authenticateBillingRequest` is a shared helper used by DELETE and PATCH to
+// avoid duplicating the auth + subject load logic across handlers.
+// ─────────────────────────────────────────────────────────────────────────────
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -19,10 +36,17 @@ function toNumber(value: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+/** Returns today's date as YYYY-MM-DD for warranty date comparison. */
 function getTodayIsoDate() {
   return new Date().toISOString().split('T')[0];
 }
 
+/**
+ * Shared auth helper for DELETE and PATCH billing handlers.
+ * Authenticates user, loads their role, and loads the subject with
+ * assignment + bill_generated fields, without duplicating this sequence
+ * in both handlers.
+ */
 async function authenticateBillingRequest(subjectId: string) {
   const supabase = await createServerClient();
   const authState = await supabase.auth.getUser();
@@ -383,10 +407,15 @@ export async function POST(
       return NextResponse.json({ ok: false, error }, { status: 400 });
     }
 
+    // Determine warranty state at bill generation time (not at subject creation)
+    // because the job may have started in-warranty but the user is generating
+    // the bill after the warranty actually expired.
     const isWarrantyActive = Boolean(subject.warranty_end_date && subject.warranty_end_date >= todayIso);
     const warrantyState = subject.is_amc_service
       ? 'amc'
       : (isWarrantyActive ? 'in_warranty' : 'warranty_out');
+    // Brand-dealer bills (warranty/AMC) are invoiced to the manufacturer/dealer;
+    // customer bills require payment collection from the end user on-site.
     const isBrandDealerBill = warrantyState === 'amc' || warrantyState === 'in_warranty';
 
     const hasPaymentMode = Boolean(billInput.payment_mode);
@@ -474,6 +503,9 @@ export async function POST(
       .single();
 
     if (subjectUpdateResult.error) {
+      // Roll back the bill insert to keep the DB consistent:
+      // if the subject update fails the bill would exist without the subject
+      // being marked completed, blocking any future billing attempt.
       await admin.from('subject_bills').delete().eq('id', billResult.data.id);
 
       const error: ErrorResponse = {

@@ -1,3 +1,16 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// subject.job-workflow.ts
+//
+// SERVER-SIDE ONLY — runs inside Next.js API route handlers (app/api/...).
+// Never import this file from a client component or a browser-side hook.
+//
+// Contains all business logic for the technician job lifecycle:
+//   ACCEPTED → ARRIVED → IN_PROGRESS → COMPLETED | INCOMPLETE | AWAITING_PARTS
+//
+// Always uses the Supabase Admin client (service-role key) to bypass RLS,
+// because the technician's browser session cannot read rows owned by other
+// users and certain status updates require writing privileged fields.
+// ─────────────────────────────────────────────────────────────────────────────
 import type { ServiceResult } from '@/types/common.types';
 import type {
   JobCompletionRequirements,
@@ -17,6 +30,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 
 // Valid status transitions for job workflow
 // EN_ROUTE was removed — flow goes directly ACCEPTED → ARRIVED
+// AWAITING_PARTS is a reversible hold state: IN_PROGRESS ↔ AWAITING_PARTS
+// All other transitions are forward-only (a technician cannot go backward).
 const VALID_TRANSITIONS: Record<string, string[]> = {
   ACCEPTED: ['ARRIVED'],
   ARRIVED: ['IN_PROGRESS'],
@@ -24,6 +39,22 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
   AWAITING_PARTS: ['IN_PROGRESS'],
 };
 
+/**
+ * Advances the job workflow status (ARRIVED, IN_PROGRESS, AWAITING_PARTS).
+ *
+ * Why admin client? The technician's RLS policy only lets them read subjects
+ * where assigned_technician_id = auth.uid(). A vanilla browser-scoped client
+ * would fail to fetch or update any subject the technician does not own,
+ * which makes ownership verification impossible on the server side.
+ *
+ * Flow:
+ *   1. Fetch current subject state (admin client, bypasses RLS).
+ *   2. Confirm the calling technician is the assigned one.
+ *   3. Validate the requested newStatus against VALID_TRANSITIONS.
+ *   4. Delegate to a specialised repo function that sets the correct
+ *      timestamp column (arrived_at / work_started_at) in the same update,
+ *      so there is never a gap between status and its audit timestamp.
+ */
 export async function updateJobStatus(
   subjectId: string,
   technicianId: string,
@@ -95,6 +126,18 @@ export async function updateJobStatus(
   return { ok: true, data: repoResult.data };
 }
 
+/**
+ * Returns the list of PhotoType values that must be uploaded before the
+ * technician is allowed to mark this job as COMPLETED.
+ *
+ * Rule:
+ *   - Warranty or AMC job → 6 required types (serial_number, machine, bill,
+ *     job_sheet, defective_part, service_video)
+ *   - Out-of-warranty job → 3 required types (serial_number, machine, bill)
+ *
+ * Uses admin client so this can safely be called from an API route without
+ * needing the technician's session cookie in scope.
+ */
 export async function getRequiredPhotos(subjectId: string): Promise<ServiceResult<PhotoType[]>> {
   // Use admin client to bypass RLS - this function is server-side only
   const subjectResult = await getSubjectByIdAdmin(subjectId);
@@ -126,6 +169,15 @@ export async function getRequiredPhotos(subjectId: string): Promise<ServiceResul
   };
 }
 
+/**
+ * Checks whether all required photos have been uploaded for this subject.
+ * Returned by GET /api/subjects/[id]/workflow and consumed by the
+ * Subject Detail page to:
+ *   1. Show a checklist of which photos are still missing.
+ *   2. Enable or disable the 'Complete Job' button (canComplete flag).
+ *
+ * Only non-deleted photos (is_deleted=false) count toward the requirement.
+ */
 export async function checkCompletionRequirements(
   subjectId: string,
 ): Promise<ServiceResult<JobCompletionRequirements>> {
@@ -162,6 +214,18 @@ export async function checkCompletionRequirements(
   };
 }
 
+/**
+ * Uploads a photo / video file for a job.
+ * Validates:
+ *   1. Technician is assigned to this subject.
+ *   2. File size is within limit (2 MB for images, 50 MB for videos).
+ * Then delegates to the photo repository which uploads to Supabase Storage
+ * and inserts a record in the subject_photos table.
+ *
+ * Note: This function is used by the service-layer upload path.
+ * The API route (photos/upload/route.ts) performs its own multi-step
+ * validation (role check, photo count cap, bucket creation) independently.
+ */
 export async function uploadJobPhoto(
   subjectId: string,
   technicianId: string,
@@ -212,6 +276,22 @@ export async function uploadJobPhoto(
   }
 }
 
+/**
+ * Marks a job as INCOMPLETE with a mandatory reason and optional details.
+ *
+ * Validation rules:
+ *   - reason must be one of the six IncompleteReason values.
+ *   - When reason === 'other': note must be at least 10 characters.
+ *   - When reason === 'spare_parts_not_available': a parts list (or legacy
+ *     sparePartsRequested + sparePartsQuantity) must be provided.
+ *
+ * The update sets:
+ *   status = 'INCOMPLETE', incomplete_at = now(), incomplete_reason,
+ *   incomplete_note, and optionally rescheduled_date + spare_parts data.
+ *
+ * After marking incomplete, the admin reschedules it via AssignTechnicianForm
+ * which resets all fields via assignTechnicianFull().
+ */
 export async function markJobIncomplete(
   subjectId: string,
   technicianId: string,
@@ -309,6 +389,20 @@ export async function markJobIncomplete(
   return { ok: true, data: result.data };
 }
 
+/**
+ * Marks a job as COMPLETED.
+ *
+ * Pre-conditions enforced:
+ *   1. All required photos must already be uploaded (checkCompletionRequirements).
+ *   2. The calling technician must be the assigned technician.
+ *
+ * On success:
+ *   - status set to 'COMPLETED', completed_at set to now().
+ *   - completion_proof_uploaded set to true.
+ *   - If service_charge_type === 'brand_dealer', billing_status is
+ *     automatically set to 'due' so the admin billing queue shows it.
+ *     For customer-pay jobs the technician generates the bill separately.
+ */
 export async function markJobComplete(
   subjectId: string,
   technicianId: string,

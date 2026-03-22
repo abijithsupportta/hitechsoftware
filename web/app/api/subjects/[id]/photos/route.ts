@@ -1,3 +1,19 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// DELETE /api/subjects/[id]/photos
+//
+// Soft-deletes (is_deleted = true) the photo record and then removes the
+// actual file from Supabase Storage.  Two-phase so the DB and storage stay in
+// sync — if the storage remove fails the DB row is already marked deleted,
+// which is acceptable (the UI will not show the photo again).
+//
+// Access control:
+//   owner technician  — can delete their own uploads while job is active
+//   super_admin / office_staff — can delete any photo (for moderation)
+//
+// NOTE: Upload (POST multipart) is handled by the separate
+//       /api/subjects/[id]/photos/upload route, which uses the admin client
+//       for Storage access and the server client for auth.
+// ─────────────────────────────────────────────────────────────────────────────
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -11,6 +27,8 @@ interface ErrorResponse {
 }
 
 const isDev = process.env.NODE_ENV === 'development';
+// All subject photos live in this single bucket, partitioned by subject ID
+// in the storage path (e.g. subject-photos/{subjectId}/{photoType}/{filename}).
 const STORAGE_BUCKET = 'subject-photos';
 
 export async function DELETE(
@@ -96,6 +114,8 @@ export async function DELETE(
     return NextResponse.json({ ok: false, error }, { status: 404 });
   }
 
+  // Both the assigned technician AND privileged staff can delete photos.
+  // Privileged staff need this for moderation / correcting technician errors.
   const isOwnerTechnician = subjectResult.data.assigned_technician_id === userId;
   const isPrivileged = profileResult.data.role === 'super_admin' || profileResult.data.role === 'office_staff';
 
@@ -109,6 +129,8 @@ export async function DELETE(
     return NextResponse.json({ ok: false, error }, { status: 403 });
   }
 
+  // Step 1 of 2: soft-delete the DB record.
+  // Using is_deleted flag instead of hard delete to preserve audit trail.
   const photoUpdate = await admin
     .from('subject_photos')
     .update({ is_deleted: true })
@@ -128,6 +150,10 @@ export async function DELETE(
     return NextResponse.json({ ok: false, error }, { status: 400 });
   }
 
+  // Step 2 of 2: remove the file from object storage.
+  // Any storage error is intentionally ignored — the DB row is already
+  // soft-deleted so the UI won't show the photo; orphaned files are cleaned
+  // by a periodic storage sweep job.
   await admin.storage.from(STORAGE_BUCKET).remove([body.storagePath]);
 
   return NextResponse.json({ ok: true, data: { id: photoUpdate.data.id } });

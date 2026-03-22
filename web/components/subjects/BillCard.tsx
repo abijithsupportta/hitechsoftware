@@ -1,8 +1,21 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// BillCard.tsx
+//
+// Displays a generated bill summary and the payment collection controls.
+// bill_type determines what is shown:
+//   'customer_receipt'    — highlights payment action banner, shows payment mode select
+//   'brand_dealer_invoice'  — no payment banner (settled by brand/dealer later)
+//
+// dueDays: calculated once per render from bill.generated_at and RENDER_REFERENCE_TS
+// (module-level timestamp) rather than Date.now() each time to prevent
+// the count from changing mid-render if the component re-renders.
+// ─────────────────────────────────────────────────────────────────────────────
 'use client';
 
 import { useMemo, useState } from 'react';
 import type { SubjectBill } from '@/modules/subjects/subject.types';
 
+// Captured once at module load so dueDays is stable across re-renders.
 const RENDER_REFERENCE_TS = Date.now();
 
 interface Props {

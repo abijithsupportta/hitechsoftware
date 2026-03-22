@@ -1,3 +1,18 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// BillEditPanel.tsx
+//
+// Super-admin-only inline panel for editing an already-generated bill.
+// State model:
+//   toRemove   — Set of existing accessory IDs marked for deletion on save
+//   toAdd      — pending new accessories (sent on save, not immediately)
+//   newItem    — input row for the next accessory to add
+//
+// Totals are derived live in JS rather than re-fetching from the DB so the
+// panel shows an instant preview while the admin edits charges.
+//
+// inferGstApplied: reverse-engineers whether GST was applied to the original
+// bill (ratio ≈ 18% implies GST was included) to pre-populate the checkbox.
+// ─────────────────────────────────────────────────────────────────────────────
 'use client';
 
 import { useState } from 'react';

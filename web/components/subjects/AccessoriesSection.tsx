@@ -1,3 +1,12 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// AccessoriesSection.tsx
+//
+// Spare-parts / accessories table on the Subject Detail page.
+// canEdit guard  — technician + assigned + IN_PROGRESS + bill not yet generated.
+// After the bill is generated the table becomes read-only for everyone.
+// form submit resets to blank row after mutate so the technician can add more.
+// Inline total is summed from individual total_price values returned by the query.
+// ─────────────────────────────────────────────────────────────────────────────
 'use client';
 
 import { useState } from 'react';

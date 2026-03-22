@@ -1,3 +1,28 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// SubjectForm.tsx
+//
+// Shared form used by the New Subject page and the Edit Subject page.
+// Uncontrolled values live in a single `values` state object; `setField`
+// provides a type-safe partial setter for each field.
+//
+// Key behaviours:
+//   Source toggle (Brand / Dealer) — switching resets the opposite FK
+//     so the form never sends both brand_id and dealer_id.
+//
+//   Warranty auto-calc — when a warranty period preset is selected
+//     (e.g. '1 Year'), changing the purchase_date auto-updates warranty_end_date
+//     using addMonths(). The 'custom' option bypasses this.
+//
+//   Phone lookup — debounced 500 ms after the user types 10+ digits;
+//     auto-fills customer_name and customer_address from existing records.
+//     phoneAutoFilled=true shows the success banner until the phone changes.
+//
+//   Product section — collapsible (showProduct) to keep the form scannable;
+//     defaults to expanded when editing an existing subject with product data.
+//
+//   submitDisabled computed from a required-field checklist so the Submit
+//     button is disabled without needing any form validation library.
+// ─────────────────────────────────────────────────────────────────────────────
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
@@ -19,6 +44,10 @@ const PRIORITY_CONFIG: Record<SubjectPriority, { label: string; active: string; 
 
 const FIELD_BASE = 'w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-colors';
 
+/**
+ * Converts a date string to YYYY-MM-DD (ISO date only, no time).
+ * Used when building auto-calculated warranty/AMC end dates.
+ */
 function toIsoDate(value: string) {
   return new Date(value).toISOString().split('T')[0];
 }
@@ -29,6 +58,11 @@ function addMonths(dateText: string, months: number) {
   return toIsoDate(date.toISOString());
 }
 
+/**
+ * Maps the stored month count back to a WarrantyPeriod preset slug.
+ * Falls back to 'custom' when the stored month range doesn't match any preset,
+ * which means the admin entered a custom end-date directly.
+ */
 function getWarrantyPeriodFromMonths(months: number | null): WarrantyPeriod {
   const match = WARRANTY_PERIODS.find((item) => item.months === months);
   return (match?.value as WarrantyPeriod | undefined) ?? 'custom';
@@ -100,6 +134,8 @@ export default function SubjectForm({
     return 'custom';
   });
   const [phoneAutoFilled, setPhoneAutoFilled] = useState(false);
+  // Debounced lookup timer ref — using a ref (not state) so clearing the
+  // timeout on each keystroke doesn't cause a re-render.
   const phoneLookupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const setField = <K extends keyof SubjectFormValues>(field: K, value: SubjectFormValues[K]) => {
@@ -129,6 +165,8 @@ export default function SubjectForm({
     !values.category_id ||
     (values.source_type === 'brand' ? !values.brand_id : !values.dealer_id);
 
+  // If either source toggle or the opposing FK select changes,
+  // clear the FK for the OTHER source to avoid sending both.
   const handleSourceToggle = (next: SubjectSourceType) => {
     setValues((prev) => ({
       ...prev,

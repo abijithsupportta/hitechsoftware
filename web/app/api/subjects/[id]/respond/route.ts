@@ -1,3 +1,17 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/subjects/[id]/respond
+//
+// Technician-only endpoint: accept or reject an allocated job.
+//
+// accept  → status: ACCEPTED, records visit_date + visit_time in the notes field.
+// reject  → status: RESCHEDULED, records rejection_reason, increments the
+//           technician's total_rejections counter via the
+//           'increment_technician_rejections' Supabase RPC.
+//
+// Idempotency guard: if technician_acceptance_status is not 'pending', the
+// endpoint returns 409 Conflict with the current status in the message.
+// This prevents duplicate accept/reject on slow network retries.
+// ─────────────────────────────────────────────────────────────────────────────
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/api/with-auth';
 
@@ -35,7 +49,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
   }
 
-  // Verify the subject is assigned to this technician and is in ALLOCATED status
+  // Load subject upfront with only the fields needed for the three checks:
+  //   (1) is this technician actually assigned?
+  //   (2) has the technician already responded? (idempotency)
+  // Using admin client to bypass RLS — technician user has limited DB access.
   const subjectCheck = await admin
     .from('subjects')
     .select('id,status,assigned_technician_id,technician_acceptance_status,technician_allocated_notes')
@@ -68,6 +85,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   if (action === 'accept') {
     const existingNotes = subject.technician_allocated_notes?.trim() ?? '';
+    // Visit time is appended to existing allocation notes (pipe-delimited)
+    // rather than stored in a dedicated column, to preserve dispatch notes.
     const visitTimeNote = `Visit Time: ${visit_time}`;
 
     const updateResult = await admin
@@ -91,7 +110,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ ok: true, data: { action: 'accepted', subject: updateResult.data } });
   }
 
-  // action === 'reject'
+  // action === 'reject': move to RESCHEDULED so office staff can re-assign.
+  // is_rejected_pending_reschedule flags the record on the dashboard queue.
   const updateResult = await admin
     .from('subjects')
     .update({
@@ -109,7 +129,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ ok: false, error: { message: updateResult.error.message } }, { status: 500 });
   }
 
-  // Increment the technician's total_rejections counter
+  // Fire-and-forget: increment the technician's rejection counter.
+  // Not awaited for a result because failure here should not roll back the
+  // rejection that was already committed.
   await admin.rpc('increment_technician_rejections', { p_technician_id: userId });
 
   return NextResponse.json({ ok: true, data: { action: 'rejected', subject: updateResult.data } });

@@ -1,3 +1,18 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// photo-gallery.tsx
+//
+// Renders all uploaded photos and videos for a subject.
+// Supports:
+//   • Lightbox preview (Dialog) for images; videos play inline.
+//   • Individual download using blob URL technique so browsers don't open
+//     the file in a new tab instead of downloading it.
+//   • 'Download All' zip via triggerDownloadAll helper.
+//   • Deletion (soft-delete via parent onDeletePhoto callback).
+//     Only the assigned technician sees the delete button.
+//
+// Extension guessing is needed because public_url can't always be parsed for
+// the mime type (CDN URLs may omit file extension).
+// ─────────────────────────────────────────────────────────────────────────────
 import React, { useState } from 'react';
 import { Trash2, Calendar, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';

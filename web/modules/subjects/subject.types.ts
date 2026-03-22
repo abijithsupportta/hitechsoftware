@@ -1,11 +1,67 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// subject.types.ts
+//
+// Central type definitions for the Subject (service job) domain.
+// Every screen, API route, repository query, and React hook that touches a
+// service job imports its types from here — keeping the contract in one place.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Where this service job originated from.
+ * - 'brand'  → complaint raised by a product brand (manufacturer)
+ * - 'dealer' → complaint raised by or through a dealer
+ * Determines which foreign key (brand_id / dealer_id) is required on the form.
+ */
 export type SubjectSourceType = 'brand' | 'dealer';
+
+/**
+ * Urgency level of the service job.
+ * Shown as a coloured badge on the list and detail pages.
+ * Also used by the overdue queue to highlight critical pending jobs.
+ */
 export type SubjectPriority = 'critical' | 'high' | 'medium' | 'low';
+
+/**
+ * Whether the technician visit is for a brand-new installation
+ * or a routine / corrective service call.
+ */
 export type SubjectTypeOfService = 'installation' | 'service';
+
+/**
+ * Predefined warranty durations selectable from the warranty form.
+ * 'custom' allows the admin to enter an exact warranty_end_date manually
+ * instead of letting the system calculate it from purchase_date.
+ */
 export type WarrantyPeriod = '6_months' | '1_year' | '2_years' | '3_years' | '4_years' | '5_years' | 'custom';
+
+/**
+ * Categories of photos the technician must upload during a job.
+ * The required set depends on warranty status:
+ *   - In-warranty / AMC: serial_number, machine, bill, job_sheet, defective_part, service_video (6 types)
+ *   - Out-of-warranty:   serial_number, machine, bill (3 types)
+ * site_photo_1/2/3 are optional additional shots.
+ */
 export type PhotoType = 'serial_number' | 'machine' | 'bill' | 'job_sheet' | 'defective_part' | 'site_photo_1' | 'site_photo_2' | 'site_photo_3' | 'service_video';
+
+/**
+ * Reasons a technician can select when marking a job INCOMPLETE.
+ * The UI shows these as a dropdown; 'other' requires a mandatory text note.
+ * 'spare_parts_not_available' additionally requires a parts list with name, qty, price.
+ */
 export type IncompleteReason = 'customer_cannot_afford' | 'power_issue' | 'door_locked' | 'spare_parts_not_available' | 'site_not_ready' | 'other';
+
+/**
+ * Payment method used when the technician collects fees from the customer.
+ * Stored on the subject record after the bill is generated.
+ */
 export type PaymentMode = 'cash' | 'upi' | 'card' | 'cheque';
 
+/**
+ * Lightweight subject record used in the paginated list view.
+ * Contains only the fields needed to render each row in the table:
+ * customer info, status badges, assignment details, and billing status.
+ * Full detail is fetched separately when the user opens a specific job.
+ */
 export interface SubjectListItem {
   id: string;
   subject_number: string;
@@ -32,6 +88,17 @@ export interface SubjectListItem {
   created_at: string;
 }
 
+/**
+ * Full subject record loaded on the Subject Detail page.
+ * Extends SubjectListItem with every additional field:
+ * - product & warranty information
+ * - AMC (Annual Maintenance Contract) dates
+ * - job workflow timestamps (arrived_at, work_started_at, completed_at …)
+ * - incomplete / spare-parts details when a job couldn't be finished
+ * - billing totals and payment collection flags
+ * - the complete photo list embedded directly (no separate fetch needed)
+ * - the full activity timeline for the audit trail
+ */
 export interface SubjectDetail extends SubjectListItem {
   brand_id: string | null;
   dealer_id: string | null;
@@ -83,6 +150,12 @@ export interface SubjectDetail extends SubjectListItem {
   timeline: SubjectTimelineItem[];
 }
 
+/**
+ * A single entry in the activity/audit timeline shown at the bottom of the
+ * Subject Detail page. Each row records who changed what and when — used to
+ * give admins and technicians a full history of every status transition,
+ * assignment change, or note added to the job.
+ */
 export interface SubjectTimelineItem {
   id: string;
   event_type: string;
@@ -95,6 +168,16 @@ export interface SubjectTimelineItem {
   changed_by_name: string | null;
 }
 
+/**
+ * All filter parameters that can be applied to the subject list query.
+ * Passed from the list page UI → service layer → repository → Supabase.
+ * Each optional field corresponds to a filter control on the list page.
+ *
+ * Queue modes (mutually exclusive, controlled by ?queue= URL param):
+ *   pending_only   → incomplete work (no completed_at)
+ *   overdue_only   → past due date, assigned, not rescheduled
+ *   due_only       → completed customer-pay bills awaiting collection
+ */
 export interface SubjectListFilters {
   search?: string;
   source_type?: SubjectSourceType | 'all';
@@ -121,6 +204,11 @@ export interface SubjectListFilters {
   page_size?: number;
 }
 
+/**
+ * Paginated response envelope returned by getSubjects().
+ * The data array contains enriched SubjectListItem records
+ * (technician names already joined in the service layer).
+ */
 export interface SubjectListResponse {
   data: SubjectListItem[];
   total: number;
@@ -129,6 +217,15 @@ export interface SubjectListResponse {
   total_pages: number;
 }
 
+/**
+ * Shape of the subject creation / edit form (react-hook-form values).
+ * Cross-field validation rules (enforced by Zod):
+ *   - brand_id required when source_type === 'brand'
+ *   - dealer_id required when source_type === 'dealer'
+ *   - warranty_end_date must be after purchase_date
+ *   - amc_start_date required if amc_end_date is provided
+ *   - amc_end_date must be after amc_start_date
+ */
 export interface SubjectFormValues {
   subject_number: string;
   source_type: SubjectSourceType;
@@ -152,12 +249,25 @@ export interface SubjectFormValues {
   amc_end_date?: string;
 }
 
+/**
+ * Payload for creating a new subject.
+ * Extends the form values with created_by (the authenticated user's UUID)
+ * which is appended server-side before the Supabase RPC call.
+ */
 export interface CreateSubjectInput extends SubjectFormValues {
-  created_by: string;
+  created_by: string; // UUID of the office staff / admin who raised this ticket
 }
 
+/** Payload for updating an existing subject — same fields as the create form. */
 export type UpdateSubjectInput = SubjectFormValues;
 
+/**
+ * Input for the full technician assignment operation.
+ * Used by the AssignTechnicianForm on the Subject Detail page.
+ * Includes the visit date and notes in addition to the technician ID,
+ * so the system can set the technician_allocated_date and reset stale
+ * completion / billing fields from any previous attempt.
+ */
 export interface AssignTechnicianInput {
   subject_id: string;
   technician_id: string | null;
@@ -166,6 +276,12 @@ export interface AssignTechnicianInput {
   assigned_by: string;
 }
 
+/**
+ * A single photo or video file attached to a subject.
+ * Files are stored in the Supabase Storage bucket 'subject-photos'.
+ * public_url is the CDN-accessible URL used directly in <img> / <video> tags.
+ * photo_type determines whether this counts toward the completion requirements.
+ */
 export interface SubjectPhoto {
   id: string;
   subject_id: string;
@@ -178,12 +294,23 @@ export interface SubjectPhoto {
   mime_type: string | null;
 }
 
+/**
+ * Tracks upload progress for a single photo in the UI.
+ * Used to show a progress bar per photo type while the file is being
+ * uploaded to Supabase Storage via the /api/subjects/[id]/photos/upload route.
+ */
 export interface PhotoUploadProgress {
   photoType: PhotoType;
-  progress: number; // 0-100
+  progress: number; // 0–100 percentage complete
   isUploading: boolean;
 }
 
+/**
+ * Result of the photo completion check run before a technician can mark a
+ * job as COMPLETED. Returned by GET /api/subjects/[id]/workflow.
+ * canComplete is false whenever missing[] is non-empty — the UI uses this
+ * to disable the 'Complete Job' button and show which photos are still needed.
+ */
 export interface JobCompletionRequirements {
   required: PhotoType[];
   uploaded: PhotoType[];
@@ -191,6 +318,13 @@ export interface JobCompletionRequirements {
   canComplete: boolean;
 }
 
+/**
+ * Input sent by the technician when marking a job INCOMPLETE.
+ * Validated server-side in subject.job-workflow.ts:
+ *   - reason must be one of the six IncompleteReason values
+ *   - note is mandatory (≥10 chars) when reason === 'other'
+ *   - spare part details required when reason === 'spare_parts_not_available'
+ */
 export interface IncompleteJobInput {
   reason: IncompleteReason;
   note: string;

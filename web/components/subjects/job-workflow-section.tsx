@@ -1,3 +1,21 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// job-workflow-section.tsx
+//
+// Renders the technician job workflow panel on the Subject Detail page.
+// Shows:
+//   • Status progress bar (PENDING → ALLOCATED → ACCEPTED → ARRIVED → IN_PROGRESS)
+//   • Action buttons available to the assigned technician (Arrived, Start Work,
+//     Awaiting Parts, Cannot Complete)
+//   • Photo upload area via PhotoGallery
+//   • CannotCompleteModal for INCOMPLETE status transitions
+//
+// Only renders for workflow-relevant statuses:
+//   ACCEPTED, ARRIVED, IN_PROGRESS, COMPLETED, INCOMPLETE, AWAITING_PARTS
+// Hidden for PENDING / ALLOCATED (no technician actions yet).
+//
+// isAssignedTechnician gates all write actions — admins see the section but
+// cannot click action buttons (observation mode).
+// ─────────────────────────────────────────────────────────────────────────────
 'use client';
 
 import { useState } from 'react';
@@ -14,7 +32,7 @@ interface Props {
   userId: string;
 }
 
-// Ordered workflow steps for the status timeline
+// Ordered steps shown in the progress bar (terminal states not shown here).
 const TIMELINE_STEPS = [
   { status: 'PENDING', label: 'Pending' },
   { status: 'ALLOCATED', label: 'Allocated' },
@@ -23,6 +41,7 @@ const TIMELINE_STEPS = [
   { status: 'IN_PROGRESS', label: 'In Progress' },
 ] as const;
 
+// Full ordered status list used for progress bar step comparison.
 const STATUS_ORDER = ['PENDING', 'ALLOCATED', 'ACCEPTED', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED', 'INCOMPLETE', 'AWAITING_PARTS', 'RESCHEDULED', 'CANCELLED'];
 
 function getStepState(stepStatus: string, currentStatus: string): 'done' | 'active' | 'future' {

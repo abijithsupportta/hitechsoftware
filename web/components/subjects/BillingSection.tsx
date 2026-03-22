@@ -1,3 +1,21 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// BillingSection.tsx
+//
+// Billing control panel on the Subject Detail page.
+// Responsibility matrix:
+//   Technician (assigned)  — upload media, add/remove accessories, generate bill
+//   Office staff           — view bill, update payment status (cash/UPI/...)
+//   Super admin            — all of the above + edit existing bill charges
+//
+// Warranty state is derived from subject fields at render time and controls:
+//   • What label appears in the warranty badge
+//   • Whether a payment_mode field is required on bill generation
+//   • Whether grand_total is shown as 'brand dealer invoice' or 'customer receipt'
+//
+// canGenerate guard: assigned technician + status=IN_PROGRESS + no existing bill
+// canGenerateAndComplete: additionally requires at least one photo uploaded
+//   (matches the API route's photos count check).
+// ─────────────────────────────────────────────────────────────────────────────
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -42,6 +60,9 @@ export function BillingSection({ subject, userRole, userId }: Props) {
   const [imagePreviewErrors, setImagePreviewErrors] = useState<Record<string, string>>({});
   const [isEditingBill, setIsEditingBill] = useState(false);
 
+  // ── Warranty state ───────────────────────────────────────────────────────
+  // Derived at render time (not from DB) because bill generation compares 
+  // warranty_end_date against today's date at generation time.
   const todayIso = new Date().toISOString().split('T')[0];
   const isWarrantyDateNotNoted = !subject.is_amc_service && !subject.warranty_end_date;
   const isUnderWarranty = Boolean(subject.warranty_end_date && subject.warranty_end_date >= todayIso);
@@ -61,11 +82,14 @@ export function BillingSection({ subject, userRole, userId }: Props) {
         ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
         : 'border-slate-200 bg-slate-50 text-slate-700';
   const isCustomerChargeable = subject.service_charge_type === 'customer';
+  // ── Permission flags ────────────────────────────────────────────────────
   const isAssignedTechnician = userRole === 'technician' && userId === subject.assigned_technician_id;
   const canGenerate = isAssignedTechnician && subject.status === 'IN_PROGRESS' && !subject.bill_generated;
   const canUpdatePayment = userRole === 'office_staff' || userRole === 'super_admin';
   const canEditBill = userRole === 'super_admin' && Boolean(subject.bill_generated);
   const canManageMedia = isAssignedTechnician || userRole === 'office_staff' || userRole === 'super_admin';
+  // Allow privileged roles to add/view media even after job is COMPLETED
+  // so records can be corrected or supplemented by office staff.
   const canMaintainCompletedMedia = subject.status === 'COMPLETED' && canManageMedia;
 
   const accessories = accessoriesQuery.data?.items ?? [];

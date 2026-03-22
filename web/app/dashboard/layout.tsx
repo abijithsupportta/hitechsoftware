@@ -24,6 +24,7 @@ import {
   Store,
   ChevronDown,
   ChevronRight,
+  LayoutGrid,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { ROUTES } from '@/lib/constants/routes';
@@ -54,9 +55,17 @@ const SERVICE_MODULE_ITEMS = [
   { icon: Store, label: 'Dealers', href: ROUTES.DASHBOARD_SERVICE_DEALERS, superAdminOnly: true },
 ];
 
+const INVENTORY_MODULE_ITEMS = [
+  { icon: Package, label: 'Products', href: ROUTES.DASHBOARD_INVENTORY_PRODUCTS },
+  { icon: LayoutGrid, label: 'Categories', href: ROUTES.DASHBOARD_INVENTORY_CATEGORIES },
+  { icon: Tags, label: 'Product Types', href: ROUTES.DASHBOARD_INVENTORY_PRODUCT_TYPES },
+  { icon: ClipboardList, label: 'Stock Entries', href: ROUTES.DASHBOARD_INVENTORY_STOCK },
+];
+
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
   const [serviceMenuExpanded, setServiceMenuExpanded] = useState(true);
+  const [inventoryMenuExpanded, setInventoryMenuExpanded] = useState(true);
   const pathname = usePathname();
   const router = useRouter();
   const { user, signOut, isLoading, isHydrated, userRole } = useAuth();
@@ -122,6 +131,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     pathname === ROUTES.DASHBOARD_SUBJECTS ||
     pathname.startsWith(`${ROUTES.DASHBOARD_SUBJECTS}/`) ||
     pathname.startsWith('/dashboard/service/');
+  const isInventoryModuleActive = pathname.startsWith(ROUTES.DASHBOARD_INVENTORY);
 
   return (
     <div className="min-h-screen bg-ht-page">
@@ -198,10 +208,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               const isActive =
                 item.href === ROUTES.DASHBOARD_SUBJECTS
                   ? isServiceModuleActive
-                  : item.href !== '#' &&
-                    (item.href === ROUTES.DASHBOARD
-                      ? pathname === ROUTES.DASHBOARD
-                      : pathname === item.href || pathname.startsWith(`${item.href}/`));
+                  : item.href === ROUTES.DASHBOARD_INVENTORY
+                    ? isInventoryModuleActive
+                    : item.href !== '#' &&
+                      (item.href === ROUTES.DASHBOARD
+                        ? pathname === ROUTES.DASHBOARD
+                        : pathname === item.href || pathname.startsWith(`${item.href}/`));
 
               return (
                 <div key={item.label} className="space-y-1">
@@ -230,6 +242,33 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                         title={serviceMenuExpanded ? 'Collapse' : 'Expand'}
                       >
                         {serviceMenuExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                      </button>
+                    </div>
+                  ) : item.href === ROUTES.DASHBOARD_INVENTORY && sidebarExpanded ? (
+                    <div className="flex items-center gap-1">
+                      <Link
+                        href={item.href}
+                        title={!sidebarExpanded ? item.label : undefined}
+                        aria-current={isActive ? 'page' : undefined}
+                        className={`relative flex flex-1 items-center gap-3 rounded-xl border px-3.5 py-3 text-[13px] transition ${
+                          isActive
+                            ? 'border-white/20 bg-white/15 font-semibold text-white shadow-sm'
+                            : 'border-transparent font-medium text-blue-200/70 hover:border-white/10 hover:bg-white/10 hover:text-white'
+                        }`}
+                      >
+                        {isActive ? <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-ht-blue-400" /> : null}
+                        <item.icon size={18} />
+                        <span className="whitespace-nowrap">{item.label}</span>
+                      </Link>
+
+                      <button
+                        type="button"
+                        onClick={() => setInventoryMenuExpanded((prev) => !prev)}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-transparent text-blue-200/80 transition hover:border-white/10 hover:bg-white/10 hover:text-white"
+                        aria-label={inventoryMenuExpanded ? 'Collapse inventory submenu' : 'Expand inventory submenu'}
+                        title={inventoryMenuExpanded ? 'Collapse' : 'Expand'}
+                      >
+                        {inventoryMenuExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                       </button>
                     </div>
                   ) : item.isAvailable ? (
@@ -283,6 +322,30 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                           >
                             <serviceItem.icon size={15} />
                             <span className="whitespace-nowrap">{serviceItem.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+
+                  {item.href === ROUTES.DASHBOARD_INVENTORY && sidebarExpanded && inventoryMenuExpanded ? (
+                    <div className="ml-4 space-y-1 border-l border-white/10 pl-3">
+                      {INVENTORY_MODULE_ITEMS.map((invItem) => {
+                        const isInvItemActive = pathname === invItem.href || pathname.startsWith(`${invItem.href}/`);
+
+                        return (
+                          <Link
+                            key={invItem.label}
+                            href={invItem.href}
+                            aria-current={isInvItemActive ? 'page' : undefined}
+                            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition ${
+                              isInvItemActive
+                                ? 'bg-white/10 font-semibold text-white'
+                                : 'text-blue-200/70 hover:bg-white/10 hover:text-white'
+                            }`}
+                          >
+                            <invItem.icon size={15} />
+                            <span className="whitespace-nowrap">{invItem.label}</span>
                           </Link>
                         );
                       })}

@@ -1,9 +1,38 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// subject.repository.ts
+//
+// Lowest-level data access layer — all Supabase queries for the subjects table.
+// No business logic lives here; validation and rule enforcement belong in the
+// service layer (subject.service.ts / subject.job-workflow.ts).
+//
+// Two Supabase clients are used:
+//   supabase (browser client)  — honours RLS, used for client-side list/detail
+//   createAdminClient()        — service-role key, bypasses RLS, used for
+//                                server-side writes (status transitions, billing)
+// ─────────────────────────────────────────────────────────────────────────────
 import { createClient } from '@/lib/supabase/client';
 import type { CreateSubjectInput, IncompleteReason, SubjectListFilters, UpdateSubjectInput } from '@/modules/subjects/subject.types';
 import { createAdminClient } from '@/lib/supabase/admin';
 
+// Browser-scoped Supabase client (honours RLS).
+// Used for read queries that run on the client side (list page, detail page).
 const supabase = createClient();
 
+/**
+ * Fetches a paginated, filtered list of subjects.
+ *
+ * Query strategy:
+ *   - Joins brands, dealers, service_categories via FK with (name) select.
+ *   - All filters are applied as chainable .eq()/.or()/.gte() calls before
+ *     the terminal .range() call so Supabase builds a single SQL query.
+ *   - The count: 'exact' option adds a COUNT(*) on the same query, returned
+ *     as result.count — needed for pagination total_pages calculation.
+ *
+ * Special filter modes:
+ *   overdue_only  → past-due assigned jobs (latest ordering by allocated date)
+ *   due_only      → completed customer-pay jobs awaiting payment collection
+ *   pending_only  → uses completed_at IS NULL (schema-safe, index-friendly)
+ */
 export async function listSubjects(filters: SubjectListFilters) {
   const page = filters.page && filters.page > 0 ? filters.page : 1;
   const pageSize = filters.page_size && filters.page_size > 0 ? filters.page_size : 10;
@@ -132,6 +161,17 @@ export async function listSubjects(filters: SubjectListFilters) {
   };
 }
 
+/**
+ * Creates a new subject via the Supabase RPC 'create_subject_with_customer'.
+ *
+ * The RPC is used (instead of a direct INSERT) because it atomically:
+ *   1. Upserts the customer record by phone number (avoiding duplicates).
+ *   2. Inserts the subject row and returns the new UUID as a plain string.
+ *
+ * If an assigned_technician_id was provided, a second update assigns the
+ * technician after creation. This is two round-trips but keeps the RPC
+ * focused on subject + customer creation only.
+ */
 export async function createSubject(input: CreateSubjectInput) {
   const createResult = await supabase.rpc('create_subject_with_customer', {
     p_subject_number: input.subject_number,
@@ -181,6 +221,10 @@ export async function createSubject(input: CreateSubjectInput) {
   return createResult;
 }
 
+/**
+ * Updates editable subject fields (form fields only — not workflow/billing fields).
+ * The is_deleted=false guard ensures we never accidentally update a soft-deleted row.
+ */
 export async function updateSubject(id: string, input: UpdateSubjectInput) {
   return supabase
     .from('subjects')
@@ -212,6 +256,11 @@ export async function updateSubject(id: string, input: UpdateSubjectInput) {
     .single<{ id: string }>();
 }
 
+/**
+ * Quick assignment — updates only the assigned_technician_id column.
+ * Does NOT touch status, dates, or completion/billing fields.
+ * Used by the inline quick-assign dropdown on the list page.
+ */
 export async function assignSubjectTechnician(subjectId: string, technicianId: string | null) {
   return supabase
     .from('subjects')
@@ -224,6 +273,20 @@ export async function assignSubjectTechnician(subjectId: string, technicianId: s
     .single<{ id: string; assigned_technician_id: string | null }>();
 }
 
+/**
+ * Full technician assignment with a complete state reset.
+ * Called when a subject is re-assigned after a technician rejection or when
+ * a fresh assignment is made via the AssignTechnicianForm.
+ *
+ * Why so many fields are reset:
+ *   - technician_acceptance_status → 'pending' so the new technician sees
+ *     the accept/reject UI again.
+ *   - All rejection fields cleared so the urgent-reschedule banner disappears.
+ *   - completed_at / incomplete_at cleared so the subject re-enters the
+ *     pending queue (technician_pending_only filter uses completed_at IS NULL).
+ *   - All billing fields zeroed so a re-assigned technician gets a clean
+ *     billing slate (prevents stale bill_generated=true from blocking new bill).
+ */
 export async function assignTechnicianFull(
   subjectId: string,
   technicianId: string | null,
@@ -274,6 +337,11 @@ export async function assignTechnicianFull(
     .single<{ id: string; assigned_technician_id: string | null; technician_allocated_date: string | null; technician_allocated_notes: string | null; status: string }>();
 }
 
+// ── SUBJECT_DETAIL_SELECT ──────────────────────────────────────────────────────────
+// Full column list for the Subject Detail page.
+// Embedded subject_photos join avoids a separate photo-list query.
+// rejected_by_profile join resolves the display_name of the rejecting technician.
+// Everything from this select is mapped to SubjectDetail in subject.service.ts.
 const SUBJECT_DETAIL_SELECT = `
       id,
       subject_number,
@@ -341,12 +409,27 @@ const SUBJECT_DETAIL_SELECT = `
       subject_photos(id,photo_type,storage_path,public_url,uploaded_by,uploaded_at,file_size_bytes,mime_type)
       `;
 
+// Legacy select string that omits amc_start_date.
+// Used as a fallback for older DB schemas that may not have that column yet.
+// isMissingAmcStartDateColumn() detects the specific Postgres error and triggers
+// this fallback automatically, injecting amc_start_date: null into the result.
 const SUBJECT_DETAIL_SELECT_LEGACY = SUBJECT_DETAIL_SELECT.replace('      amc_start_date,\n', '');
 
+/** Returns true when the Postgres error indicates the amc_start_date column is missing. */
 function isMissingAmcStartDateColumn(errorMessage?: string) {
   return Boolean(errorMessage && /amc_start_date.*does not exist|column .*amc_start_date/i.test(errorMessage));
 }
 
+/**
+ * Fetches a single subject's full detail using the browser-scoped Supabase
+ * client (honoured RLS). Includes all joins needed for the Subject Detail page.
+ *
+ * Schema-safety fallback:
+ *   If the first query fails because the amc_start_date column doesn't exist
+ *   (detected by isMissingAmcStartDateColumn), retries with the legacy select
+ *   and injects amc_start_date: null into the result shape.
+ *   This lets the detail page load on older or partially-migrated DB schemas.
+ */
 export async function getSubjectById(id: string) {
   const primary = await supabase
     .from('subjects')

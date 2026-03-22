@@ -1,3 +1,25 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// useSubjects.ts
+//
+// Master hook for the Subject List page.
+// Owns all filter/pagination state and exposes the create/update/delete
+// mutations. Re-exports focused hooks (detail, assignment) so the list page
+// has a single import entry point.
+//
+// Filter state design:
+//   Each filter setter also resets page to 1 to avoid landing on an empty
+//   page after a filter change narrows the result set.
+//
+// Queue modes (mutually exclusive, set by the list page from ?queue= URL param):
+//   pendingOnly  → incomplete jobs (completed_at IS NULL)
+//   overdueOnly  → past due, assigned jobs
+//   dueOnly      → completed jobs with unpaid customer bills
+//
+// Technician auto-filter:
+//   When role === 'technician', assigned_technician_id is fixed to the current
+//   user's ID and technician_pending_only is set to true so technicians only
+//   see their own active jobs (not completed historical ones).
+// ─────────────────────────────────────────────────────────────────────────────
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -12,10 +34,17 @@ import type { CreateSubjectInput, SubjectListFilters, UpdateSubjectInput } from 
 export { useSubjectDetail, useSaveSubjectWarranty } from '@/hooks/subjects/useSubjectDetail';
 export { useAssignableTechnicians, useAssignTechnician, useQuickAssignTechnician } from '@/hooks/subjects/useSubjectAssignment';
 
+/**
+ * Master list hook for the Subjects page.
+ * Returns all filter state, setter functions, the paginated result, and
+ * create/update/delete mutations in one object so the list page has a
+ * single hook to import.
+ */
 export function useSubjects() {
   const { role } = usePermission();
   const userId = useAuthStore((state) => state.user?.id);
   const queryClient = useQueryClient();
+  // ── Filter state ──────────────────────────────────────────────────────
   const [searchInput, setSearchInput] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(SUBJECT_DEFAULT_PAGE_SIZE);
@@ -28,10 +57,14 @@ export function useSubjects() {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [technicianDate, setTechnicianDate] = useState('');
+  // Queue mode flags — mutually exclusive, set from ?queue= URL param by the page
   const [pendingOnly, setPendingOnly] = useState(false);
   const [overdueOnly, setOverdueOnly] = useState(false);
   const [dueOnly, setDueOnly] = useState(false);
 
+  // ── Build filter object ────────────────────────────────────────────────
+  // useMemo keeps the filters object referentially stable when nothing changed,
+  // preventing React Query from re-fetching on every re-render.
   const filters: SubjectListFilters = useMemo(() => {
     return {
       search: searchInput.trim() || undefined,
@@ -54,12 +87,16 @@ export function useSubjects() {
     };
   }, [searchInput, sourceType, priority, status, categoryId, brandId, dealerId, fromDate, toDate, technicianDate, userId, pendingOnly, overdueOnly, dueOnly, role, page, pageSize]);
 
+  // ── Query ────────────────────────────────────────────────────────────
+  // staleTime 30s: list data doesn't need to be fresh on every focus; a short
+  // stale window reduces server load while keeping the UI up-to-date.
   const query = useQuery({
     queryKey: [...SUBJECT_QUERY_KEYS.list, filters],
     queryFn: () => getSubjects(filters),
     staleTime: 30 * 1000,
   });
 
+  // ── Mutations ─────────────────────────────────────────────────────────
   const createSubjectMutation = useMutation({
     mutationFn: (input: CreateSubjectInput) => createSubjectTicket(input),
     onSuccess: async (result) => {

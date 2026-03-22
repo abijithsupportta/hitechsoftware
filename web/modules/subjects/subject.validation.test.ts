@@ -1,6 +1,20 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// subject.validation.test.ts
+//
+// Unit tests for the Zod validation schemas in subject.validation.ts.
+// Tests use createSubjectSchema (the strictest schema — includes created_by)
+// so that all superRefine cross-field rules are exercised.
+//
+// Strategy: start with a fully-valid base payload, then mutate one field per
+// test case to isolate the exact rule being tested.
+// ─────────────────────────────────────────────────────────────────────────────
 import { describe, expect, it } from 'vitest';
 import { createSubjectSchema } from '@/modules/subjects/subject.validation';
 
+/**
+ * Returns a fresh deep-copy of a fully valid subject payload.
+ * Each test mutates its own copy so tests are independent and order-agnostic.
+ */
 function validBasePayload() {
   return {
     subject_number: 'SUB-2026-001',
@@ -28,12 +42,18 @@ function validBasePayload() {
 }
 
 describe('subject validation', () => {
+  // ── Happy path ──────────────────────────────────────────────────────────
   it('accepts a valid service subject payload', () => {
+    // Ensures the base payload (used by all other tests as a starting point)
+    // is itself valid — guards against test pollution from bad defaults.
     const parsed = createSubjectSchema.safeParse(validBasePayload());
     expect(parsed.success).toBe(true);
   });
 
+  // ── Cross-field rules ────────────────────────────────────────────────────
   it('requires brand when source_type is brand', () => {
+    // Rule 1a: source_type='brand' without brand_id should fail with a field-
+    // level error on brand_id so the form shows the message next to the input.
     const payload = validBasePayload();
     payload.brand_id = '';
 
@@ -47,6 +67,7 @@ describe('subject validation', () => {
   });
 
   it('requires dealer when source_type is dealer', () => {
+    // Rule 1b: mirrors Rule 1a for dealer source type.
     const payload = validBasePayload();
     payload.source_type = 'dealer';
     payload.brand_id = '';
@@ -62,6 +83,8 @@ describe('subject validation', () => {
   });
 
   it('rejects warranty end date before purchase date', () => {
+    // Rule 2: warranty_end_date < purchase_date is logically impossible.
+    // ISO string comparison works because YYYY-MM-DD sorts lexicographically.
     const payload = validBasePayload();
     payload.purchase_date = '2026-03-20';
     payload.warranty_end_date = '2026-03-19';
@@ -76,6 +99,8 @@ describe('subject validation', () => {
   });
 
   it('requires AMC start date when AMC end date is provided', () => {
+    // Rule 3: an AMC end date without a start date makes the period ambiguous.
+    // Error is placed on amc_start_date to prompt the user to fill it in.
     const payload = validBasePayload();
     payload.amc_start_date = '';
     payload.amc_end_date = '2028-01-11';
@@ -90,6 +115,7 @@ describe('subject validation', () => {
   });
 
   it('rejects AMC end date before AMC start date', () => {
+    // Rule 4: mirrors the warranty date ordering rule but for the AMC contract.
     const payload = validBasePayload();
     payload.amc_start_date = '2027-06-01';
     payload.amc_end_date = '2027-05-31';

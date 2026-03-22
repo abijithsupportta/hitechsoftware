@@ -1,3 +1,11 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// SubjectPriorityBadge.tsx
+//
+// Colour-coded pill for job priority level.
+// Colour scale: critical=red, high=orange, medium=yellow, low=green.
+// Accepts a typed SubjectPriority union so passing a non-existent priority
+// fails at compile time rather than silently showing the wrong colour.
+// ─────────────────────────────────────────────────────────────────────────────
 'use client';
 
 import type { SubjectPriority } from '@/modules/subjects/subject.types';

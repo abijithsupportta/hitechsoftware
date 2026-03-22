@@ -1,3 +1,27 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// app/dashboard/subjects/[id]/page.tsx — Subject Detail Page
+//
+// The primary page composition for a service subject.
+// Renders different UI blocks depending on role:
+//
+//   Technician view:
+//     • Access guard: subject must be in the technician's active queue for today
+//       OR be an overdue carry-forward. Otherwise shows an out-of-queue message.
+//     • Pending accept/reject panel (when status=ALLOCATED, acceptance=pending)
+//     • JobWorkflowSection, AccessoriesSection, BillingSection
+//
+//   Admin / Office staff view:
+//     • All sections always visible
+//     • AssignTechnicianForm for re-assignment
+//     • Reschedule urgency banner when technician rejected and not yet reassigned
+//
+// billingTypeMeta: derived each render from warranty_end_date + contracts
+// to show whether the job is Chargeable, Under Warranty, or Active AMC.
+//
+// respondMutation: calls /api/subjects/[id]/respond with accept or reject action.
+// Accept modal collects visit_date + visit_time before submitting.
+// Reject modal requires a free-text reason.
+// ─────────────────────────────────────────────────────────────────────────────
 'use client';
 import { useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -24,6 +48,11 @@ import { SUBJECT_QUERY_KEYS } from '@/modules/subjects/subject.constants';
 import { removeSubject, respondToSubject } from '@/modules/subjects/subject.service';
 import { formatStatus, formatDateOnly } from '@/lib/utils/format';
 
+/**
+ * Carry-forward statuses: the technician can still act on jobs in these states
+ * even if the allocated date is today or in the past.
+ * Excludes COMPLETED / CANCELLED (terminal states).
+ */
 function isTechnicianCarryForwardPending(status: string) {
   return ['PENDING', 'ALLOCATED', 'ACCEPTED', 'ARRIVED', 'IN_PROGRESS', 'INCOMPLETE', 'AWAITING_PARTS', 'RESCHEDULED'].includes(status);
 }
@@ -103,6 +132,9 @@ export default function SubjectDetailPage() {
     [contracts],
   );
 
+  // billingTypeMeta used in the header badge and the stat cards.
+  // Checked in order: warranty check first (most common override),
+  // then AMC contract, then chargeable (pay-by-customer default).
   const billingTypeMeta = isWarrantyActive
     ? { label: 'Under Warranty', className: 'bg-emerald-100 text-emerald-700', chargeTarget: 'Brand / Dealer' }
     : hasActiveContract

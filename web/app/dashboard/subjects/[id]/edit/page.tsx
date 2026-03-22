@@ -1,3 +1,14 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// app/dashboard/subjects/[id]/edit/page.tsx
+//
+// Wrapper that configures SubjectForm for the 'Edit subject' flow.
+// buildInitialValues maps SubjectDetail (with nullable fields) to
+// SubjectFormValues (with undefined instead of null) so the form state
+// never has null spread through controlled inputs.
+//
+// Permission guard: uses can('subject:edit') — if false, renders an error
+// message inline rather than redirecting, giving the user context.
+// ─────────────────────────────────────────────────────────────────────────────
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';

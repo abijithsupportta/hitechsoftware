@@ -1,3 +1,21 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// app/dashboard/subjects/page.tsx — Subject List Page
+//
+// Queue modes (synced with ?queue= URL param for shareable links):
+//   pending   → all non-terminal statuses, sorted overdue-first
+//   overdue   → subset of pending where technician_allocated_date < today
+//   due       → COMPLETED jobs with unpaid customer bills
+//   (none)    → all subjects with full filter set
+//
+// Sorting: overdue items float to the top of the list, then pending items
+// sorted ascending by date, then all others by created_at descending.
+//
+// Prefetch on row hover: when the mouse enters a row, React Query prefetches
+// the full subject detail so the detail page loads instantly on click.
+//
+// Technician view: role=technician skips the queue mode tabs and the advanced
+// filters (the useSubjects hook auto-applies technician_id + pending filter).
+// ─────────────────────────────────────────────────────────────────────────────
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -239,6 +257,8 @@ export default function SubjectsDashboardPage() {
 
   const today = new Date().toISOString().split('T')[0];
 
+  // Overdue items float to the top; within pending, earlier dates come first;
+  // completed/terminal items fall to the bottom sorted by created_at desc.
   const sortedSubjects = [...subjects].sort((a, b) => {
     const aDate = a.technician_allocated_date ?? a.allocated_date;
     const bDate = b.technician_allocated_date ?? b.allocated_date;
@@ -276,6 +296,8 @@ export default function SubjectsDashboardPage() {
     setToDate('');
   }
 
+  // Prefetch the subject detail data when hovering a row so the detail page
+  // renders instantly (staleTime=5min to avoid redundant fetches on fast revisits).
   function handlePrefetch(subjectId: string) {
     queryClient.prefetchQuery({
       queryKey: SUBJECT_QUERY_KEYS.detail(subjectId),

@@ -1,3 +1,11 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// app/dashboard/subjects/new/page.tsx
+//
+// Thin wrapper that configures SubjectForm for the 'Create subject' flow.
+// On success, navigates to the new subject's detail page so the user can
+// immediately assign a technician or add product info.
+// allocated_date defaults to today so the form is ready to submit instantly.
+// ─────────────────────────────────────────────────────────────────────────────
 'use client';
 
 import { useRouter } from 'next/navigation';

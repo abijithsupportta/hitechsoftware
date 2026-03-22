@@ -1,3 +1,18 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// billing.service.ts
+//
+// Client-side service layer for accessory management and bill generation.
+// Sits between useBilling.ts hooks and the accessory/bill repositories.
+//
+// Key business rules enforced here (not in the API route):
+//   • Accessories can only be added/removed while job status = IN_PROGRESS.
+//   • A bill can only be generated once per subject (existingBill guard).
+//   • All required photos must be uploaded before a bill can be generated
+//     (completion requirements checked via checkCompletionRequirements).
+//   • payment_mode is mandatory for out-of-warranty / customer-pay jobs;
+//     warranty/AMC brand-dealer bills skip payment at time of generation.
+//   • Grand total = visit_charge + service_charge + accessories_total.
+// ─────────────────────────────────────────────────────────────────────────────
 import { createClient } from '@/lib/supabase/client';
 import type { ServiceResult } from '@/types/common.types';
 import type {
@@ -20,13 +35,26 @@ import {
 import { checkCompletionRequirements } from '@/modules/subjects/subject.job-workflow';
 import { getSubjectDetails } from '@/modules/subjects/subject.service';
 
+// Browser-scoped Supabase client used for accessory read/delete queries
+// (write mutations go through the API route for technician ownership checks).
 const supabase = createClient();
 
+/**
+ * Safe numeric coercion.
+ * DB columns like total_price can come back as string from aggregate queries.
+ * Returns 0 for any non-finite result (undefined, null, NaN, Infinity).
+ */
 function toNumber(value: unknown): number {
   const n = Number(value ?? 0);
   return Number.isFinite(n) ? n : 0;
 }
 
+/**
+ * Adds a single spare part / accessory line to the subject.
+ * Only allowed while the job is IN_PROGRESS and the calling technician is
+ * the assigned one — guards are checked here before hitting the repository.
+ * Used by the AccessoriesSection component and the billing API route.
+ */
 export async function addAccessory(
   subjectId: string,
   technicianId: string,
@@ -74,6 +102,12 @@ export async function addAccessory(
   return { ok: true, data: result.data as SubjectAccessory };
 }
 
+/**
+ * Deletes a single accessory row from the subject.
+ * Fetches the accessory first to resolve its subject_id, then validates the
+ * technician owns that subject and the job is currently IN_PROGRESS.
+ * The hard-delete is intentional — accessories have no soft-delete flag.
+ */
 export async function removeAccessory(
   accessoryId: string,
   technicianId: string,
@@ -115,6 +149,11 @@ export async function removeAccessory(
   return { ok: true, data: { id: accessoryId } };
 }
 
+/**
+ * Fetches all accessories for a subject and computes the running total.
+ * The total is calculated in-memory from individual total_price values
+ * (each row stores total_price = quantity * unit_price from the DB).
+ */
 export async function getAccessoriesBySubject(
   subjectId: string,
 ): Promise<ServiceResult<{ items: SubjectAccessory[]; total: number }>> {
@@ -129,6 +168,23 @@ export async function getAccessoriesBySubject(
   return { ok: true, data: { items, total } };
 }
 
+/**
+ * Generates the bill for a completed service job.
+ *
+ * Full flow:
+ *   1. Load current subject state — verify technician + status = IN_PROGRESS.
+ *   2. Guard: bill already exists? Return error (idempotency).
+ *   3. Guard: required photos uploaded? Block if missing.
+ *   4. Validate any accessories provided inline in input.
+ *   5. Insert accessories if none exist yet (avoids duplicating on retry).
+ *   6. Calculate accessories total via DB aggregate.
+ *   7. Compute grand total = visit + service + accessories.
+ *   8. Determine bill_type:
+ *      - warranty or AMC → 'brand_dealer_invoice' (payment_status='due', no payment at generation)
+ *      - out-of-warranty   → 'customer_receipt'   (payment_status='paid', requires payment_mode)
+ *   9. Generate bill_number via Supabase RPC 'generate_bill_number'.
+ *  10. Insert bill row and update subject with charge fields + billing_status.
+ */
 export async function generateBill(
   subjectId: string,
   technicianId: string,
@@ -210,6 +266,10 @@ export async function generateBill(
   const service_charge = toNumber(input.service_charge);
   const grand_total = visit_charge + service_charge + accessories_total;
 
+  // Determine bill classification:
+  // Brand-dealer bills (warranty / AMC) are invoiced to the manufacturer/dealer;
+  // they do NOT collect payment at the time of job completion.
+  // Customer bills require payment_mode because the technician collects on-site.
   const isBrandDealerBill = subject.is_warranty_service || subject.is_amc_service;
 
   if (!isBrandDealerBill && !input.payment_mode) {
