@@ -21,6 +21,7 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
   ACCEPTED: ['ARRIVED'],
   ARRIVED: ['IN_PROGRESS'],
   IN_PROGRESS: ['COMPLETED', 'INCOMPLETE', 'AWAITING_PARTS'],
+  AWAITING_PARTS: ['IN_PROGRESS'],
 };
 
 export async function updateJobStatus(
