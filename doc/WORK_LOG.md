@@ -3,6 +3,21 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-22 00:00:00 +05:30] Fix Build Error in useSubjects.ts — Missing useMutation Declaration
+
+- Summary: Fixed a Turbopack build error caused by a missing `const createSubjectMutation = useMutation({` line in the subject list hook.
+- Work done:
+  - Identified root cause: the opening `const createSubjectMutation = useMutation({` statement was accidentally absent, leaving `mutationFn` and `onSuccess` as free-floating object keys outside any expression, causing the ECMAScript parser to fail.
+  - Added the missing declaration line immediately before `mutationFn`.
+- Files changed:
+  - web/hooks/subjects/useSubjects.ts
+- Verification:
+  - File parses correctly after the fix; mutation object is properly formed and returned.
+- Bugs/issues encountered:
+  - Build error: `Parsing ecmascript source code failed` at line 209 — `Expected ';', '}' or <eof>` due to the missing `useMutation({` wrapper.
+- Next:
+  - None.
+
 ## [2025-07-15 12:30:00 +05:30] Ultra-Encyclopedic Inline Documentation — Subject Detail Module (Phase 2)
 
 - Summary: Completed the encyclopedic (~20:1 docs-to-code ratio) inline comment pass on all Subject Detail module files. Every exported symbol, function, query hook, mutation, and API route HTTP handler received exhaustive JSDoc covering business context, DB field mapping, guard chain rationale, cache invalidation strategy, and edge cases.

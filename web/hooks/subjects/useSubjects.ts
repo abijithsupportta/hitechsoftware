@@ -205,6 +205,7 @@ export function useSubjects() {
   //   NOTE: The service returns ServiceResult (never throws). onSuccess checks result.ok
   //   and shows toast.error for service-level validation failures. This is a minor
   //   deviation from React Query convention (mutationFn ideally throws on error).
+  const createSubjectMutation = useMutation({
     mutationFn: (input: CreateSubjectInput) => createSubjectTicket(input),
     onSuccess: async (result) => {
       if (result.ok) {
