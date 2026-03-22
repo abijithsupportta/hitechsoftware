@@ -3,11 +3,51 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
-## [2026-03-22 23:45:00 +05:30] Architectural Audit: Subject/Service Detail Page
+## [2026-03-23 14:30:00 +05:30] MNC-Level Subject Detail Architecture Refactor
 
-- Summary: Full read-only architectural audit of every file involved in rendering the subject detail page (`web/app/dashboard/subjects/[id]/page.tsx`). No code changes made.
+- Summary: Full MNC-level refactor of the subject detail page codebase. Deleted ~1,629 lines of dead code, extracted shared utilities, split a monolithic hook, created a shared API auth middleware, and eliminated all duplicate inline logic across page, components, hooks, and API routes.
 - Work done:
-  - Read and analysed 26 files spanning page, components, hooks, modules, repositories, and API routes.
+  - Deleted 8 orphaned dead component files (~1,629 lines): `status-action-bar.tsx`, `status-action-bar-new.tsx`, `photo-upload.tsx`, `photo-upload-fixed.tsx`, `photo-upload-grid.tsx`, `photo-upload-row.tsx`, `complete-job-panel.tsx`, `job-completion-panel.tsx`
+  - Created `web/lib/utils/format.ts` — single source of truth for `formatStatus`, `formatDateTime`, `formatDateOnly`, `formatMoney` (was duplicated in page.tsx, ActivityTimeline.tsx, BillingSection.tsx)
+  - Created `web/lib/utils/image-compression.ts` — extracted ~120 lines of Canvas API image compression from BillingSection.tsx (`isLikelyVideoFile`, `isLikelyImageFile`, `compressImageForUpload`)
+  - Created `web/lib/api/with-auth.ts` — `requireAuth(request, { roles? })` shared middleware; eliminates 3× copy-pasted auth boilerplate (createServerClient → getUser → profileResult → createAdminClient)
+  - Split monolithic `useSubjects.ts` into focused hooks:
+    - `web/hooks/subjects/useSubjectDetail.ts` — `useSubjectDetail`, `useSaveSubjectWarranty`
+    - `web/hooks/subjects/useSubjectAssignment.ts` — `useAssignableTechnicians`, `useAssignTechnician`, `useQuickAssignTechnician`
+    - `useSubjects.ts` slimmed to list-only; re-exports focused hooks for backward compat
+  - Moved `respondToSubjectApi` inline function from `[id]/page.tsx` to `web/modules/subjects/subject.service.ts` as `respondToSubject()`
+  - Updated `BillingSection.tsx` — imports from `lib/utils/image-compression` and `lib/utils/format` (removed ~120 inline lines)
+  - Updated `ActivityTimeline.tsx` — imports `formatStatus`, `formatDateTime`, `formatDateOnly` from `lib/utils/format` (removed 3 duplicate inline functions)
+  - Updated `[id]/page.tsx` — imports `formatStatus`, `formatDateOnly` from `lib/utils/format`; calls `respondToSubject` from service layer
+  - Refactored `respond/route.ts`, `workflow/route.ts`, `billing/route.ts` — auth boilerplate replaced with `requireAuth`
+  - Removed stale `PhotoUploadGrid` test case in `tests/performance/query.test.ts` (was testing deleted dead code)
+- Files changed:
+  - `web/lib/utils/format.ts` (created)
+  - `web/lib/utils/image-compression.ts` (created)
+  - `web/lib/api/with-auth.ts` (created)
+  - `web/hooks/subjects/useSubjectDetail.ts` (created)
+  - `web/hooks/subjects/useSubjectAssignment.ts` (created)
+  - `web/hooks/subjects/useSubjects.ts` (modified)
+  - `web/modules/subjects/subject.service.ts` (modified)
+  - `web/app/dashboard/subjects/[id]/page.tsx` (modified)
+  - `web/components/subjects/BillingSection.tsx` (modified)
+  - `web/components/subjects/ActivityTimeline.tsx` (modified)
+  - `web/app/api/subjects/[id]/respond/route.ts` (modified)
+  - `web/app/api/subjects/[id]/workflow/route.ts` (modified)
+  - `web/app/api/subjects/[id]/billing/route.ts` (modified)
+  - `web/tests/performance/query.test.ts` (modified)
+  - 8 component files (deleted)
+- Verification:
+  - `npx tsc --noEmit` — 0 errors after all changes
+  - Commit `046e5bd` pushed to GitHub main
+- Issues encountered:
+  - multi_replace_string_in_file parameter bug (`newString2` was ignored) caused workflow/route.ts POST `subjectCheckResult` assignment to be dropped — caught by TypeScript check and fixed
+  - Dead test import (`PhotoUploadGrid`) surfaced by TypeScript check — removed test 5.5 and its import
+  - `}` mismatch in query.test.ts after removing test 5.5 — fixed by restoring closing brace for describe block
+- Next:
+  - Consider extracting accept/reject modal JSX from `[id]/page.tsx` into dedicated modal components (`AcceptServiceModal.tsx`, `RejectServiceModal.tsx`) to reduce page.tsx to under 150 lines
+
+
   - Documented file sizes, responsibilities, naming conventions, and SRP violations.
   - Identified dead/orphan component files, duplicated utility functions, and layer-crossing violations.
   - Produced MNC-level rewrite structural recommendation.
