@@ -3,6 +3,38 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-22 21:00:00 +05:30] Analysis: Billing, Job Workflow, Photo Upload, and Auto-accessory Investigation
+
+- Summary: Deep-read all billing, workflow, photo-upload, and accessory files to trace why items/accessories might appear automatically, why a bill might generate unexpectedly, and why job workflow (start work → mark complete) might be broken.
+- Work done:
+  - Read `app/api/subjects/[id]/billing/route.ts` (full)
+  - Read `app/api/subjects/[id]/workflow/route.ts` (full)
+  - Read `components/subjects/BillingSection.tsx` (full)
+  - Read `components/subjects/job-workflow-section.tsx` (full)
+  - Read `components/subjects/AccessoriesSection.tsx` (full)
+  - Read `app/api/subjects/[id]/photos/upload/route.ts` (full)
+  - Read `app/dashboard/subjects/[id]/page.tsx` (full)
+  - Read `repositories/billing.repository.ts` (full — only 6 lines)
+  - Read `repositories/bill.repository.ts` (full)
+  - Read `repositories/accessory.repository.ts` (full)
+  - Read `modules/subjects/billing.service.ts` (full)
+  - Read `modules/subjects/subject.job-workflow.ts` (full)
+  - Read `hooks/subjects/useBilling.ts` (full)
+  - Compiled findings — see detailed report below.
+- Files changed: none (analysis only)
+- Verification: analysis only
+- Issues/bugs encountered:
+  - BUG A: `billing.service.ts` `generateBill()` has dead auto-accessory-creation logic that is NEVER called by the API route (route implements billing inline). The service layer and the route are out of sync.
+  - BUG B: `bill.repository.ts` `createBill()` does a second subjects-table update (`bill_generated: true`) which is also dead for the API route flow (route inserts directly via adminClient). The `billing.service.ts` uses this repository but the route does not.
+  - BUG C: The `mark_complete` action in the workflow route sets `status=COMPLETED` WITHOUT generating a bill, while the billing route does the opposite (generates bill + sets COMPLETED). No UI exposes `mark_complete`, so a job could theoretically be marked complete without a bill via direct API call.
+  - BUG D: Photo uploads in `BillingSection` always set `photoType='machine'` for non-video files. But `checkCompletionRequirements` (used by `markJobComplete`) requires specific types: serial_number, machine, bill, job_sheet, defective_part, service_video (for warranty/AMC). This mismatch means the workflow route's `mark_complete` action would fail for warranty jobs if tested directly. Billing route bypasses this with a simple count check.
+  - BUG E: The `generateBill` function in `billing.service.ts` passes `accessories` to auto-create them, but the API route ignores any accessories sent in the generate_bill payload — it reads existing DB rows only. So accessories in the payload from the UI are silently ignored.
+  - NOTE: No mechanism found for truly automatic bill generation. Bills are only created when the technician explicitly clicks "Generate Bill & Complete Job".
+- Next:
+  - Decide whether to delete/unify the dead `billing.service.ts` `generateBill()` and `bill.repository.ts` `createBill()` code with the route's inline logic.
+  - Consider fixing photo type sending in `BillingSection` (currently always 'machine') if `checkCompletionRequirements` will ever be enforced in the billing path.
+  - Add a guard or deprecation note on the `mark_complete` workflow action to prevent bill-less completion.
+
 ## [2026-03-22 20:00:00 +05:30] Fix: State Management Bugs — Query Key Mismatch, Realtime Leak, Billing Invalidation, staleTime
 
 - Summary: Fixed 4 state management bugs identified in the previous audit. The critical fix corrects a query key prefix mismatch that prevented any `invalidateQueries` call on the subject list root from ever refreshing detail-page cache entries. Secondary fixes: stabilised the realtime subscription reference (was torn down every render), added subject detail invalidation after bill payment update, and added `staleTime` to workflow requirements query.

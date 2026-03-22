@@ -501,8 +501,8 @@ export async function assignTechnicianWithDate(input: AssignTechnicianInput): Pr
     };
   }
 
-  const subjectState = subjectStateResult.data as { status?: string; completed_at?: string | null };
-  if (subjectState.status === 'COMPLETED' || subjectState.completed_at) {
+  const subjectState = subjectStateResult.data as { status?: string; completed_at?: string | null; bill_generated?: boolean };
+  if (subjectState.status === 'COMPLETED' || subjectState.completed_at || subjectState.bill_generated) {
     return {
       ok: false,
       error: { message: 'Completed subjects cannot be reassigned.' },

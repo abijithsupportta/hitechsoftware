@@ -249,6 +249,20 @@ export async function assignTechnicianFull(
       incomplete_note: null,
       completion_proof_uploaded: false,
       completion_notes: null,
+      // Reset billing fields so a re-assigned technician gets a clean billing slate.
+      // Stale bill data (e.g. from a manually-rolled-back completion) would otherwise
+      // block the technician from generating a new bill (bill_generated=true guard).
+      bill_generated: false,
+      bill_number: null,
+      bill_generated_at: null,
+      billing_status: null,
+      grand_total: 0,
+      visit_charge: 0,
+      service_charge: 0,
+      accessories_total: 0,
+      payment_collected: false,
+      payment_collected_at: null,
+      payment_mode: null,
     })
     .eq('id', subjectId)
     .eq('is_deleted', false)
