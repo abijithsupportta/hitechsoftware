@@ -1,19 +1,76 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // /api/subjects/[id]/billing — Billing API route
 //
-// HTTP method → action mapping:
-//   POST   action='add_accessory'       — add a spare-part line (technician)
-//   POST   action='generate_bill'       — generate final bill + complete job
-//   DELETE action='remove_accessory'    — remove a spare-part line (technician)
-//   PATCH  action='update_payment_status' — mark paid/due/waived (office staff)
-//   PUT    (no action field)            — edit existing bill charges (super_admin)
+// PURPOSE:
+//   Server-side Next.js App Router route handler for all billing operations
+//   on a specific subject. Every operation here writes to the database using
+//   the admin Supabase client (service-role key) to bypass RLS for verified
+//   operations, while still validating auth and role server-side first.
 //
-// All writes use the admin Supabase client (service-role key) so that Row-Level
-// Security does not block the technician from writing to tables like
-// subject_bills or subjects.
+// HTTP METHOD → ACTION MAPPING:
+//   POST   action='add_accessory'         — Add a spare-part line item (technician)
+//   POST   action='generate_bill'         — Generate final bill + complete the job
+//   DELETE action='remove_accessory'      — Remove a spare-part line item (technician)
+//   PATCH  action='update_payment_status' — Mark paid/due/waived (office staff/admin)
+//   PUT    (no action field, body=EditBillInput) — Edit existing bill charges (super_admin)
 //
-// `authenticateBillingRequest` is a shared helper used by DELETE and PATCH to
-// avoid duplicating the auth + subject load logic across handlers.
+// WHY ALL HANDLERS USE THE ADMIN CLIENT:
+//   The admin Supabase client uses the SUPABASE_SERVICE_ROLE_KEY which bypasses
+//   Row-Level Security. This is intentional here because:
+//   1. Technicians are writing to subject_bills and subjects (tables where RLS
+//      policies only allow reads by the assigned technician, not writes).
+//   2. The ownership check (assigned_technician_id === userId) is performed
+//      explicitly in the route code, providing equivalent security to what RLS
+//      would enforce, but WITH the ability to also write billing records.
+//   3. The admin client is only used AFTER authentication and authorization
+//      are confirmed so we don't open a blanket bypass.
+//
+// ERROR RESPONSE CONVENTION:
+//   All error responses use the ErrorResponse shape:
+//     { step, code, message, userMessage, details? }
+//   - step:        where in the processing pipeline the error occurred
+//   - code:        machine-readable error identifier (for logging/debugging)
+//   - message:     technical description (safe to log)
+//   - userMessage: human-readable string shown in the UI via toast.error()
+//   - details:     only included in development mode (NODE_ENV='development')
+//                  to prevent internal DB errors from leaking to production clients
+//
+// SHARED HELPER: authenticateBillingRequest(subjectId)
+//   Used by DELETE and PATCH to avoid duplicating the 5-step auth sequence:
+//   1. Validate subjectId
+//   2. Get current session user
+//   3. Load profile.role from DB
+//   4. Create admin client
+//   5. Load subject with assignment + bill_generated fields
+//   Returns: { ok: true, userId, role, admin, subject } or { ok: false, error, status }
+//
+// STEP NUMBERING IN CONSOLE LOGS:
+//   Each handler logs ✓ for success and ✗ for failure at each step.
+//   Steps 1-5 are standard (validate, authenticate, role, admin, subject).
+//   Step 6+ are action-specific (validate input, execute DB write).
+//
+// COMMON GUARDS APPLIED (per relevant action):
+//   \u2022 subject.assigned_technician_id === userId (technician owns the job)
+//   \u2022 subject.status === 'IN_PROGRESS' (job must be active for write ops)
+//   \u2022 !subject.bill_generated (bill must not exist for add/remove accessories)
+//   \u2022 role in ['office_staff', 'super_admin'] (for PATCH payment status)
+//   \u2022 role === 'super_admin' (for PUT bill edit)
+//
+// GST CALCULATION (in POST generate_bill and PUT edit bill):
+//   If apply_gst=true: grand_total = (visit + service + accessories) * 1.18
+//   GST rate is hardcoded to 18% (standard Indian GST for appliance services).
+//
+// BILL NUMBER GENERATION:
+//   The POST generate_bill action calls Supabase RPC 'generate_bill_number'
+//   which is a PostgreSQL function using a sequence (prevents duplicate numbers
+//   even under concurrent bill generation by multiple technicians).
+//
+// FULL vs SYNC (DENORMALISED FIELDS):
+//   Several subject fields duplicate bill data: visit_charge, service_charge,
+//   grand_total, accessories_total, billing_status, payment_mode, bill_number.
+//   These are duplicated on the subjects row for list-page display performance
+//   (avoids a JOIN to subject_bills for every row in the list).
+//   After every bill write, these are synced via a separate subjects UPDATE.
 // ─────────────────────────────────────────────────────────────────────────────
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createServerClient } from '@/lib/supabase/server';
@@ -42,10 +99,38 @@ function getTodayIsoDate() {
 }
 
 /**
- * Shared auth helper for DELETE and PATCH billing handlers.
- * Authenticates user, loads their role, and loads the subject with
- * assignment + bill_generated fields, without duplicating this sequence
- * in both handlers.
+ * @summary Shared auth helper that validates session + profile + subject for billing ops.
+ *
+ * @description
+ * authenticateBillingRequest() is called by DELETE and PATCH handlers to avoid
+ * duplicating the 5-step auth + subject-load sequence. It performs:
+ *
+ *   STEP 1: Create the RLS-enforced Supabase client and get the current user.
+ *           If no session exists (expired or not logged in): returns 401.
+ *
+ *   STEP 2: Query profiles.role for the authenticated user.
+ *           Uses the RLS Supabase client (standard — users can read their own profile).
+ *           If profile not found: returns 400 (data integrity issue).
+ *
+ *   STEP 3: Create the admin Supabase client (service-role, no RLS).
+ *           Needed to load the subject row regardless of RLS policies.
+ *
+ *   STEP 4: Query subjects with assignment + billing fields:
+ *           id, assigned_technician_id, status, bill_generated
+ *           Filters: subject_id = subjectId AND is_deleted = false
+ *           If DB error: returns 500. If no row: returns 404.
+ *
+ * ON SUCCESS:
+ *   Returns { ok: true, userId, role, admin, subject } with all values the
+ *   calling handler needs without having to re-fetch any of them.
+ *
+ * NOTE ON ROLE VERIFICATION:
+ *   The function does NOT verify which role is required — it just loads the role.
+ *   Each handler that calls this function performs its own role check after
+ *   receiving the auth result. This keeps authenticateBillingRequest generic.
+ *
+ * @param subjectId  UUID of the subject to load. Already validated by the caller.
+ * @returns { ok: true, ...auth } on success, { ok: false, error, status } on failure.
  */
 async function authenticateBillingRequest(subjectId: string) {
   const supabase = await createServerClient();
@@ -122,6 +207,43 @@ async function authenticateBillingRequest(subjectId: string) {
   };
 }
 
+/**
+ * @summary POST /api/subjects/[id]/billing — Add accessory or generate bill.
+ *
+ * @description
+ * The POST handler dispatches to one of two actions based on body.action:
+ *
+ *   'add_accessory' flow:
+ *     Step 1: Validate subjectId string.
+ *     Step 2-3: requireAuth({ roles: ['technician'] }) — ensures the caller is a technician.
+ *     Step 4: Parse body.action + input fields.
+ *     Step 5: Load full subject (with brand/dealer join for sourceName).
+ *     Step 6a: Validate item_name is not empty.
+ *     Step 6b: Ensure status===IN_PROGRESS (no accessories after job completes).
+ *     Step 6c: INSERT into subject_accessories. Return the new row.
+ *
+ *   'generate_bill' flow:
+ *     Step 1-4: Same as add_accessory.
+ *     Step 5: Load subject. Verify technician. Verify IN_PROGRESS.
+ *     Step 6a: Check bill doesn't already exist (idempotency guard).
+ *     Step 6b: Verify at least 1 photo uploaded (photosCountResult.count >= 1).
+ *     Step 6c: Sum accessory total from DB (not in-memory for accuracy).
+ *     Step 6d: Compute visit + service + accessories + optional 18% GST.
+ *     Step 6e: Validate warranty state (must have warranty_end_date or is_amc_service).
+ *     Step 6f: Determine bill type: amc/in_warranty=brand_dealer_invoice, else customer_receipt.
+ *     Step 6g: Generate bill_number via RPC 'generate_bill_number'.
+ *     Step 6h: INSERT into subject_bills with all fields.
+ *     Step 6i: UPDATE subjects with billing fields + status='COMPLETED'.
+ *     Step 6j: If Update fails: DELETE the bill (manual rollback) and return error.
+ *
+ *   Unknown action: return 400 UNKNOWN_ACTION.
+ *
+ * WHY requireAuth (NOT authenticateBillingRequest) FOR POST:
+ *   requireAuth is used for POST because it loads a minimal auth context
+ *   and the POST handler then loads a MORE DETAILED subject (with brand/dealer joins)
+ *   than authenticateBillingRequest does. Using authenticateBillingRequest would
+ *   require a second subject query to get the join data, wasting a round-trip.
+ */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -541,6 +663,38 @@ export async function POST(
   return NextResponse.json({ ok: false, error }, { status: 400 });
 }
 
+/**
+ * @summary DELETE /api/subjects/[id]/billing — Remove a spare-part accessory.
+ *
+ * @description
+ * The DELETE handler only supports action='remove_accessory'.
+ *
+ * FULL FLOW:
+ *   Step 1: Validate subjectId.
+ *   Step 2-3: Parse + validate body: must have action='remove_accessory' and accessoryId.
+ *   Step 4: authenticateBillingRequest(subjectId) — auth + role + subject load.
+ *   Step 5: Role check: must be 'technician' (office staff cannot remove accessories).
+ *   Step 6: Assignment check: assigned_technician_id === userId.
+ *   Step 7: Status check: status='IN_PROGRESS' AND bill_generated=false.
+ *           Cannot remove accessories if the bill is already locked.
+ *   Step 8: Load existing accessory (verify it belongs to this subject).
+ *           Returns 404 if not found or belongs to a different subject.
+ *   Step 9: Hard DELETE the row from subject_accessories.
+ *           Returns { ok: true, data: { id } } on success.
+ *
+ * WHY HARD DELETE:
+ *   Accessory rows have no downstream relationships (no other table references
+ *   subject_accessories.id as a foreign key). A soft-delete would complicate
+ *   every SUM query on accessories_total. The bill history (once generated)
+ *   preserves the accessories_total value, so hard-deleting the row is safe
+ *   as long as deletion happens before bill generation.
+ *
+ * GUARD: bill_generated=false
+ *   Once a bill is generated, the accessories list is "frozen" in the bill.
+ *   Allowing deletion after billing would create a discrepancy between
+ *   subject_bills.accessories_total and the actual row sum. The edit-bill
+ *   (PUT) flow is the correct path for post-billing changes (admin only).
+ */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -675,6 +829,38 @@ export async function DELETE(
   return NextResponse.json({ ok: true, data: { id: body.accessoryId } });
 }
 
+/**
+ * @summary PATCH /api/subjects/[id]/billing — Update payment status (admin/office staff).
+ *
+ * @description
+ * The PATCH handler only supports action='update_payment_status'.
+ * Used by office staff and super_admin to record that a bill has been paid,
+ * reset it to due, or waive the charge.
+ *
+ * FULL FLOW:
+ *   Step 1: Validate subjectId.
+ *   Step 2: Parse body: must have action='update_payment_status', billId, valid paymentStatus.
+ *   Step 3: If paymentStatus='paid': paymentMode is also required (which method was used).
+ *           Prevents creating a 'paid' record without recording collection method.
+ *   Step 4: authenticateBillingRequest(subjectId) — auth + role + subject load.
+ *   Step 5: Role check: only 'office_staff' or 'super_admin' allowed.
+ *           Technicians cannot change payment status via this route — they
+ *           record payment mode during bill generation (generate_bill action).
+ *   Step 6: UPDATE subject_bills SET payment_status, payment_mode, payment_collected_at.
+ *           Returns the updated { id, payment_status }.
+ *   Step 7: Sync subjects row (billing_status, payment_mode, payment_collected,
+ *           payment_collected_at) to keep the denormalised subject fields in sync.
+ *           This second UPDATE is not critical (the bill record is source of truth)
+ *           but prevents stale data in the subject list view.
+ *
+ * paymentCollectedAt:
+ *   Set to NOW() when paymentStatus='paid', null otherwise.
+ *   This records the exact timestamp the admin marked the bill as paid.
+ *
+ * normalizedPaymentMode:
+ *   Only set when paymentStatus='paid'; null for 'due' and 'waived'.
+ *   Prevents phantom paymentMode values when reverting from 'paid' to 'due'.
+ */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -796,9 +982,40 @@ export async function PATCH(
   });
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// PUT /api/subjects/[id]/billing — Super admin bill editing
-// ────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// PUT /api/subjects/[id]/billing — Super admin edits charges on an existing bill
+//
+// PURPOSE:
+//   Allows a super_admin to correct the financial fields of an already-generated
+//   bill. This is an exceptional operation (bills should ideally be final),
+//   but corrections are needed when technicians enter wrong charges.
+//
+// AUTHORIZATION: super_admin ONLY
+//   Not even office_staff can edit bills — only super_admin.
+//   This restriction is intentional: bill edits change financial audit records
+//   and require the highest trust level.
+//
+// ACCESSORY MANAGEMENT (two-step replace):
+//   body.accessories_to_remove: UUID[] — existing accessory IDs to hard-delete
+//   body.accessories_to_add: []{item_name, quantity, unit_price} — new rows to insert
+//   This split allows surgical edits (remove one, add another) rather than
+//   forcing a full replacement which would lose existing ID references.
+//
+// TOTAL RECALCULATION:
+//   After removing and adding accessories, the route recalculates accessories_total
+//   from the DB (SELECT SUM) to ensure accuracy. Then recomputes grand_total:
+//     grand_total = (visit + service + accessories) * (1.18 if apply_gst else 1.0)
+//
+// PAYMENT MODE PERSISTENCE:
+//   For brand_dealer_invoice bills: payment_mode is always null (no on-site collection).
+//   For customer_receipt bills: new payment_mode from body is used if provided;
+//   otherwise the existing payment_mode is kept (no accidental clearing of payment method).
+//
+// DUAL-WRITE PATTERN:
+//   After updating subject_bills, the route also updates the subjects row's
+//   denormalised fields (visit_charge, service_charge, grand_total, etc.).
+//   This keeps the list view in sync without requiring a JOIN every time.
+// ─────────────────────────────────────────────────────────────────────────────
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },

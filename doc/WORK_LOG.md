@@ -3,7 +3,66 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
-## [2026-03-22 17:30:00 +05:30] Inventory Migration Fix + Comprehensive JSDoc Documentation
+## [2025-07-15 12:30:00 +05:30] Ultra-Encyclopedic Inline Documentation — Subject Detail Module (Phase 2)
+
+- Summary: Completed the encyclopedic (~20:1 docs-to-code ratio) inline comment pass on all Subject Detail module files. Every exported symbol, function, query hook, mutation, and API route HTTP handler received exhaustive JSDoc covering business context, DB field mapping, guard chain rationale, cache invalidation strategy, and edge cases.
+- Work done:
+  - **billing.service.ts**: Completed remaining 4 functions that were unfinished in the prior session:
+    - `getAccessoriesBySubject()`: in-memory total vs DB SUM rationale, reduce pattern, null-coalescing, return shape
+    - `generateBill()`: full 10-step flow individually documented (each step: purpose, guard, downstream effect, DB writes)
+    - `getBillBySubject()`: null-vs-error semantic, ServiceResult contract, consumer hook integration
+    - `updateBillPaymentStatus()`: role-check rationale, defence-in-depth pattern, `paid`/`due`/`waived` use cases
+  - **useBilling.ts**: All 8 hook functions ultra-documented:
+    - File header: why API routes (not service direct), all 4 cache keys, toast policy, auth guard pattern
+    - `useSubjectAccessories`: query key structure, enabled guard, error propagation, staleTime rationale
+    - `useAddAccessory`: why API route (admin client), auth guard, request/response shape, cache invalidation
+    - `useRemoveAccessory`: hard-delete vs soft-delete rationale, FormData body on DELETE, guard sequence
+    - `useGenerateBill`: four-key invalidation pattern explained individually, compound success message
+    - `useSubjectBill`: null-returning pattern, why null (not throw) for 'not found', staleTime note
+    - `useDownloadBill`: blob download technique step-by-step, createObjectURL, memory cleanup, filename extraction
+    - `useUpdateBillPaymentStatus`: back-fill use cases, role restriction, PATCH method, two-key invalidation
+    - `useEditBill`: why PUT (not PATCH), no auth guard reasoning, four-key invalidation
+  - **use-job-workflow.ts**: Full composite hook ultra-documented:
+    - File header: technician-only scope, why API routes, composite hook architecture rationale, photo FormData note
+    - `useJobWorkflow` JSDoc: all 6 internal operations with step descriptions, returned object structure
+    - `workflowRequirementsQuery`: query key segmentation, 30s staleTime rationale, manual refetch pattern
+    - `updateStatusMutation`: label map, Promise.all invalidation, valid status transitions
+    - `uploadPhotoMutation`: FormData vs JSON, why no Content-Type header, both mutate/mutateAsync exposed
+    - `removePhotoMutation`: storagePath security, why photoType not in body, DB + storage delete
+    - `markIncompleteMutation`: body spreading pattern, why no workflow requirements refetch
+    - `markCompleteMutation`: vs generateBill (billing path vs non-billing completion), workflow gate
+    - Return object: naming conventions, default values, what is/isn't exposed
+  - **useSubjects.ts**: Master list hook ultra-documented:
+    - File header: unified hook design, page reset pattern, useMemo rationale, technician auto-filter, staleTime
+    - `useSubjects` JSDoc: all 19 state pieces individually described, full returned object shape
+    - Filter state comments: why local state (not URL/Zustand), future migration plan
+    - Filter build block: useMemo deep-equal note, undefined vs null coercion, technician hardcoding
+    - Paginated list query: cache key structure, per-filter-combination caching
+    - Create/update/delete mutations: ServiceResult-inside-onSuccess pattern note, invalidation strategies
+    - Return object: double .data unwrapping explained, pagination fallback, error normalization, setter wrappers
+  - **billing/route.ts**: All 4 HTTP handlers ultra-documented:
+    - File header: method→action mapping, why admin client, ErrorResponse shape, step numbering, GST calc, bill_number RPC, denormalised dual-write pattern
+    - `authenticateBillingRequest()`: 5-step shared helper, why generic (no role check), what it returns
+    - `POST`: dispatches to add_accessory and generate_bill flows, why requireAuth not authenticateBillingRequest
+    - `DELETE`: remove_accessory guard chain, hard delete rationale, bill_generated lock guard
+    - `PATCH`: update_payment_status flow, paymentMode required for 'paid', denorm sync step
+    - `PUT`: super_admin only rationale, accessories_to_remove/add pattern, total recalculation, dual-write
+- Files changed:
+  - web/modules/subjects/billing.service.ts
+  - web/hooks/subjects/useBilling.ts
+  - web/hooks/subjects/use-job-workflow.ts
+  - web/hooks/subjects/useSubjects.ts
+  - web/app/api/subjects/[id]/billing/route.ts
+- Verification:
+  - All files saved; no structural code changes made (documentation only)
+  - No new TypeScript errors introduced (comment-only changes)
+- Issues/bugs encountered:
+  - None (pure documentation pass)
+- Next:
+  - Push to GitHub main
+  - Consider ultra-documenting remaining Subject Detail files: useSubjectDetail.ts, useSubjectAssignment.ts, subject.service.ts, workflow/route.ts, photos API routes
+
+
 
 - Summary: Fixed a SQL migration conflict (inventory `products` table renamed to `inventory_products` to avoid collision with the pre-existing service-module `products` table). Also completed comprehensive JSDoc documentation across all 30 inventory module files.
 - Work done:
