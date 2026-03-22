@@ -3,6 +3,31 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-22 22:00:00 +05:30] Fix: Stale Bill/Accessories Appearing Automatically — Technician Stuck Unable to Complete Service
+
+- Summary: Technician (ramu) reported that accessories and a bill appeared "automatically" on the WREWRW subject, and they could not add new parts or generate a new bill. Root cause: the subject was previously COMPLETED (bill HT-BILL-2026-00003 generated 20/03/2026). In a prior manual DB fix (previous session), only `completed_at` was reset to null — the `bill_generated` flag and old bill/accessory records were not cleaned up. When the technician reached IN_PROGRESS status, `bill_generated=true` blocked the entire billing UI, making it appear as if data was added automatically.
+- Work done:
+  - Ran diagnostic query: confirmed WREWRW (`fbaed1df-...`) had `status=IN_PROGRESS`, `bill_generated=true`, old bill and 1 accessory ("sdfsfd" qty 20 × INR 100) still present in the DB.
+  - **DB fix (WREWRW)**: Used admin script to delete stale bill (HT-BILL-2026-00003) from `subject_bills`, delete stale accessory (sdfsfd) from `subject_accessories`, and reset all billing fields on the subject: `bill_generated=false`, `bill_number=null`, `grand_total=0`, `visit_charge=0`, `service_charge=0`, `accessories_total=0`, `billing_status=null`, `payment_collected=false`, `payment_collected_at=null`, `payment_mode=null`, `bill_generated_at=null`. Photos from 20/03 were intentionally kept (needed for bill generation requirement).
+  - **Code fix `assignTechnicianFull`** (`web/repositories/subject.repository.ts`): Added reset for all billing-related fields in the subjects table update — so any future re-assignment also gives a clean billing slate, protecting against stale billing data if manual DB manipulation ever happens again.
+  - **Code fix `assignTechnicianWithDate`** (`web/modules/subjects/subject.service.ts`): Strengthened the re-assignment guard to also block `bill_generated=true` subjects (in addition to `status=COMPLETED` and `completed_at IS NOT NULL`).
+  - TypeScript: `npx tsc --noEmit` → 0 errors.
+- Files changed:
+  - web/repositories/subject.repository.ts
+  - web/modules/subjects/subject.service.ts
+  - (DB: WREWRW subject_bills, subject_accessories, subjects rows — no migration)
+- Verification:
+  - WREWRW verified: `bill_generated=false`, `bill_number=null`, `grand_total=0` ✓
+  - Old bill HT-BILL-2026-00003 deleted from subject_bills ✓
+  - Old accessory sdfsfd deleted from subject_accessories ✓
+  - 2 existing photos from 20/03 retained (technician can still generate bill immediately) ✓
+  - Pushed commit `8120940` to `main` ✓
+- Issues/bugs encountered:
+  - Previous session's manual DB fix forgot to reset `bill_generated` and related fields, leaving the WREWRW subject in an inconsistent state.
+- Next:
+  - Technician can now open WREWRW (IN_PROGRESS), see the accessories form is empty, and generate a new bill normally.
+  - Consider adding a server-side admin API route for technician re-assignment to also delete old `subject_bills` and `subject_accessories` rows (currently DB fields are reset but old rows in child tables rely on the COMPLETED guard to never accumulate).
+
 ## [2026-03-22 21:00:00 +05:30] Analysis: Billing, Job Workflow, Photo Upload, and Auto-accessory Investigation
 
 - Summary: Deep-read all billing, workflow, photo-upload, and accessory files to trace why items/accessories might appear automatically, why a bill might generate unexpectedly, and why job workflow (start work → mark complete) might be broken.
