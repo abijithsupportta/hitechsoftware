@@ -14,49 +14,49 @@ export function useDealers() {
 
   const createMutation = useMutation({
     mutationFn: addDealer,
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       if (!result.ok) {
         toast.error(result.error.message);
         return;
       }
       toast.success('Dealer added');
-      queryClient.invalidateQueries({ queryKey: KEY });
+      await queryClient.invalidateQueries({ queryKey: KEY });
     },
   });
 
   const renameMutation = useMutation({
     mutationFn: ({ id, name }: { id: string; name: string }) => renameDealer(id, { name }),
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       if (!result.ok) {
         toast.error(result.error.message);
         return;
       }
       toast.success('Dealer renamed');
-      queryClient.invalidateQueries({ queryKey: KEY });
+      await queryClient.invalidateQueries({ queryKey: KEY });
     },
   });
 
   const toggleMutation = useMutation({
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) => setDealerActive(id, isActive),
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       if (!result.ok) {
         toast.error(result.error.message);
         return;
       }
       toast.success('Dealer updated');
-      queryClient.invalidateQueries({ queryKey: KEY });
+      await queryClient.invalidateQueries({ queryKey: KEY });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => removeDealer(id),
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       if (!result.ok) {
         toast.error(result.error.message);
         return;
       }
       toast.success('Dealer deleted');
-      queryClient.invalidateQueries({ queryKey: KEY });
+      await queryClient.invalidateQueries({ queryKey: KEY });
     },
   });
 

@@ -19,38 +19,38 @@ export function useServiceCategories() {
 
   const createMutation = useMutation({
     mutationFn: addServiceCategory,
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       if (!result.ok) {
         toast.error(result.error.message);
         return;
       }
       toast.success('Service category added');
-      queryClient.invalidateQueries({ queryKey: KEY });
+      await queryClient.invalidateQueries({ queryKey: KEY });
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, name, is_active }: { id: string; name?: string; is_active?: boolean }) =>
       editServiceCategory(id, { name, is_active }),
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       if (!result.ok) {
         toast.error(result.error.message);
         return;
       }
       toast.success('Service category updated');
-      queryClient.invalidateQueries({ queryKey: KEY });
+      await queryClient.invalidateQueries({ queryKey: KEY });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => removeServiceCategory(id),
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       if (!result.ok) {
         toast.error(result.error.message);
         return;
       }
       toast.success('Service category deleted');
-      queryClient.invalidateQueries({ queryKey: KEY });
+      await queryClient.invalidateQueries({ queryKey: KEY });
     },
   });
 

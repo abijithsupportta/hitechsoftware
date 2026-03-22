@@ -50,14 +50,15 @@ export function useSubjects() {
   const query = useQuery({
     queryKey: [...SUBJECT_QUERY_KEYS.list, filters],
     queryFn: () => getSubjects(filters),
+    staleTime: 30 * 1000,
   });
 
   const createSubjectMutation = useMutation({
     mutationFn: (input: CreateSubjectInput) => createSubjectTicket(input),
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       if (result.ok) {
         toast.success('Subject created successfully');
-        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.all });
+        await queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.all });
       } else {
         toast.error(result.error.message);
       }
@@ -66,11 +67,13 @@ export function useSubjects() {
 
   const updateSubjectMutation = useMutation({
     mutationFn: ({ id, input }: { id: string; input: UpdateSubjectInput }) => updateSubjectRecord(id, input),
-    onSuccess: (result, variables) => {
+    onSuccess: async (result, variables) => {
       if (result.ok) {
         toast.success('Subject updated successfully');
-        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.all });
-        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(variables.id) });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.all }),
+          queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(variables.id) }),
+        ]);
       } else {
         toast.error(result.error.message);
       }
@@ -79,10 +82,10 @@ export function useSubjects() {
 
   const deleteSubjectMutation = useMutation({
     mutationFn: (id: string) => removeSubject(id),
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       if (result.ok) {
         toast.success('Subject deleted successfully');
-        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.all });
+        await queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.all });
       } else {
         toast.error(result.error.message);
       }
@@ -92,10 +95,10 @@ export function useSubjects() {
   const quickAssignSubjectMutation = useMutation({
     mutationFn: ({ subjectId, technicianId }: { subjectId: string; technicianId?: string }) =>
       assignSubjectToTechnician(subjectId, technicianId),
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       if (result.ok) {
         toast.success('Technician assignment updated');
-        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.all });
+        await queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.all });
       } else {
         toast.error(result.error.message);
       }
@@ -225,11 +228,13 @@ export function useAssignTechnician(subjectId: string) {
 
   return useMutation({
     mutationFn: (input: AssignTechnicianInput) => assignTechnicianWithDate(input),
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       if (result.ok) {
         toast.success('Technician assignment saved successfully');
-        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.all });
-        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(subjectId) });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.all }),
+          queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(subjectId) }),
+        ]);
       } else {
         toast.error(result.error.message);
       }
@@ -250,11 +255,13 @@ export function useSaveSubjectWarranty(subjectId: string) {
       warranty_period: '6_months' | '1_year' | '2_years' | '3_years' | '4_years' | '5_years' | 'custom';
       warranty_end_date_manual: string | null;
     }) => saveSubjectWarranty(input),
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       if (result.ok) {
         toast.success('Warranty details updated successfully');
-        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(subjectId) });
-        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.all });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(subjectId) }),
+          queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.all }),
+        ]);
       } else {
         toast.error(result.error.message);
       }

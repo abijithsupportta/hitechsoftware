@@ -16,7 +16,6 @@ export function useSubjectAccessories(subjectId: string) {
       if (!result.ok) throw new Error(result.error.message);
       return result.data;
     },
-    staleTime: 0,
     enabled: Boolean(subjectId),
   });
 }

@@ -4,23 +4,24 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { ROUTES } from '@/lib/constants/routes';
+import { getDashboardRouteByRole } from '@/modules/auth/auth.service';
 
 export default function Home() {
   const router = useRouter();
-  const { user, isLoading } = useAuth();
+  const { user, userRole, isLoading, isHydrated } = useAuth();
 
   useEffect(() => {
-    if (isLoading) {
+    if (isLoading || !isHydrated) {
       return;
     }
 
-    if (user) {
-      router.push(ROUTES.DASHBOARD);
+    if (user && userRole) {
+      router.replace(getDashboardRouteByRole(userRole));
       return;
     }
 
-    router.push(ROUTES.LOGIN);
-  }, [isLoading, router, user]);
+    router.replace(ROUTES.LOGIN);
+  }, [isHydrated, isLoading, router, user, userRole]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 to-blue-950">

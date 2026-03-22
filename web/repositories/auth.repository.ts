@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/client';
 import type { ProfileRow } from '@/types/database.types';
 
 const supabase = createClient();
+let authLogEndpointUnavailable = false;
 
 export interface AuthLogInsert {
   user_id: string;
@@ -9,6 +10,19 @@ export interface AuthLogInsert {
   role: string | null;
   ip_address: string | null;
   user_agent: string | null;
+}
+
+function isMissingAuthLogsError(error: { code?: string | null; message?: string | null } | null) {
+  const code = String(error?.code ?? '').toUpperCase();
+  const message = String(error?.message ?? '').toLowerCase();
+
+  return (
+    code === '404' ||
+    code === 'PGRST205' ||
+    message.includes('404') ||
+    message.includes('not found') ||
+    message.includes('relation') && message.includes('auth_logs')
+  );
 }
 
 export async function getAuthSession() {
@@ -36,5 +50,20 @@ export function onAuthStateChange(callback: Parameters<typeof supabase.auth.onAu
 }
 
 export async function createAuthLog(log: AuthLogInsert) {
-  return supabase.from('auth_logs').insert(log);
+  if (process.env.NEXT_PUBLIC_DISABLE_AUTH_LOGS === 'true') {
+    return { data: null, error: null };
+  }
+
+  // Prevent repeated failing requests once we know auth_logs is unavailable.
+  if (authLogEndpointUnavailable) {
+    return { data: null, error: null };
+  }
+
+  const result = await supabase.from('auth_logs').insert(log);
+
+  if (isMissingAuthLogsError(result.error)) {
+    authLogEndpointUnavailable = true;
+  }
+
+  return result;
 }

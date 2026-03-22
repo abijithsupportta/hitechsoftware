@@ -73,7 +73,61 @@ export default function BrandBillingDetailPage() {
   }, [billsQuery.data]);
 
   if (brandQuery.isLoading) {
-    return <div className="p-6 text-sm text-slate-500">Loading brand billing profile...</div>;
+    return (
+      <div className="space-y-5 p-6">
+        <div className="flex flex-wrap items-center justify-between gap-2 animate-pulse">
+          <div>
+            <div className="h-7 w-48 rounded bg-slate-200" />
+            <div className="mt-2 h-4 w-32 rounded bg-slate-100" />
+          </div>
+          <div className="h-10 w-32 rounded-lg bg-slate-200" />
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={`brand-stat-skeleton-${index}`} className="animate-pulse rounded-xl border border-slate-200 bg-white p-4">
+              <div className="h-3 w-20 rounded bg-slate-100" />
+              <div className="mt-2 h-5 w-28 rounded bg-slate-200" />
+            </div>
+          ))}
+        </div>
+
+        <div className="animate-pulse rounded-xl border border-slate-200 bg-white">
+          <table className="min-w-full divide-y divide-slate-200 text-sm">
+            <thead className="bg-slate-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Bill</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Subject</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Amount</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Date</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <tr key={`brand-bill-skeleton-${index}`} className="animate-pulse">
+                  <td className="px-4 py-3">
+                    <div className="h-4 w-20 rounded bg-slate-200" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="h-4 w-24 rounded bg-slate-200" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="h-4 w-20 rounded bg-slate-200" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="h-6 w-16 rounded-full bg-slate-200" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="h-4 w-20 rounded bg-slate-200" />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
   }
 
   if (brandQuery.error || !brandQuery.data) {
@@ -121,7 +175,27 @@ export default function BrandBillingDetailPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {billsQuery.isLoading ? <tr><td colSpan={5} className="px-4 py-6 text-center text-slate-500">Loading invoices...</td></tr> : null}
+            {billsQuery.isLoading
+              ? Array.from({ length: 5 }).map((_, index) => (
+                  <tr key={`brand-bill-skeleton-${index}`} className="animate-pulse">
+                    <td className="px-4 py-3">
+                      <div className="h-4 w-20 rounded bg-slate-200" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="h-4 w-24 rounded bg-slate-200" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="h-4 w-20 rounded bg-slate-200" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="h-6 w-16 rounded-full bg-slate-200" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="h-4 w-20 rounded bg-slate-200" />
+                    </td>
+                  </tr>
+                ))
+              : null}
             {billsQuery.error ? <tr><td colSpan={5} className="px-4 py-6 text-center text-rose-600">{billsQuery.error instanceof Error ? billsQuery.error.message : 'Failed to load invoices'}</td></tr> : null}
             {!billsQuery.isLoading && !billsQuery.error && (billsQuery.data ?? []).length === 0 ? <tr><td colSpan={5} className="px-4 py-6 text-center text-slate-400">No invoices found.</td></tr> : null}
             {(billsQuery.data ?? []).map((row) => (

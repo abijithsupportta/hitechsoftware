@@ -4,7 +4,7 @@ import { createSubjectSchema } from '@/modules/subjects/subject.validation';
 function validBasePayload() {
   return {
     subject_number: 'SUB-2026-001',
-    source_type: 'brand' as const,
+    source_type: 'brand' as 'brand' | 'dealer',
     brand_id: '11111111-1111-4111-8111-111111111111',
     dealer_id: '',
     assigned_technician_id: '',

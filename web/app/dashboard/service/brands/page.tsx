@@ -105,7 +105,24 @@ export default function ServiceBrandsPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {isLoading ? <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-slate-500">Loading...</td></tr> : null}
+            {isLoading
+              ? Array.from({ length: 5 }).map((_, index) => (
+                  <tr key={`brand-skeleton-${index}`} className="animate-pulse">
+                    <td className="px-4 py-3">
+                      <div className="h-4 w-32 rounded bg-slate-200" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="h-6 w-20 rounded-full bg-slate-200" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="h-4 w-24 rounded bg-slate-200" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="h-8 w-16 rounded-md bg-slate-200" />
+                    </td>
+                  </tr>
+                ))
+              : null}
             {!isLoading && error ? <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-rose-600">{error}</td></tr> : null}
             {!isLoading && !error && data.length === 0 ? <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-slate-400">No brands yet. Add one above.</td></tr> : null}
             {!isLoading && !error ? data.map((item) => (

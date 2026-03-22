@@ -22,7 +22,9 @@ export function getDashboardRouteByRole(role: string | null): string {
     case ROLES.TECHNICIAN:
       return ROUTES.DASHBOARD_TECHNICIAN;
     default:
-      return ROUTES.DASHBOARD;
+      // Return login with an error instead of defaulting to dashboard.
+      // This prevents infinite redirect loops if the dashboard layout rejects the unknown role.
+      return `${ROUTES.LOGIN}?error=invalid_role`;
   }
 }
 
@@ -44,12 +46,32 @@ export async function getCurrentAuthState(): Promise<ServiceResult<AuthState>> {
     return { ok: false, error: { message: profileResult.error.message } };
   }
 
+  if (!profileResult.data) {
+    return {
+      ok: false,
+      error: {
+        message: 'Login succeeded but profile is missing. Please contact admin to create your profile record.',
+        code: 'PROFILE_NOT_FOUND',
+      },
+    };
+  }
+
+  if (!profileResult.data.role) {
+    return {
+      ok: false,
+      error: {
+        message: 'Login succeeded but no role is assigned to your account. Please contact admin.',
+        code: 'PROFILE_ROLE_MISSING',
+      },
+    };
+  }
+
   return {
     ok: true,
     data: {
       user,
       session: data.session,
-      role: profileResult.data?.role ?? null,
+      role: profileResult.data.role,
     },
   };
 }
@@ -78,16 +100,66 @@ export async function signIn(input: SignInInput): Promise<ServiceResult<AuthStat
     return { ok: false, error: { message: profileResult.error.message } };
   }
 
-  const role = profileResult.data?.role ?? null;
+  if (!profileResult.data) {
+    // Sign out immediately to avoid stuck authenticated-without-profile state.
+    await signOutSession();
+    return {
+      ok: false,
+      error: {
+        message: 'Sign-in succeeded, but your profile is missing in this application. Please contact admin.',
+        code: 'PROFILE_NOT_FOUND',
+      },
+    };
+  }
+
+  if (!profileResult.data.role) {
+    await signOutSession();
+    return {
+      ok: false,
+      error: {
+        message: 'Sign-in succeeded, but your account has no role assigned. Please contact admin.',
+        code: 'PROFILE_ROLE_MISSING',
+      },
+    };
+  }
+
+  const role = profileResult.data.role;
   const redirectTo = getDashboardRouteByRole(role);
 
-  await createAuthLog({
-    user_id: data.user.id,
-    event: 'LOGIN_SUCCESS',
-    role,
-    ip_address: input.ipAddress ?? null,
-    user_agent: input.userAgent ?? null,
-  });
+  // Login should never block on analytics/audit log writes.
+  void (async () => {
+    try {
+      const { error: logError } = await createAuthLog({
+        user_id: data.user.id,
+        event: 'LOGIN_SUCCESS',
+        role,
+        ip_address: input.ipAddress ?? null,
+        user_agent: input.userAgent ?? null,
+      });
+
+      if (!logError) {
+        return;
+      }
+
+      const errorMessage = String(logError.message ?? 'Unknown audit error');
+      const lower = errorMessage.toLowerCase();
+      if (
+        String(logError.code ?? '').toUpperCase() === 'PGRST205' ||
+        lower.includes('404') ||
+        lower.includes('not found') ||
+        lower.includes('auth_logs')
+      ) {
+        console.error(
+          '[AuthService] Login succeeded, but audit log insert failed because auth_logs is missing/unavailable (404). Root cause: Supabase migration for public.auth_logs is not applied to this project, or REST metadata is stale.'
+        );
+        return;
+      }
+
+      console.error('[AuthService] Login succeeded, but audit log insert failed:', logError);
+    } catch (logError) {
+      console.error('[AuthService] Login succeeded, but audit log insert threw unexpectedly:', logError);
+    }
+  })();
 
   return {
     ok: true,

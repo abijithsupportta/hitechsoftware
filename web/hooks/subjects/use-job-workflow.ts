@@ -36,7 +36,6 @@ export function useJobWorkflow(subjectId: string) {
       return json.data!;
     },
     enabled: !!subjectId,
-    refetchInterval: 5000,
   });
 
   // Mutation: update job status (runs via API route — admin client is server-side only)
@@ -53,8 +52,8 @@ export function useJobWorkflow(subjectId: string) {
     },
     onSuccess: async (_, newStatus) => {
       await Promise.all([
-        queryClient.refetchQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(subjectId) }),
-        queryClient.refetchQueries({ queryKey: SUBJECT_QUERY_KEYS.list }),
+        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(subjectId) }),
+        queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.list }),
         workflowRequirementsQuery.refetch(),
       ]);
       const labels: Record<string, string> = {
@@ -147,8 +146,8 @@ export function useJobWorkflow(subjectId: string) {
     },
       onSuccess: async () => {
         await Promise.all([
-          queryClient.refetchQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(subjectId) }),
-          queryClient.refetchQueries({ queryKey: SUBJECT_QUERY_KEYS.list }),
+          queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(subjectId) }),
+          queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.list }),
         ]);
         toast.success('Job marked as incomplete');
       },
@@ -169,8 +168,8 @@ export function useJobWorkflow(subjectId: string) {
     },
       onSuccess: async () => {
         await Promise.all([
-          queryClient.refetchQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(subjectId) }),
-          queryClient.refetchQueries({ queryKey: SUBJECT_QUERY_KEYS.list }),
+          queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(subjectId) }),
+          queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.list }),
         ]);
         toast.success('Job completed successfully');
       },

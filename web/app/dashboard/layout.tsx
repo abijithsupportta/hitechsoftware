@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -27,6 +27,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { ROUTES } from '@/lib/constants/routes';
+import { ROLES } from '@/lib/constants/roles';
+import { AppLoadingScreen } from '@/components/ui/AppLoadingScreen';
 import type { UserRole } from '@/types/database.types';
 
 interface DashboardLayoutProps {
@@ -57,7 +59,30 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [serviceMenuExpanded, setServiceMenuExpanded] = useState(true);
   const pathname = usePathname();
   const router = useRouter();
-  const { user, signOut, isLoading, userRole } = useAuth();
+  const { user, signOut, isLoading, isHydrated, userRole } = useAuth();
+
+  const ALLOWED_DASHBOARD_ROLES: string[] = [
+    ROLES.SUPER_ADMIN,
+    ROLES.OFFICE_STAFF,
+    ROLES.TECHNICIAN,
+    ROLES.STOCK_MANAGER
+  ];
+  const isReady = isHydrated && !isLoading;
+  const isUnauthenticated = isReady && !user;
+  const isUnauthorized = isReady && !!user && (!userRole || !ALLOWED_DASHBOARD_ROLES.includes(userRole));
+
+  useEffect(() => {
+    if (isUnauthenticated) {
+      router.replace(ROUTES.LOGIN);
+    } else if (isUnauthorized) {
+      console.warn('[DashboardLayout] Unauthorized role access attempt:', {
+        userId: user?.id,
+        userRole,
+        allowedRoles: ALLOWED_DASHBOARD_ROLES
+      });
+      router.replace(`${ROUTES.LOGIN}?error=unauthorized`);
+    }
+  }, [isUnauthenticated, isUnauthorized, router, userRole, user?.id]);
 
   const handleLogout = async () => {
     const result = await signOut();
@@ -66,12 +91,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   };
 
-  if (isLoading || !user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-ht-page">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-200 border-t-blue-700" />
-      </div>
-    );
+  // Guard 1 — Loading: show loading screen until auth hydration completes
+  if (isLoading || !isHydrated) {
+    return <AppLoadingScreen />;
+  }
+
+  // Guard 2 — Authentication: show loading while useEffect fires the redirect
+  if (!user) {
+    return <AppLoadingScreen />;
+  }
+
+  // Guard 3 — Role: show loading while useEffect fires the redirect
+  if (!userRole || !ALLOWED_DASHBOARD_ROLES.includes(userRole)) {
+    return <AppLoadingScreen />;
   }
 
   const roleLabel = userRole ? userRole.replace('_', ' ') : 'team member';

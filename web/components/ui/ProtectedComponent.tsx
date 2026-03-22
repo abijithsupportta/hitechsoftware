@@ -9,7 +9,7 @@ interface ProtectedComponentProps {
   anyPermissions?: Permission[];
   allPermissions?: Permission[];
   fallback?: ReactNode;
-  children: ReactNode;
+  children?: ReactNode;
 }
 
 export function ProtectedComponent({

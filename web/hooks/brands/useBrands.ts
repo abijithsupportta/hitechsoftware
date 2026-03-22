@@ -14,49 +14,49 @@ export function useBrands() {
 
   const createMutation = useMutation({
     mutationFn: addBrand,
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       if (!result.ok) {
         toast.error(result.error.message);
         return;
       }
       toast.success('Brand added');
-      queryClient.invalidateQueries({ queryKey: KEY });
+      await queryClient.invalidateQueries({ queryKey: KEY });
     },
   });
 
   const renameMutation = useMutation({
     mutationFn: ({ id, name }: { id: string; name: string }) => renameBrand(id, { name }),
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       if (!result.ok) {
         toast.error(result.error.message);
         return;
       }
       toast.success('Brand renamed');
-      queryClient.invalidateQueries({ queryKey: KEY });
+      await queryClient.invalidateQueries({ queryKey: KEY });
     },
   });
 
   const toggleMutation = useMutation({
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) => setBrandActive(id, isActive),
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       if (!result.ok) {
         toast.error(result.error.message);
         return;
       }
       toast.success('Brand updated');
-      queryClient.invalidateQueries({ queryKey: KEY });
+      await queryClient.invalidateQueries({ queryKey: KEY });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => removeBrand(id),
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       if (!result.ok) {
         toast.error(result.error.message);
         return;
       }
       toast.success('Brand deleted');
-      queryClient.invalidateQueries({ queryKey: KEY });
+      await queryClient.invalidateQueries({ queryKey: KEY });
     },
   });
 
