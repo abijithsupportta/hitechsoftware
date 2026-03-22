@@ -240,6 +240,15 @@ export async function assignTechnicianFull(
       technician_rejection_reason: null,
       rejected_by_technician_id: null,
       is_rejected_pending_reschedule: false,
+      // Reset completion fields so the subject re-enters the active pending queue.
+      // Without this, a subject with completed_at set would be excluded by the
+      // technician_pending_only filter (which uses completed_at IS NULL).
+      completed_at: null,
+      incomplete_at: null,
+      incomplete_reason: null,
+      incomplete_note: null,
+      completion_proof_uploaded: false,
+      completion_notes: null,
     })
     .eq('id', subjectId)
     .eq('is_deleted', false)

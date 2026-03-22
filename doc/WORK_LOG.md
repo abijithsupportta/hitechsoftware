@@ -3,6 +3,32 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-22 16:30:00 +05:30] Fix: Technician Cannot See Allocated Subject — completed_at Not Reset on Re-Allocation
+
+- Summary: Diagnosed and fixed a bug where a technician could not see a service allocated to them for the current date. Root cause: the subject `WREWRW` had `status = ALLOCATED` (re-allocated today) but still had `completed_at` set from a previous completion. The `technician_pending_only` filter uses `completed_at IS NULL`, so the subject was excluded from the technician's pending queue despite being actively allocated.
+- Work done:
+  - Ran terminal tests to simulate the full allocation flow and isolate the visibility issue.
+  - Confirmed: ramu's pending subject count was 0 because both original subjects are COMPLETED, and `WREWRW` (ALLOCATED for today) had `completed_at` set — making it invisible to the pending filter.
+  - Fixed `assignTechnicianFull` in `web/repositories/subject.repository.ts` to reset `completed_at`, `incomplete_at`, `incomplete_reason`, `incomplete_note`, `completion_proof_uploaded`, and `completion_notes` to null/defaults when re-allocating — ensuring the subject re-enters the active pending queue.
+  - Strengthened the re-assignment guard in `assignTechnicianWithDate` (`web/modules/subjects/subject.service.ts`) to also block subjects where `completed_at` is set (not just `status === COMPLETED`), preventing future data inconsistency.
+  - Fixed the corrupted `WREWRW` record in the database by resetting `completed_at = null` directly via service-role client.
+  - Verified ramu now sees 1 pending subject (WREWRW, ALLOCATED, tech_date=2026-03-22) after the fix.
+  - TypeScript: `npx tsc --noEmit` → 0 errors.
+- Root cause explanation:
+  - `assignTechnicianFull` only updated assignment/status/acceptance fields when re-allocating. It did NOT reset `completed_at`. So if a subject had `completed_at` set (from previous completion or data inconsistency), it remained excluded from technician pending views even after being set back to ALLOCATED.
+  - The existing guard (`status === COMPLETED`) in `assignTechnicianWithDate` correctly prevents UI re-assignment of completed subjects, but data could become inconsistent via other paths (direct DB manipulation, test scripts, or race conditions).
+- Files changed:
+  - `web/repositories/subject.repository.ts` — `assignTechnicianFull`: added reset of completion fields
+  - `web/modules/subjects/subject.service.ts` — `assignTechnicianWithDate`: guard also checks `completed_at !== null`
+- Verification:
+  - Terminal test before fix: ramu pending = 0 (WREWRW invisible)
+  - Terminal test after fix: ramu pending = 1 (WREWRW visible, ALLOCATED, tech_date=2026-03-22)
+  - `npx tsc --noEmit` → 0 errors
+- Issues encountered:
+  - `WREWRW` subject had corrupted state: `status = ALLOCATED` + `completed_at` set — required direct DB reset
+- Next:
+  - Push to GitHub
+
 ## [2026-06-13 10:00:00 +05:30] Technician Post-Login Workflow Audit — All Checks Passed
 
 - Summary: Conducted a comprehensive terminal-based audit of the full technician post-login workflow covering: login, profile fetch, technician record, attendance toggle, subject list, subject detail, timeline, accessories, billing, photo upload, job workflow, and bill download. No bugs found in application code.
