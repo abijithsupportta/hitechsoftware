@@ -2,19 +2,7 @@
 
 import { Activity, Calendar, CheckCircle2, Flag, UserCheck, UserMinus, UserPlus, XCircle } from 'lucide-react';
 import type { SubjectTimelineItem } from '@/modules/subjects/subject.types';
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleString('en-GB');
-}
-
-function formatStatus(value: string) {
-  return value.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
-function formatDateOnly(value: string | null) {
-  if (!value) return '-';
-  return new Date(value).toLocaleDateString('en-GB');
-}
+import { formatStatus, formatDateTime as formatDate, formatDateOnly } from '@/lib/utils/format';
 
 const EVENT_META: Record<string, { label: string; icon: React.ReactNode; iconBg: string; iconColor: string; borderColor: string }> = {
   status_change: {

@@ -591,3 +591,21 @@ export async function saveSubjectWarranty(input: {
     data: { id: result.data.id },
   };
 }
+
+export async function respondToSubject(
+  subjectId: string,
+  action: 'accept' | 'reject',
+  options?: { rejectionReason?: string; visitDate?: string; visitTime?: string },
+): Promise<{ ok: boolean; error?: { message: string } }> {
+  const response = await fetch(`/api/subjects/${subjectId}/respond`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action,
+      rejection_reason: options?.rejectionReason,
+      visit_date: options?.visitDate,
+      visit_time: options?.visitTime,
+    }),
+  });
+  return response.json() as Promise<{ ok: boolean; error?: { message: string } }>;
+}

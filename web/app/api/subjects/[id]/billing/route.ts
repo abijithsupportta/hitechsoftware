@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireAuth } from '@/lib/api/with-auth';
 import type { GenerateBillInput, AddAccessoryInput } from '@/modules/subjects/subject.types';
 
 interface ErrorResponse {
@@ -120,58 +121,16 @@ export async function POST(
     return NextResponse.json({ ok: false, error }, { status: 400 });
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Step 2: Authenticate user
-  // ──────────────────────────────────────────────────────────────────────────
-  const supabase = await createServerClient();
-  const authState = await supabase.auth.getUser();
-
-  if (authState.error || !authState.data.user) {
-    const error: ErrorResponse = {
-      step: '2. Authentication',
-      code: 'UNAUTHORIZED',
-      message: 'No authenticated user found',
-      userMessage: 'You must be logged in',
-    };
-    console.log(`[${timestamp}] ✗ Step 2 failed:`, error.code);
-    return NextResponse.json({ ok: false, error }, { status: 401 });
+  // ────────────────────────────────────────────────────────────────────────────
+  // Steps 2–3: Authenticate user and verify technician role
+  // ────────────────────────────────────────────────────────────────────────────
+  const auth = await requireAuth(request, { roles: ['technician'] });
+  if (!auth.ok) {
+    console.log(`[${timestamp}] ✗ Auth failed`);
+    return auth.response;
   }
-
-  const userId = authState.data.user.id;
-  console.log(`[${timestamp}] ✓ Step 2 passed: User ${userId} authenticated`);
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // Step 3: Verify technician role
-  // ──────────────────────────────────────────────────────────────────────────
-  const profileResult = await supabase
-    .from('profiles')
-    .select('id,role')
-    .eq('id', userId)
-    .maybeSingle<{ id: string; role: string }>();
-
-  if (profileResult.error || !profileResult.data) {
-    const error: ErrorResponse = {
-      step: '3. Load Profile',
-      code: 'PROFILE_NOT_FOUND',
-      message: 'User profile missing',
-      userMessage: 'Your profile could not be found. Please log out and log back in.',
-    };
-    console.log(`[${timestamp}] ✗ Step 3 failed:`, error.code);
-    return NextResponse.json({ ok: false, error }, { status: 400 });
-  }
-
-  if (profileResult.data.role !== 'technician') {
-    const error: ErrorResponse = {
-      step: '3. Verify Role',
-      code: 'INVALID_ROLE',
-      message: `User role is '${profileResult.data.role}', expected 'technician'`,
-      userMessage: 'Only technicians can manage billing',
-    };
-    console.log(`[${timestamp}] ✗ Step 3 failed:`, error.code);
-    return NextResponse.json({ ok: false, error }, { status: 403 });
-  }
-
-  console.log(`[${timestamp}] ✓ Step 3 passed: User is technician`);
+  const { userId, admin } = auth;
+  console.log(`[${timestamp}] ✓ Auth passed: User ${userId} authenticated as technician`);
 
   // ──────────────────────────────────────────────────────────────────────────
   // Step 4: Parse request body
@@ -194,9 +153,8 @@ export async function POST(
   console.log(`[${timestamp}] ✓ Step 4 passed: Request parsed, action=${body.action}`);
 
   // ──────────────────────────────────────────────────────────────────────────
-  // Step 5: Verify subject exists and technician is assigned
+  // Step 4: Verify subject exists and technician is assigned
   // ──────────────────────────────────────────────────────────────────────────
-  const admin = await createAdminClient();
   const subjectResult = await admin
     .from('subjects')
     .select(

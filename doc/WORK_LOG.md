@@ -3,6 +3,24 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-22 23:45:00 +05:30] Architectural Audit: Subject/Service Detail Page
+
+- Summary: Full read-only architectural audit of every file involved in rendering the subject detail page (`web/app/dashboard/subjects/[id]/page.tsx`). No code changes made.
+- Work done:
+  - Read and analysed 26 files spanning page, components, hooks, modules, repositories, and API routes.
+  - Documented file sizes, responsibilities, naming conventions, and SRP violations.
+  - Identified dead/orphan component files, duplicated utility functions, and layer-crossing violations.
+  - Produced MNC-level rewrite structural recommendation.
+- Files changed: none (analysis only)
+- Verification: N/A
+- Next:
+  - Address SRP violations in `BillingSection.tsx` (508 lines, 4 concerns)
+  - Extract image compression into `web/lib/utils/image-compression.ts`
+  - Clean up orphan files: 8 dead/superseded components in `web/components/subjects/`
+  - Extract `respondToSubjectApi` from `page.tsx` into `subject.service.ts`
+  - Consolidate API route auth into shared middleware
+  - Split `useSubjects.ts` into `useSubjectList`, `useSubjectDetail`, `useSubjectMutations`
+
 ## [2026-03-22 22:00:00 +05:30] Fix: Stale Bill/Accessories Appearing Automatically — Technician Stuck Unable to Complete Service
 
 - Summary: Technician (ramu) reported that accessories and a bill appeared "automatically" on the WREWRW subject, and they could not add new parts or generate a new bill. Root cause: the subject was previously COMPLETED (bill HT-BILL-2026-00003 generated 20/03/2026). In a prior manual DB fix (previous session), only `completed_at` was reset to null — the `bill_generated` flag and old bill/accessory records were not cleaned up. When the technician reached IN_PROGRESS status, `bill_generated=true` blocked the entire billing UI, making it appear as if data was added automatically.

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient as createServerClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { requireAuth } from '@/lib/api/with-auth';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: subjectId } = await params;
@@ -9,24 +8,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ ok: false, error: { message: 'Subject ID is required' } }, { status: 400 });
   }
 
-  const supabase = await createServerClient();
-  const authState = await supabase.auth.getUser();
-
-  if (authState.error || !authState.data.user) {
-    return NextResponse.json({ ok: false, error: { message: 'Unauthorized' } }, { status: 401 });
-  }
-
-  const userId = authState.data.user.id;
-
-  const profileResult = await supabase
-    .from('profiles')
-    .select('id,role')
-    .eq('id', userId)
-    .maybeSingle<{ id: string; role: string }>();
-
-  if (profileResult.error || !profileResult.data || profileResult.data.role !== 'technician') {
-    return NextResponse.json({ ok: false, error: { message: 'Only technicians can respond to subjects' } }, { status: 403 });
-  }
+  const auth = await requireAuth(request, { roles: ['technician'] });
+  if (!auth.ok) return auth.response;
+  const { userId, admin } = auth;
 
   let body: { action?: string; rejection_reason?: string; visit_date?: string; visit_time?: string };
   try {
@@ -50,8 +34,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ ok: false, error: { message: 'Visit date and time are required when accepting' } }, { status: 400 });
     }
   }
-
-  const admin = createAdminClient();
 
   // Verify the subject is assigned to this technician and is in ALLOCATED status
   const subjectCheck = await admin

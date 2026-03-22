@@ -21,38 +21,8 @@ import { useSubjectDetail } from '@/hooks/subjects/useSubjects';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { ROUTES } from '@/lib/constants/routes';
 import { SUBJECT_QUERY_KEYS } from '@/modules/subjects/subject.constants';
-import { removeSubject } from '@/modules/subjects/subject.service';
-
-async function respondToSubjectApi(
-  subjectId: string,
-  action: 'accept' | 'reject',
-  rejectionReason?: string,
-  visitDate?: string,
-  visitTime?: string,
-) {
-  const response = await fetch(`/api/subjects/${subjectId}/respond`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      action,
-      rejection_reason: rejectionReason,
-      visit_date: visitDate,
-      visit_time: visitTime,
-    }),
-  });
-  return response.json() as Promise<{ ok: boolean; error?: { message: string } }>;
-}
-
-function formatStatus(value: string) {
-  return value.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
-function formatDateOnly(value: string | null) {
-  if (!value) {
-    return '-';
-  }
-  return new Date(value).toLocaleDateString('en-GB');
-}
+import { removeSubject, respondToSubject } from '@/modules/subjects/subject.service';
+import { formatStatus, formatDateOnly } from '@/lib/utils/format';
 
 function isTechnicianCarryForwardPending(status: string) {
   return ['PENDING', 'ALLOCATED', 'ACCEPTED', 'ARRIVED', 'IN_PROGRESS', 'INCOMPLETE', 'AWAITING_PARTS', 'RESCHEDULED'].includes(status);
@@ -101,7 +71,7 @@ export default function SubjectDetailPage() {
       reason?: string;
       acceptVisitDate?: string;
       acceptVisitTime?: string;
-    }) => respondToSubjectApi(id, action, reason, acceptVisitDate, acceptVisitTime),
+    }) => respondToSubject(id, action, { rejectionReason: reason, visitDate: acceptVisitDate, visitTime: acceptVisitTime }),
     onSuccess: (result, variables) => {
       if (result.ok) {
         toast.success(variables.action === 'accept' ? 'Service accepted successfully' : 'Service rejected');

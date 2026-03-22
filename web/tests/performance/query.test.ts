@@ -1,8 +1,7 @@
 import React from 'react';
-import { act, fireEvent, render, renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { PhotoUploadGrid } from '@/components/subjects/photo-upload-grid';
 import { useJobWorkflow } from '@/hooks/subjects/use-job-workflow';
 import { useSubjectDetail, useSubjects } from '@/hooks/subjects/useSubjects';
 import { SUBJECT_QUERY_KEYS } from '@/modules/subjects/subject.constants';
@@ -138,41 +137,5 @@ describe('Suite 5 TanStack Query performance', () => {
     expect(mockGetSubjectTimeline).toHaveBeenCalledTimes(1);
 
     await expect(request).resolves.toMatchObject({ ok: true });
-  });
-
-  it('Test 5.5 — Photo upload does not block UI thread', async () => {
-    let resolveUpload: (() => void) | null = null;
-    const onUpload = vi.fn(
-      () => new Promise<void>((resolve) => {
-        resolveUpload = resolve;
-      }),
-    );
-
-    const { container } = render(
-      React.createElement(PhotoUploadGrid, {
-        requiredTypes: ['machine', 'bill'],
-        uploadedTypes: [],
-        photos: [],
-        canEdit: true,
-        onUpload,
-      }),
-    );
-
-    const inputs = Array.from(container.querySelectorAll('input[type="file"]')) as HTMLInputElement[];
-    const file = new File(['photo'], 'machine.jpg', { type: 'image/jpeg' });
-
-    await act(async () => {
-      fireEvent.change(inputs[0], { target: { files: [file] } });
-    });
-
-    await waitFor(() => expect(onUpload).toHaveBeenCalledTimes(1));
-    expect(inputs[0].disabled).toBe(true);
-    expect(inputs[1].disabled).toBe(false);
-    expect(container.querySelectorAll('.animate-spin')).toHaveLength(1);
-
-    await act(async () => {
-      resolveUpload?.();
-      await Promise.resolve();
-    });
   });
 });

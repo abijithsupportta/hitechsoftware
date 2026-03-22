@@ -2,10 +2,14 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { usePermission } from '@/hooks/auth/usePermission';
-import { assignSubjectToTechnician, assignTechnicianWithDate, createSubjectTicket, getSubjectDetails, getSubjects, removeSubject, saveSubjectWarranty, updateSubjectRecord } from '@/modules/subjects/subject.service';
+import { createSubjectTicket, getSubjects, removeSubject, updateSubjectRecord } from '@/modules/subjects/subject.service';
 import { SUBJECT_DEFAULT_PAGE_SIZE, SUBJECT_QUERY_KEYS } from '@/modules/subjects/subject.constants';
-import type { AssignTechnicianInput, CreateSubjectInput, SubjectListFilters, UpdateSubjectInput } from '@/modules/subjects/subject.types';
-import { getAssignableTechnicians } from '@/modules/technicians/technician.service';
+import type { CreateSubjectInput, SubjectListFilters, UpdateSubjectInput } from '@/modules/subjects/subject.types';
+
+// Re-export focused hooks so existing imports keep working without changes.
+// New code should import directly from the focused hook files.
+export { useSubjectDetail, useSaveSubjectWarranty } from '@/hooks/subjects/useSubjectDetail';
+export { useAssignableTechnicians, useAssignTechnician, useQuickAssignTechnician } from '@/hooks/subjects/useSubjectAssignment';
 
 export function useSubjects() {
   const { role } = usePermission();
@@ -92,22 +96,6 @@ export function useSubjects() {
     },
   });
 
-  const quickAssignSubjectMutation = useMutation({
-    mutationFn: ({ subjectId, technicianId }: { subjectId: string; technicianId?: string }) =>
-      assignSubjectToTechnician(subjectId, technicianId),
-    onSuccess: async (result) => {
-      if (result.ok) {
-        toast.success('Technician assignment updated');
-        await queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.all });
-      } else {
-        toast.error(result.error.message);
-      }
-    },
-    onError: () => {
-      toast.error('Failed to update assignment');
-    },
-  });
-
   return {
     subjects: query.data?.ok ? query.data.data.data : [],
     pagination: query.data?.ok
@@ -145,7 +133,6 @@ export function useSubjects() {
     createSubjectMutation,
     updateSubjectMutation,
     deleteSubjectMutation,
-    quickAssignSubjectMutation,
     setSearch: (value: string) => {
       setSearchInput(value);
       setPage(1);
@@ -204,70 +191,4 @@ export function useSubjects() {
       setPage(1);
     },
   };
-}
-
-export function useSubjectDetail(id: string) {
-  return useQuery({
-    queryKey: SUBJECT_QUERY_KEYS.detail(id),
-    queryFn: () => getSubjectDetails(id),
-    staleTime: 5000,
-    enabled: Boolean(id),
-  });
-}
-
-export function useAssignableTechnicians() {
-  return useQuery({
-    queryKey: SUBJECT_QUERY_KEYS.assignableTechnicians,
-    queryFn: getAssignableTechnicians,
-    staleTime: 60 * 1000,
-  });
-}
-
-export function useAssignTechnician(subjectId: string) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (input: AssignTechnicianInput) => assignTechnicianWithDate(input),
-    onSuccess: async (result) => {
-      if (result.ok) {
-        toast.success('Technician assignment saved successfully');
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.all }),
-          queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(subjectId) }),
-        ]);
-      } else {
-        toast.error(result.error.message);
-      }
-    },
-    onError: () => {
-      toast.error('Failed to save technician assignment');
-    },
-  });
-}
-
-export function useSaveSubjectWarranty(subjectId: string) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (input: {
-      subject_id: string;
-      purchase_date: string | null;
-      warranty_period: '6_months' | '1_year' | '2_years' | '3_years' | '4_years' | '5_years' | 'custom';
-      warranty_end_date_manual: string | null;
-    }) => saveSubjectWarranty(input),
-    onSuccess: async (result) => {
-      if (result.ok) {
-        toast.success('Warranty details updated successfully');
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.detail(subjectId) }),
-          queryClient.invalidateQueries({ queryKey: SUBJECT_QUERY_KEYS.all }),
-        ]);
-      } else {
-        toast.error(result.error.message);
-      }
-    },
-    onError: () => {
-      toast.error('Failed to update warranty details');
-    },
-  });
 }
