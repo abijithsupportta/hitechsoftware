@@ -3,6 +3,30 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-23 11:46:48 +05:30] Install Turborepo for Monorepo Build Orchestration
+- Summary: Installed Turborepo to solve Vercel monorepo deployment issues. Vercel could not determine which folder to build because there was no build orchestrator. Turborepo tells Vercel exactly which workspace to build and where the output is.
+- Work done:
+  - Installed `turbo` as root devDependency
+  - Created `turbo.json` with build/dev/lint/test task definitions and `.next` output caching
+  - Updated root `package.json` scripts to use `turbo build`, `turbo dev`, `turbo lint`, `turbo test`
+  - Added `packageManager: "npm@10.9.2"` to root `package.json` (required by Turborepo)
+  - Updated root `vercel.json` with explicit `buildCommand`, `installCommand`, `framework`, and `outputDirectory`
+  - Reset `web/vercel.json` to empty (root config handles everything)
+  - Added `.turbo/` to root `.gitignore`
+- Files changed:
+  - package.json (root)
+  - turbo.json (new)
+  - vercel.json (root)
+  - web/vercel.json
+  - .gitignore
+- Bugs/Issues:
+  - Turborepo requires `packageManager` field in root package.json — build fails without it
+- Verification:
+  - `npx turbo build` passed: 1 task successful, 27/27 static pages, 0 TypeScript errors
+- Next:
+  - Vercel should now auto-detect the monorepo and build correctly
+  - No need to set Root Directory in Vercel dashboard — root config handles it
+
 ## [2026-03-23 11:44:01 +05:30] Fix Vercel Monorepo Framework Detection
 - Summary: Added `framework: "nextjs"` to `web/vercel.json` so Vercel auto-detects Next.js when Root Directory is set to `web`.
 - Work done:
