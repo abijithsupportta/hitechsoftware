@@ -3,6 +3,23 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-23 12:40:12 +05:30] Fix Zod v4 .partial() Crash on Product Validation Schema
+- Summary: Fixed runtime crash ".partial() cannot be used on object schemas containing refinements" that broke the entire application on load. Root cause was Zod v4 breaking change — calling `.partial()` on a schema that already has `.refine()` is no longer allowed.
+- Work done:
+  - Diagnosed error: `createProductSchema` used `.object().refine()` then `updateProductSchema = createProductSchema.partial()` — Zod v4 throws at module evaluation time, crashing the app before any page can render
+  - Extracted base object into `productBaseSchema` (no refinements)
+  - `createProductSchema` = `productBaseSchema.refine(...)` (cross-field refurbished label check)
+  - `updateProductSchema` = `productBaseSchema.partial().refine(...)` (relaxed: only enforced when `is_refurbished` is explicitly set to `true`)
+  - Audited all other validation files — `customer.validation.ts` calls `.partial()` on `customerBaseSchema` (no refinements), so it's safe
+- Files changed:
+  - web/modules/products/product.validation.ts
+- Verification:
+  - Build passes: all 28 pages compiled with zero TypeScript errors
+  - IDE shows zero errors in product.validation.ts and product.service.ts
+  - No other validation files affected
+- Bugs/Issues: none
+- Next: none
+
 ## [2026-03-23 12:37:08 +05:30] Fix npm run dev ENOWORKSPACES Errors
 - Summary: Fixed repeated `npm error code ENOWORKSPACES` errors that appeared when running `npm run dev`. Root cause was Next.js trying to auto-patch SWC dependencies by running `npm install` from within the `web/` workspace member, which npm blocks in workspace monorepo setups.
 - Work done:

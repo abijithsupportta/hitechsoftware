@@ -47,39 +47,50 @@ const materialCodeSchema = z
   .trim();
 
 /**
+ * Base object schema shared by create and update.
+ * Refinements are applied separately because Zod v4 does not allow
+ * `.partial()` on schemas that already contain refinements.
+ */
+const productBaseSchema = z.object({
+  product_name: z.string().min(1, 'Product name is required').max(255).trim(),
+  description: z.string().max(2000).trim().nullish(),
+  material_code: materialCodeSchema,
+  category_id: z.string().uuid('Invalid category').nullish(),
+  product_type_id: z.string().uuid('Invalid product type').nullish(),
+  // NOTE: No .default() here — defaults are provided in useForm({ defaultValues })
+  is_refurbished: z.boolean(),
+  refurbished_label: z.string().max(100).trim().nullish(),
+  hsn_sac_code: z.string().max(20).trim().nullish(),
+  minimum_stock_level: z.number().int().min(0, 'Must be 0 or more').optional().default(5),
+  is_active: z.boolean(),
+});
+
+/**
  * Full validation schema for creating a new product.
  *
- * The `.refine()` at the end adds a cross-field rule:
+ * The `.refine()` adds a cross-field rule:
  * when is_refurbished is true, refurbished_label must be non-empty.
  * The error is attached to the `refurbished_label` field path so it appears
  * directly below that field in the form UI.
  */
-export const createProductSchema = z
-  .object({
-    product_name: z.string().min(1, 'Product name is required').max(255).trim(),
-    description: z.string().max(2000).trim().nullish(),
-    material_code: materialCodeSchema,
-    category_id: z.string().uuid('Invalid category').nullish(),
-    product_type_id: z.string().uuid('Invalid product type').nullish(),
-    // NOTE: No .default() here — defaults are provided in useForm({ defaultValues })
-    is_refurbished: z.boolean(),
-    refurbished_label: z.string().max(100).trim().nullish(),
-    hsn_sac_code: z.string().max(20).trim().nullish(),
-    minimum_stock_level: z.number().int().min(0, 'Must be 0 or more').optional().default(5),
-    is_active: z.boolean(),
-  })
-  .refine(
-    // Cross-field rule: label required when product is marked as refurbished
-    (data) => !data.is_refurbished || (data.refurbished_label && data.refurbished_label.trim().length > 0),
-    { message: 'Refurbished label is required when product is marked as refurbished', path: ['refurbished_label'] },
-  );
+export const createProductSchema = productBaseSchema.refine(
+  (data) => !data.is_refurbished || (data.refurbished_label && data.refurbished_label.trim().length > 0),
+  { message: 'Refurbished label is required when product is marked as refurbished', path: ['refurbished_label'] },
+);
 
 /**
  * Partial schema for editing an existing product.
- * `.partial()` makes every field optional — you only need to send the fields
- * that are actually changing (PATCH semantics).
+ * `.partial()` is called on the base object (without refinements) to stay
+ * compatible with Zod v4. The cross-field refine is re-applied for partial data:
+ * only enforced when is_refurbished is explicitly set to true.
  */
-export const updateProductSchema = createProductSchema.partial();
+export const updateProductSchema = productBaseSchema.partial().refine(
+  (data) =>
+    data.is_refurbished === undefined ||
+    !data.is_refurbished ||
+    (data.refurbished_label && data.refurbished_label.trim().length > 0),
+  { message: 'Refurbished label is required when product is marked as refurbished', path: ['refurbished_label'] },
+);
 
 /** TypeScript type derived from the create schema (what the form produces) */
 export type CreateProductFormValues = z.infer<typeof createProductSchema>;
