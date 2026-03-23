@@ -3,6 +3,29 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-23 18:10:00 +05:30] Fix Cloudflare Pages Deployment — Add @cloudflare/next-on-pages Adapter
+- Summary: Build succeeded but deploy failed because there was no Cloudflare adapter for Next.js. Installed @cloudflare/next-on-pages and wrangler, created wrangler.toml, and added Cloudflare Pages build scripts.
+- Work done:
+  - Root cause: `npx wrangler deploy` ran at the monorepo root with no wrangler.toml and no Cloudflare adapter. Next.js with API routes/middleware requires an adapter to run on Cloudflare Pages.
+  - Installed `@cloudflare/next-on-pages` and `wrangler` in the web workspace
+  - Created `web/wrangler.toml` with `nodejs_compat` flag and Pages output config
+  - Added `pages:build` and `pages:preview` scripts to web/package.json
+  - Cloudflare Pages dashboard must be configured:
+    - Build command: `cd web && npx @cloudflare/next-on-pages`
+    - Build output directory: `web/.vercel/output/static`
+    - Deploy command: (REMOVE — leave empty)
+    - Environment variables: set NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, NODE_VERSION=22
+- Files changed:
+  - web/package.json (added devDependencies + scripts)
+  - web/wrangler.toml (new)
+  - web/package-lock.json (auto-updated)
+- Verification:
+  - `next build` succeeds locally
+  - `@cloudflare/next-on-pages` can only run on Linux (Cloudflare build env), verified install
+- Next:
+  - Update Cloudflare Pages dashboard settings as described above
+  - Re-deploy and verify
+
 ## [2026-03-23 17:30:00 +05:30] Fix Cloudflare Pages Build — Supabase Client + TypeScript Errors
 - Summary: Fixed Next.js build failure on Cloudflare Pages caused by module-level Supabase client creation throwing when env vars are absent during SSG page-data collection.
 - Work done:
