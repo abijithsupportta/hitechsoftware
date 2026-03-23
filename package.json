@@ -11,7 +11,7 @@
     "web": "npm run dev --workspace=web"
   },
   "engines": {
-    "node": ">=24.0.0"
+    "node": "22.x"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.99.1"

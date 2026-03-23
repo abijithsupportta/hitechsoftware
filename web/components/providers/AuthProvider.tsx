@@ -12,7 +12,7 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-async function getAuthStateWithTimeout(timeoutMs = 7000) {
+async function getAuthStateWithTimeout(timeoutMs = 3000) {
   const timeoutResult = new Promise<ReturnType<typeof getCurrentAuthState>>((resolve) => {
     setTimeout(() => {
       resolve(Promise.resolve({ ok: false as const, error: { message: 'Auth state fetch timed out' } }));
@@ -70,18 +70,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
   }, []);
 
-  // ─── Safety net: force-unblock after 10 s if auth never resolves ────────────
+  // ─── Safety net: force-unblock after 5 s if auth never resolves ─────────────
   useEffect(() => {
     if (isHydrated) return;
     const timeout = setTimeout(() => {
-      console.error('[AuthProvider] Auth hydration timeout — forcing unblock after 10s');
+      console.error('[AuthProvider] Auth hydration timeout — forcing unblock after 5s');
       useAuthStore.setState({ 
         user: null, 
         session: null, 
         role: null, 
         isHydrated: true 
       });
-    }, 10_000);
+    }, 5_000);
     return () => clearTimeout(timeout);
   }, [isHydrated]);
 

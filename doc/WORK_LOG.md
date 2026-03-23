@@ -3,6 +3,150 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-23 10:30:41 +05:30] Push Current Updates to GitHub Main
+
+- Summary: Verified the current working tree, confirmed build health, and prepared all current updates on `main` to be pushed to `origin/main`.
+- Work done:
+  - Checked git branch and working tree state on `main`.
+  - Confirmed the configured GitHub remote target.
+  - Ran a production build before push.
+  - Recorded the current runtime startup status before push.
+  - Prepared all modified files, including the latest migration, deployment config, routing fixes, and work log updates, for commit and push to `main`.
+- Files changed:
+  - doc/WORK_LOG.md
+- Verification:
+  - Build check: `npm run build` in `web` passed successfully.
+  - Runtime check: `npm run dev` still reports the pre-existing local `.next/dev/lock` conflict because another Next.js dev process is already running.
+- Next:
+  - Commit all current updates and push to `origin/main`.
+
+## [2026-03-23 10:27:34 +05:30] Fix Migration 017 SQL Error — Immutable Functions in Index Expression
+
+- Summary: Fixed PostgreSQL error `42P17: functions in index expression must be marked IMMUTABLE` in Migration 017. Root cause was use of `concat_ws()` inside GIN full-text index expressions; PostgreSQL does not allow non-immutable functions in index expressions.
+- Work done:
+  - Updated the `idx_subjects_full_text_search` expression in `supabase/migrations/20260320_017_enterprise_scale_architecture.sql`.
+  - Updated the `idx_customers_full_text_search` expression in `supabase/migrations/20260320_017_enterprise_scale_architecture.sql`.
+  - Replaced `concat_ws(...)` with immutable string concatenation using `coalesce(column, '') || ' ' || ...` so the `to_tsvector('simple', ...)` expression is indexable.
+- Files changed:
+  - supabase/migrations/20260320_017_enterprise_scale_architecture.sql
+- Verification:
+  - SQL file diagnostics: no editor errors after the fix.
+  - Confirmed only `to_tsvector(...)` remains in the full-text index definitions; `concat_ws(...)` no longer appears in the migration file.
+  - Build check: `npm run build` in `web` passed successfully after the SQL migration fix.
+  - Runtime check: `npm run dev` still fails only because another local Next.js process already holds `.next/dev/lock`.
+- Bugs/issues encountered:
+  - PostgreSQL error during migration execution: `ERROR: 42P17: functions in index expression must be marked IMMUTABLE`.
+- Next:
+  - Re-run Migration 017 in Supabase.
+  - If another SQL error appears, capture the failing statement and line so the migration can be corrected precisely.
+
+## [2026-03-23 10:26:34 +05:30] Fix Vercel Deployment Configuration — Node Version and Root Config
+
+- Summary: Fixed deployment-sensitive Vercel configuration issues identified from the remote build log. Pinned Node.js to the current LTS major instead of `>=24.0.0`, and added a root-level `vercel.json` so repo-root deployments use the intended cron configuration.
+- Work done:
+  - Updated root `package.json` `engines.node` from `>=24.0.0` to `22.x` to stop uncontrolled major-version drift on Vercel and remove the deployment warning about automatic upgrades.
+  - Added matching `engines.node: 22.x` to `web/package.json` so the workspace remains consistent if the project root is later changed to `web` in Vercel settings.
+  - Added repo-root `vercel.json` containing the cron configuration already present in `web/vercel.json`, because the Vercel build log shows the deployment is running from the repository root.
+  - Confirmed the local production build completes all the way through static page generation (`27/27`) after these changes.
+- Files changed:
+  - package.json
+  - web/package.json
+  - vercel.json
+- Verification:
+  - Build check: `npm run build` in `web` passed successfully after the Vercel config changes.
+  - Static generation completed locally through `Generating static pages (27/27)`.
+  - File diagnostics: no editor errors in the modified JSON files.
+  - Runtime check: `npm run dev` still fails only because another local Next.js process is already holding `.next/dev/lock`; this is an existing environment lock issue, not a regression from these changes.
+- Bugs/issues encountered:
+  - The Vercel log provided was partial and did not include the final remote failure line, so the fix focused on the concrete deployment misconfigurations visible in the log and repository setup.
+  - `web/vercel.json` alone would not be the authoritative config when the Vercel project is built from the repository root.
+- Next:
+  - Redeploy on Vercel to confirm the Node warning is gone and the deployment now completes.
+  - If Vercel still fails after redeploy, capture the final lines after `Generating static pages` so the next blocker can be isolated precisely.
+
+## [2026-03-23 10:23:30 +05:30] Migration 017 — Enterprise Scale Architecture (Database Only)
+
+- Summary: Created `supabase/migrations/20260320_017_enterprise_scale_architecture.sql` for enterprise-scale database optimization. The migration adds `get_my_role()`, performance indexes, materialized views, refresh helpers, archive infrastructure, optimization views, and RLS rewrites using `get_my_role()`.
+- Work done:
+  - Added `public.get_my_role()` as a security definer stable helper using `auth.uid()` and updated `public.current_user_role()` to delegate to it for compatibility.
+  - Added requested index coverage for `subjects`, `customers`, `subject_photos`, `subject_bills`, `subject_contracts`, `subject_accessories`, `attendance_logs`, `profiles`, `service_categories`, `brands`, and `dealers`, with index comments documenting the target query pattern.
+  - Added four materialized views: `daily_service_summary`, `technician_monthly_performance`, `brand_financial_summary`, and `dealer_financial_summary`, each with the required unique index to support refresh operations.
+  - Added refresh helper functions `refresh_all_materialized_views()` and `refresh_financial_summaries()`.
+  - Added archive infrastructure: `subjects_archive`, archive lookup index, `archive_completed_subjects(interval)`, and `get_subject_including_archive(uuid)`.
+  - Recreated RLS policies on `subjects`, `customers`, `subject_photos`, `subject_bills`, `subject_contracts`, `subject_accessories`, and `attendance_logs` so role checks use `get_my_role()` instead of role subqueries.
+  - Added optimization views: `active_subjects_today`, `pending_unassigned_subjects`, `overdue_subjects`, and `brand_dealer_due_invoices` using `security_invoker`.
+  - Included SQL-editor verification queries at the bottom of the migration file for index counts, materialized-view row counts, policy inspection, and `EXPLAIN ANALYZE`.
+- Files changed:
+  - supabase/migrations/20260320_017_enterprise_scale_architecture.sql
+- Verification:
+  - Migration file diagnostics: no editor errors reported for the new SQL file.
+  - Build check: `npm run build` in `web` passed successfully after the database-only change.
+  - Runtime check: `npm run dev` still fails only because another local Next.js dev instance is already holding `.next/dev/lock`; no new application runtime error was introduced by this migration file.
+- Bugs/issues encountered:
+  - Task 16 (cron API routes and `vercel.json`) was intentionally not implemented because the request explicitly required pure database work only and no application code changes.
+  - PostgreSQL/Supabase RPC cannot reliably execute `REFRESH MATERIALIZED VIEW CONCURRENTLY` inside a callable SQL function, so the refresh helpers use standard `REFRESH MATERIALIZED VIEW` and the migration header documents this limitation.
+  - `archive_completed_subjects()` moves only parent `subjects` rows; dependent child archival was not added in this task, so related child data lifecycle should be reviewed before enabling automated archival in production.
+- Next:
+  - Run the migration in Supabase and execute the included verification queries in SQL Editor.
+  - If strict non-blocking refresh is mandatory, move materialized-view refresh to a top-level SQL job runner instead of RPC.
+
+## [2026-03-23 10:03:55 +05:30] Resolve Runtime Error — Next 16 Middleware/Proxy Conflict
+
+- Summary: Fixed the runtime failure caused by using both `middleware.ts` and `proxy.ts` in Next.js 16.1.6. Next 16 requires using `proxy.ts` only. Consolidated all auth redirect logic into `proxy.ts` and removed `middleware.ts`.
+- Work done:
+  - Reproduced the failure with `npm run build` and captured the exact error:
+
+    ```
+    ## Error Type
+    Runtime Error
+
+    ## Error Message
+    The Middleware file "/middleware" must export a function named `middleware` or a default function.
+
+    Next.js version: 16.1.6 (Turbopack)
+    ```
+
+  - Confirmed Next 16 build diagnostic also reported dual entrypoint conflict (`middleware.ts` + `proxy.ts`).
+  - Updated `web/proxy.ts` to contain full auth redirect behavior for `/`, `/login`, and protected `/dashboard` routes.
+  - Switched proxy auth check from `supabase.auth.getUser()` to `supabase.auth.getSession()` to use cookie-backed session checks without unnecessary network dependency.
+  - Removed `web/middleware.ts` to satisfy Next 16 single-entrypoint requirement.
+  - Updated comments in `web/app/page.tsx` to reference `proxy.ts` behavior.
+- Files changed:
+  - web/proxy.ts
+  - web/middleware.ts (deleted)
+  - web/app/page.tsx
+- Verification:
+  - Build check: `npm run build` in `web` now passes successfully (compiled, TypeScript passed, routes generated, `ƒ Proxy (Middleware)` emitted).
+  - Runtime startup check: `npm run dev` no longer reports middleware export failure; startup conflict observed only from an already running dev instance/lock (`.next/dev/lock`).
+  - Static analysis check: `get_errors` reports no errors in modified files.
+  - Note: `npm run lint` still fails due to pre-existing unrelated lint errors in inventory/tests files; no new lint errors introduced in the modified files.
+- Next:
+  - Keep only `proxy.ts` for route guarding in Next 16+ (do not reintroduce root `middleware.ts`).
+  - For future tasks, run build and runtime checks after edits and log outcomes in this file.
+
+## [2026-03-23 00:00:00 +05:30] Instant Load Performance — Eliminate Startup Spinner
+
+- Summary: The website was showing a full-screen loading spinner on every page load (including the root `/` and `/login`) because routing decisions were made entirely client-side after JavaScript hydrated. Added Next.js middleware for server-side auth routing (reads session from cookie, no network call) and converted the root page to a server component. Login page now shows form immediately for unauthenticated users. Reduced fallback timeout values.
+- Work done:
+  - **Created `web/middleware.ts`**: Reads Supabase session from cookie (instant, no network round-trip) and redirects at the server/Edge level before any HTML is sent. `/` → `/login` or `/dashboard`. `/dashboard/*` → `/login` when unauthenticated. `/login` → `/dashboard` when authenticated.
+  - **Replaced `web/app/page.tsx`**: Converted from `'use client'` component with spinner to an `async` server component that calls `createClient()` (server-side Supabase, reads cookie) and invokes `redirect()` instantly. Zero spinner.
+  - **Fixed `web/app/login/page.tsx`**: Removed `if (isLoading && !user) return <AppLoadingScreen />` which was hiding the login form from unauthenticated users. Replaced with `if (isHydrated && user) return <AppLoadingScreen />` (only blocks when an authenticated user is actively being redirected). Changed `isFormLoading` to only depend on `isSubmitting`, not `isLoading`.
+  - **Reduced timeouts in `web/components/providers/AuthProvider.tsx`**: Bootstrap timeout 7 s → 3 s; safety-net timeout 10 s → 5 s.
+- Files changed:
+  - web/middleware.ts (new)
+  - web/app/page.tsx
+  - web/app/login/page.tsx
+  - web/components/providers/AuthProvider.tsx
+- Verification:
+  - TypeScript reports no errors on all four changed files.
+  - Root cause analysis confirmed: no `middleware.ts` existed prior; client-side auth store started with `isHydrated: false` requiring 2 sequential Supabase calls before any redirect.
+- Bugs/issues encountered:
+  - No `middleware.ts` existed despite `lib/supabase/middleware.ts` helper being present — this was the principal cause of all startup delay.
+  - Login page unconditionally showed `AppLoadingScreen` for ALL unauthenticated users on first load.
+- Next:
+  - Consider caching user role in a cookie after login so middleware can do role-based dashboard routing (e.g., technician → `/dashboard/attendance`) without a DB call.
+  - Dashboard layout still shows a brief loading screen while the client-side role profile is fetched — can be further improved with skeleton UI.
+
 ## [2026-03-22 14:00:00 +05:30] Fix Build Errors — Collapsed Literal \\n Sequences and Duplicate Code Blocks
 
 - Summary: Fixed all TypeScript/Turbopack build errors introduced by the prior documentation pass. Root cause was that multi-line JSDoc comment blocks were stored as single lines with literal `\n` escape sequences instead of real newlines, which caused parser failures. Additional issues were duplicate function implementations, an extra closing `}`, and a missing `/**` opener in a JSDoc block.

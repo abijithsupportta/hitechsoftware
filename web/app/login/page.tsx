@@ -94,9 +94,14 @@ function LoginContent() {
 
   // Prefer locally-captured error (directly from result) or URL error over store-derived error
   const friendlyError = mapAuthError(submitError ?? urlError ?? error);
-  const isFormLoading = isSubmitting || isLoading;
+  // Only disable form fields while a sign-in request is in flight.
+  // Do NOT block on isHydrated — middleware guarantees only unauthenticated users
+  // reach this page, so we can show the form immediately.
+  const isFormLoading = isSubmitting;
 
-  if (isLoading && !user) {
+  // Only show loading screen when an authenticated user is being redirected away
+  // (e.g. after a successful login while the router.replace is in flight).
+  if (isHydrated && user) {
     return <AppLoadingScreen />;
   }
 
