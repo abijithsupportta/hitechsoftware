@@ -3,6 +3,61 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-23 16:37:00 +05:30] Simplified Pricing System — Purchase Price + MRP Only
+- Summary: Comprehensive overhaul of the stock and inventory pricing system. Simplified from 3 prices (purchase_price, MRP, selling_price) to just 2 (purchase_price + MRP). Added mrp_change_log audit table, auto-update of product MRP from latest stock entry, and profit margin column on products list.
+- Work done:
+  - **Migration 022** (`20260323_022_simplified_pricing.sql`):
+    - Created `mrp_change_log` table with product_id, old_mrp, new_mrp, change_type (auto_from_stock_entry / manual_override), changed_by, changed_at
+    - RLS policies for authenticated read/write
+    - Index on (product_id, changed_at DESC)
+    - Updated `trg_update_product_pricing` trigger to also auto-update `inventory_products.mrp` and `inventory_products.purchase_price` from latest stock entry, and log MRP changes
+    - Recreated `current_stock_levels` view with simplified pricing columns
+  - **Types** (`stock-entry.types.ts`, `product.types.ts`):
+    - Removed `selling_price` from StockEntryItem and StockEntryItemInput
+    - Simplified Product type comments for purchase_price/mrp (auto-updated from stock entries)
+    - Removed `default_purchase_price` and `minimum_selling_price` from CreateProductInput
+  - **Validation** (`stock-entry.validation.ts`, `product.validation.ts`):
+    - Removed `selling_price` field and its `.refine()` rule from stock entry schema
+    - Kept MRP > purchase_price refine for loss prevention
+    - Removed `default_purchase_price` and `minimum_selling_price` from product validation schema
+  - **Repositories** (`stock-entries.repository.ts`, `products.repository.ts`):
+    - Removed `selling_price` from all interfaces, SELECT queries, and INSERT mappings in stock entries repo
+    - Removed `default_purchase_price` and `minimum_selling_price` from product create/update payloads
+    - Added `logMrpChange()` and `getMrpChangeLog()` functions to products repository
+    - Added `MrpChangeLogEntry` interface
+  - **Services** (`product.service.ts`):
+    - `editProduct()` now detects MRP changes and logs them to mrp_change_log as manual_override
+    - Added `getProductMrpHistory()` function for retrieving MRP change audit trail
+  - **Stock Entry Form** (`stock/new/page.tsx`):
+    - Removed selling_price field from form, defaults, and append calls
+    - Simplified profit margin alerts (removed selling_price vs MRP check)
+    - MRP label changed to "MRP (selling price)"
+  - **Products List Page** (`products/page.tsx`):
+    - Renamed "Last Bought At" column to "Purchase Price"
+    - Replaced "Min Selling Price" column with "Margin %" column showing color-coded profit margin badges (green >10%, amber <10%, red ≤0%)
+  - **ProductForm** (`ProductForm.tsx`):
+    - Removed `minimum_selling_price` form field and its hint text
+    - Removed `default_purchase_price` from form defaults and reset
+    - MRP label changed to "MRP (Selling Price)"
+- Files changed:
+  - supabase/migrations/20260323_022_simplified_pricing.sql (NEW)
+  - web/modules/stock-entries/stock-entry.types.ts
+  - web/modules/stock-entries/stock-entry.validation.ts
+  - web/modules/products/product.types.ts
+  - web/modules/products/product.validation.ts
+  - web/modules/products/product.service.ts
+  - web/repositories/stock-entries.repository.ts
+  - web/repositories/products.repository.ts
+  - web/app/dashboard/inventory/stock/new/page.tsx
+  - web/app/dashboard/inventory/products/page.tsx
+  - web/components/inventory/ProductForm.tsx
+- Verification:
+  - `npx next build` — zero errors, all pages compile successfully
+- Bugs/Issues: none
+- Next:
+  - Run migration 022 on Supabase
+  - Add pricing history section to product detail/edit page (if needed)
+
 ## [2026-03-23 18:30:00 +05:30] Stock Entry Form — Profit Margin Display & Pricing Validation
 - Summary: Added real-time profit margin calculation, MRP vs purchase price validation (blocks submission), selling price vs MRP validation, and inline pricing alerts to the stock entry form.
 - Work done:

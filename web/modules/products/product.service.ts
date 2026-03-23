@@ -28,8 +28,11 @@ import {
   listProducts,
   softDeleteProduct,
   updateProduct,
+  logMrpChange,
+  getMrpChangeLog,
 } from '@/repositories/products.repository';
 import type { CreateProductInput, Product, ProductFilters, ProductListResponse, UpdateProductInput } from './product.types';
+import type { MrpChangeLogEntry } from '@/repositories/products.repository';
 import { createProductSchema, updateProductSchema } from './product.validation';
 
 /** Default page size for paginated product lists */
@@ -111,6 +114,8 @@ export async function addProduct(input: CreateProductInput): Promise<ServiceResu
  * Validates and applies a partial update to an existing product.
  * Uses `updateProductSchema` which makes all fields optional (PATCH).
  *
+ * If MRP changes, logs the change to mrp_change_log as manual_override.
+ *
  * @param id    - UUID of the product to update
  * @param input - Partial set of product fields to change
  */
@@ -120,10 +125,30 @@ export async function editProduct(id: string, input: UpdateProductInput): Promis
     return { ok: false, error: { message: parsed.error.issues[0]?.message ?? 'Invalid input' } };
   }
 
+  // If MRP is being changed, fetch current value to log the change
+  let oldMrp: number | null = null;
+  if (parsed.data.mrp !== undefined) {
+    const current = await findProductById(id);
+    if (current.data) {
+      oldMrp = current.data.mrp;
+    }
+  }
+
   const result = await updateProduct(id, parsed.data);
   if (result.error || !result.data) {
     return { ok: false, error: { message: mapError(result.error?.message), code: result.error?.code } };
   }
+
+  // Log MRP change if it actually changed
+  if (parsed.data.mrp !== undefined && parsed.data.mrp !== null && parsed.data.mrp !== oldMrp) {
+    await logMrpChange({
+      product_id: id,
+      old_mrp: oldMrp,
+      new_mrp: parsed.data.mrp,
+      change_type: 'manual_override',
+    });
+  }
+
   return { ok: true, data: result.data };
 }
 
@@ -145,4 +170,15 @@ export async function removeProduct(id: string): Promise<ServiceResult<{ id: str
     };
   }
   return { ok: true, data: result.data };
+}
+
+/**
+ * Returns MRP change history for a product (newest first, max 50).
+ */
+export async function getProductMrpHistory(productId: string): Promise<ServiceResult<MrpChangeLogEntry[]>> {
+  const result = await getMrpChangeLog(productId);
+  if (result.error) {
+    return { ok: false, error: { message: result.error.message, code: result.error.code } };
+  }
+  return { ok: true, data: result.data ?? [] };
 }

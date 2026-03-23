@@ -236,8 +236,6 @@ export async function createProduct(input: CreateProductInput) {
       hsn_sac_code: input.hsn_sac_code?.trim() ?? null,
       purchase_price: input.purchase_price ?? null,
       mrp: input.mrp ?? null,
-      default_purchase_price: input.default_purchase_price ?? null,
-      minimum_selling_price: input.minimum_selling_price ?? null,
       minimum_stock_level: input.minimum_stock_level ?? 5,
       is_active: input.is_active ?? true,
     })
@@ -272,8 +270,6 @@ export async function updateProduct(id: string, input: Partial<CreateProductInpu
   if (input.hsn_sac_code !== undefined) payload.hsn_sac_code = input.hsn_sac_code?.trim() ?? null;
   if (input.purchase_price !== undefined) payload.purchase_price = input.purchase_price ?? null;
   if (input.mrp !== undefined) payload.mrp = input.mrp ?? null;
-  if (input.default_purchase_price !== undefined) payload.default_purchase_price = input.default_purchase_price ?? null;
-  if (input.minimum_selling_price !== undefined) payload.minimum_selling_price = input.minimum_selling_price ?? null;
   if (input.minimum_stock_level !== undefined) payload.minimum_stock_level = input.minimum_stock_level;
   if (input.stock_classification !== undefined) payload.stock_classification = input.stock_classification;
   if (input.is_active !== undefined) payload.is_active = input.is_active;
@@ -299,4 +295,52 @@ export async function softDeleteProduct(id: string) {
     .eq('id', id)
     .select('id')
     .single<{ id: string }>();
+}
+
+/**
+ * Logs a manual MRP change to the mrp_change_log table.
+ * Called by the service layer when a user manually edits the MRP.
+ */
+export async function logMrpChange(input: {
+  product_id: string;
+  old_mrp: number | null;
+  new_mrp: number;
+  change_type: 'auto_from_stock_entry' | 'manual_override';
+  changed_by?: string | null;
+}) {
+  return supabase
+    .from('mrp_change_log')
+    .insert({
+      product_id: input.product_id,
+      old_mrp: input.old_mrp,
+      new_mrp: input.new_mrp,
+      change_type: input.change_type,
+      changed_by: input.changed_by ?? null,
+    })
+    .select('id')
+    .single<{ id: string }>();
+}
+
+/** MRP change log entry shape */
+export interface MrpChangeLogEntry {
+  id: string;
+  product_id: string;
+  old_mrp: number | null;
+  new_mrp: number;
+  change_type: 'auto_from_stock_entry' | 'manual_override';
+  changed_by: string | null;
+  changed_at: string;
+}
+
+/**
+ * Fetches the MRP change history for a product, newest first.
+ */
+export async function getMrpChangeLog(productId: string) {
+  return supabase
+    .from('mrp_change_log')
+    .select('id,product_id,old_mrp,new_mrp,change_type,changed_by,changed_at')
+    .eq('product_id', productId)
+    .order('changed_at', { ascending: false })
+    .limit(50)
+    .returns<MrpChangeLogEntry[]>();
 }

@@ -51,13 +51,13 @@ export interface Product {
    * Used for tax classification on invoices.
    */
   hsn_sac_code: string | null;
-  /** Latest purchase cost recorded for this product */
+  /** Latest purchase cost — auto-updated from the most recent stock entry */
   purchase_price: number | null;
-  /** Maximum Retail Price used for commercial reference */
+  /** MRP (selling price) — auto-updated from the latest stock entry */
   mrp: number | null;
-  /** Last known purchase price — auto-updated from the most recent stock entry */
+  /** Legacy: last known purchase price (same as purchase_price) */
   default_purchase_price: number | null;
-  /** Floor selling price — cannot sell below this */
+  /** Legacy: kept for backwards compatibility */
   minimum_selling_price: number | null;
   /** Weighted average cost computed from all stock entry items */
   weighted_average_cost: number | null;
@@ -91,8 +91,6 @@ export interface CreateProductInput {
   hsn_sac_code?: string | null;
   purchase_price?: number | null;
   mrp?: number | null;
-  default_purchase_price?: number | null;
-  minimum_selling_price?: number | null;
   minimum_stock_level?: number;
   stock_classification?: string;
   is_active?: boolean;

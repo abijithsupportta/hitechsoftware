@@ -63,8 +63,6 @@ const productBaseSchema = z.object({
   hsn_sac_code: z.string().max(20).trim().nullish(),
   purchase_price: z.number().min(0, 'Purchase price must be 0 or more').nullish(),
   mrp: z.number().min(0, 'MRP must be 0 or more').nullish(),
-  default_purchase_price: z.number().min(0).nullish(),
-  minimum_selling_price: z.number().min(0, 'Minimum selling price must be 0 or more').nullish(),
   minimum_stock_level: z.number().int().min(0, 'Must be 0 or more').optional().default(5),
   is_active: z.boolean(),
 });

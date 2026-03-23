@@ -313,7 +313,7 @@ export default function NewStockEntryPage() {
       invoice_number: '',
       entry_date: today(),
       notes: null,
-      items: [{ product_id: null, material_code: '', quantity: 1, purchase_price: 0, mrp: 0, selling_price: null, hsn_sac_code: null }],
+      items: [{ product_id: null, material_code: '', quantity: 1, purchase_price: 0, mrp: 0, hsn_sac_code: null }],
     },
   });
 
@@ -439,7 +439,7 @@ export default function NewStockEntryPage() {
             <h2 className="text-sm font-semibold text-slate-700">Items</h2>
             <button
               type="button"
-              onClick={() => append({ product_id: null, material_code: '', quantity: 1, purchase_price: 0, mrp: 0, selling_price: null, hsn_sac_code: null })}
+              onClick={() => append({ product_id: null, material_code: '', quantity: 1, purchase_price: 0, mrp: 0, hsn_sac_code: null })}
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
             >
               <Plus size={12} />
@@ -599,10 +599,10 @@ export default function NewStockEntryPage() {
                       )}
                     </div>
 
-                    {/* MRP */}
+                    {/* MRP (Selling Price) */}
                     <div>
                       <label className="mb-1 block text-xs font-medium text-slate-600">
-                        MRP (printed on product) <span className="text-rose-500">*</span>
+                        MRP (selling price) <span className="text-rose-500">*</span>
                       </label>
                       <input
                         type="number"
@@ -619,32 +619,6 @@ export default function NewStockEntryPage() {
                       {errors.items?.[index]?.mrp && (
                         <p className="mt-0.5 text-xs text-rose-600">
                           {errors.items[index].mrp?.message}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Selling Price */}
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-slate-600">
-                        Selling Price (suggested)
-                      </label>
-                      <input
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        {...register(`items.${index}.selling_price`, {
-                          setValueAs: (value: string) => value === '' ? null : Number(value),
-                        })}
-                        placeholder="Defaults to MRP if not set"
-                        className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
-                          errors.items?.[index]?.selling_price
-                            ? 'border-rose-400'
-                            : 'border-slate-200 focus:border-blue-500'
-                        }`}
-                      />
-                      {errors.items?.[index]?.selling_price && (
-                        <p className="mt-0.5 text-xs text-rose-600">
-                          {errors.items[index].selling_price?.message}
                         </p>
                       )}
                     </div>
@@ -666,7 +640,6 @@ export default function NewStockEntryPage() {
                   {(() => {
                     const pp = watchItems[index]?.purchase_price ?? 0;
                     const mrp = watchItems[index]?.mrp ?? 0;
-                    const sp = watchItems[index]?.selling_price;
                     const qty = watchItems[index]?.quantity ?? 0;
                     const lineTotal = qty * pp;
 
@@ -675,12 +648,8 @@ export default function NewStockEntryPage() {
                     const margin = pp > 0 && mrp > 0 ? ((mrp - pp) / pp) * 100 : null;
                     const isLowMargin = margin !== null && margin > 0 && margin < 10;
 
-                    // Selling price vs MRP check
-                    const isSPBelowMRP = sp != null && sp > 0 && mrp > 0 && sp < mrp;
-
-                    // Profit per unit (selling price or MRP as floor)
-                    const effectiveSP = (sp != null && sp > 0) ? sp : mrp;
-                    const profitPerUnit = pp > 0 && effectiveSP > 0 ? effectiveSP - pp : null;
+                    // Profit per unit
+                    const profitPerUnit = pp > 0 && mrp > 0 ? mrp - pp : null;
 
                     return (
                       <div className="mt-3 space-y-2">
@@ -705,17 +674,6 @@ export default function NewStockEntryPage() {
                             <p className="text-xs text-amber-700">
                               <span className="font-semibold">Low margin warning:</span> Profit margin is only {margin!.toFixed(1)}%.
                               Consider verifying the MRP.
-                            </p>
-                          </div>
-                        )}
-
-                        {/* RED: Selling Price < MRP */}
-                        {isSPBelowMRP && (
-                          <div className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2">
-                            <AlertTriangle size={14} className="mt-0.5 flex-shrink-0 text-rose-600" />
-                            <p className="text-xs text-rose-600">
-                              <span className="font-semibold">Selling price (₹{sp!.toFixed(2)}) is below MRP (₹{mrp.toFixed(2)}).</span>{' '}
-                              Technicians cannot sell below MRP. This will be blocked on submission.
                             </p>
                           </div>
                         )}

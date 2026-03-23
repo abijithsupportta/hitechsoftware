@@ -215,7 +215,7 @@ export default function ProductsPage() {
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Material Code</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Category</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Type</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Last Bought At</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Purchase Price</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">MRP</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                 <span className="inline-flex items-center gap-1">
@@ -228,7 +228,7 @@ export default function ProductsPage() {
                   </span>
                 </span>
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Min Selling Price</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Margin %</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Stock</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">HSN/SAC</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Flags</th>
@@ -286,7 +286,7 @@ export default function ProductsPage() {
                           {item.product_type?.name ?? <span className="text-slate-300">—</span>}
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-600">
-                          {formatCurrency(item.default_purchase_price ?? item.purchase_price) ?? <span className="text-slate-300">—</span>}
+                          {formatCurrency(item.purchase_price) ?? <span className="text-slate-300">—</span>}
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-600">
                           {formatCurrency(item.mrp) ?? <span className="text-slate-300">—</span>}
@@ -294,8 +294,34 @@ export default function ProductsPage() {
                         <td className="px-4 py-3 text-sm text-slate-600">
                           {formatCurrency(item.weighted_average_cost) ?? <span className="text-slate-300">—</span>}
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-600">
-                          {formatCurrency(item.minimum_selling_price) ?? <span className="text-slate-300">—</span>}
+                        <td className="px-4 py-3">
+                          {(() => {
+                            const pp = item.purchase_price;
+                            const mrp = item.mrp;
+                            if (pp == null || mrp == null || pp <= 0 || mrp <= 0) {
+                              return <span className="text-xs text-slate-300">—</span>;
+                            }
+                            const margin = ((mrp - pp) / pp) * 100;
+                            if (margin <= 0) {
+                              return (
+                                <span className="inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">
+                                  {margin.toFixed(1)}%
+                                </span>
+                              );
+                            }
+                            if (margin < 10) {
+                              return (
+                                <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                                  {margin.toFixed(1)}%
+                                </span>
+                              );
+                            }
+                            return (
+                              <span className="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                                {margin.toFixed(1)}%
+                              </span>
+                            );
+                          })()}
                         </td>
                         <td className="px-4 py-3">
                           {(() => {

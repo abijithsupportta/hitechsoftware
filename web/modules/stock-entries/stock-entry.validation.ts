@@ -56,10 +56,9 @@ export const stockEntryItemSchema = z.object({
   material_code: materialCodeSchema,
   // Integer check: ensures no fractional quantities (e.g. 0.5 units is invalid)
   quantity: z.number().int().min(1, 'Quantity must be at least 1'),
-  // Pricing fields per stock entry line
+  // Pricing: only purchase_price + MRP
   purchase_price: z.number().min(0, 'Purchase price must be 0 or more'),
   mrp: z.number().min(0, 'MRP must be 0 or more'),
-  selling_price: z.number().min(0, 'Selling price must be 0 or more').nullish(),
   hsn_sac_code: z.string().max(20).trim().nullish(),
 }).refine(
   (item) => {
@@ -70,15 +69,6 @@ export const stockEntryItemSchema = z.object({
     return true;
   },
   { message: 'MRP must be greater than purchase price — selling at or below cost will result in a loss', path: ['mrp'] },
-).refine(
-  (item) => {
-    // Selling price, if provided, must be at least MRP
-    if (item.selling_price != null && item.selling_price > 0 && item.mrp > 0) {
-      return item.selling_price >= item.mrp;
-    }
-    return true;
-  },
-  { message: 'Selling price cannot be less than MRP', path: ['selling_price'] },
 );
 
 /**
