@@ -3,6 +3,49 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-23 13:02:20 +05:30] Build Complete Digital Bag Module
+- Summary: Built the entire Digital Bag module from scratch — database migration, backend services, React hooks, and 4 UI pages — enabling inventory issuance tracking, consumption logging per subject, and technician payout management.
+- Work done:
+  - Created migration 019 with 4 tables (digital_bag_sessions, digital_bag_items, digital_bag_consumptions, technician_service_payouts), 2 RPC functions (get_bag_capacity_remaining, calculate_session_variance), triggers for auto-updating session totals and payout timestamps, full RLS policies, and updated current_stock_levels view to subtract issued quantities
+  - Created TypeScript types (digital-bag.types.ts) covering all entities, inputs, filters, and list responses
+  - Created constants file (digital-bag.constants.ts) with capacity limits, status labels, and color mappings
+  - Implemented digital-bag.repository.ts and payout.repository.ts with full Supabase CRUD operations
+  - Implemented digital-bag.service.ts (capacity checks, session management, returns, consumption) and payout.service.ts (CRUD, approval workflow, amount calculations)
+  - Created useDigitalBag.ts and usePayouts.ts React Query hooks with mutations and cache invalidation
+  - Added 4 routes (digital-bag, digital-bag/[id], payouts, my-bag) and 3 sidebar nav items with role guards
+  - Built admin Digital Bag dashboard page with session management, filters, and summary stats
+  - Built session detail page with item listing and return functionality
+  - Built Payouts admin page with approve/mark-paid workflow
+  - Built technician My Bag view with capacity bar and held items display
+  - Created BagConsumptionSection component and integrated it into subject detail page
+  - Fixed 3 Supabase PostgREST type casting errors (GenericStringError/ParserError) using double-cast pattern
+- Files changed:
+  - supabase/migrations/20260322_019_digital_bag.sql (new)
+  - web/modules/digital-bag/digital-bag.types.ts (new)
+  - web/modules/digital-bag/digital-bag.constants.ts (new)
+  - web/modules/digital-bag/digital-bag.service.ts (new)
+  - web/modules/digital-bag/payout.service.ts (new)
+  - web/repositories/digital-bag.repository.ts (rewritten)
+  - web/repositories/payout.repository.ts (rewritten)
+  - web/hooks/digital-bag/useDigitalBag.ts (new)
+  - web/hooks/digital-bag/usePayouts.ts (new)
+  - web/lib/constants/routes.ts (modified — added 4 routes)
+  - web/app/dashboard/layout.tsx (modified — added 3 nav items + Briefcase icon)
+  - web/app/dashboard/digital-bag/page.tsx (new)
+  - web/app/dashboard/digital-bag/[id]/page.tsx (new)
+  - web/app/dashboard/payouts/page.tsx (new)
+  - web/app/dashboard/my-bag/page.tsx (new)
+  - web/components/subjects/BagConsumptionSection.tsx (new)
+  - web/app/dashboard/subjects/[id]/page.tsx (modified — integrated BagConsumptionSection)
+  - doc/WORK_LOG.md (updated)
+- Verification:
+  - Build passes cleanly (npx next build) — all 4 new routes compiled successfully
+  - Fixed 3 TypeScript type errors caused by Supabase PostgREST GenericStringError/ParserError types using `as unknown as TargetType` double-cast pattern
+- Next:
+  - Apply migration 019 to Supabase database
+  - End-to-end testing of bag session creation, item issuance, returns, consumption, and payouts
+  - Wire up real data once migration is applied
+
 ## [2026-03-23 12:50:37 +05:30] Investigate & Confirm Categories + Product Types Fix
 - Summary: Investigated reported inability to add new categories and product types. Root cause confirmed as the Zod v4 `.partial()` crash (fixed in commit 9c5f7f5) which crashed the entire app at module evaluation, preventing ALL pages from loading — including categories and product-types pages.
 - Work done:

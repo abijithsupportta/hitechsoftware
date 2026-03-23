@@ -27,4 +27,8 @@ export const ROUTES = {
   DASHBOARD_TEAM: '/dashboard/team',
   DASHBOARD_TEAM_DETAIL: (id: string) => `/dashboard/team/${id}`,
   DASHBOARD_TECHNICIAN: '/dashboard',
+  DASHBOARD_DIGITAL_BAG: '/dashboard/digital-bag',
+  DASHBOARD_DIGITAL_BAG_DETAIL: (technicianId: string) => `/dashboard/digital-bag/${technicianId}`,
+  DASHBOARD_PAYOUTS: '/dashboard/payouts',
+  DASHBOARD_MY_BAG: '/dashboard/my-bag',
 } as const;

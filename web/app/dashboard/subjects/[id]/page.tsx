@@ -39,6 +39,7 @@ import { ActivityTimeline } from '@/components/subjects/ActivityTimeline';
 import { AttendanceGuard } from '@/components/attendance/AttendanceGuard';
 import { JobWorkflowSection } from '@/components/subjects/job-workflow-section';
 import { AccessoriesSection } from '@/components/subjects/AccessoriesSection';
+import { BagConsumptionSection } from '@/components/subjects/BagConsumptionSection';
 import { BillingSection } from '@/components/subjects/BillingSection';
 import { useContractsBySubject } from '@/hooks/contracts/useContracts';
 import { useSubjectDetail } from '@/hooks/subjects/useSubjects';
@@ -308,6 +309,7 @@ export default function SubjectDetailPage() {
         {/* Job Workflow — shown when technician has accepted or beyond */}
         <JobWorkflowSection subject={subject} userRole={userRole ?? ''} userId={user?.id ?? ''} />
         <AccessoriesSection subject={subject} userRole={userRole} userId={user?.id ?? null} />
+        <BagConsumptionSection subject={subject} userRole={userRole} userId={user?.id ?? null} />
         <BillingSection subject={subject} userRole={userRole} userId={user?.id ?? null} />
         <ActivityTimeline timeline={subject.timeline} />
       </div>

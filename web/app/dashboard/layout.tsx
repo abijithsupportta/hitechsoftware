@@ -25,6 +25,7 @@ import {
   ChevronDown,
   ChevronRight,
   LayoutGrid,
+  Briefcase,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { ROUTES } from '@/lib/constants/routes';
@@ -43,6 +44,9 @@ const NAV_ITEMS = [
   { icon: Users, label: 'Customers', href: ROUTES.DASHBOARD_CUSTOMERS, isAvailable: true },
   { icon: UserCog, label: 'Team', href: ROUTES.DASHBOARD_TEAM, isAvailable: true },
   { icon: Package, label: 'Inventory', href: ROUTES.DASHBOARD_INVENTORY, isAvailable: true },
+  { icon: Briefcase, label: 'Digital Bag', href: ROUTES.DASHBOARD_DIGITAL_BAG, isAvailable: true, allowedRoles: ['super_admin', 'office_staff', 'stock_manager'] as UserRole[] },
+  { icon: Briefcase, label: 'My Bag', href: ROUTES.DASHBOARD_MY_BAG, isAvailable: true, allowedRoles: ['technician'] as UserRole[] },
+  { icon: DollarSign, label: 'Payouts', href: ROUTES.DASHBOARD_PAYOUTS, isAvailable: true, allowedRoles: ['super_admin', 'office_staff'] as UserRole[] },
   { icon: DollarSign, label: 'Billing', href: '#', isAvailable: false },
   { icon: BarChart3, label: 'Reports', href: '#', isAvailable: false },
   { icon: Settings, label: 'Settings', href: '#', isAvailable: false },
