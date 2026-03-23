@@ -39,16 +39,16 @@ interface DashboardLayoutProps {
 
 const NAV_ITEMS = [
   { icon: Home, label: 'Dashboard', href: ROUTES.DASHBOARD, isAvailable: true },
-  { icon: CalendarDays, label: 'Attendance', href: ROUTES.DASHBOARD_ATTENDANCE, isAvailable: true, allowedRoles: ['technician'] as UserRole[] },
+  { icon: CalendarDays, label: 'Attendance', href: ROUTES.DASHBOARD_ATTENDANCE, isAvailable: true, allowedRoles: ['super_admin', 'office_staff', 'stock_manager'] as UserRole[] },
   { icon: ClipboardList, label: 'Service Module', href: ROUTES.DASHBOARD_SUBJECTS, isAvailable: true },
-  { icon: Users, label: 'Customers', href: ROUTES.DASHBOARD_CUSTOMERS, isAvailable: true },
-  { icon: UserCog, label: 'Team', href: ROUTES.DASHBOARD_TEAM, isAvailable: true },
-  { icon: Package, label: 'Inventory', href: ROUTES.DASHBOARD_INVENTORY, isAvailable: true },
+  { icon: Users, label: 'Customers', href: ROUTES.DASHBOARD_CUSTOMERS, isAvailable: true, allowedRoles: ['super_admin', 'office_staff', 'stock_manager'] as UserRole[] },
+  { icon: UserCog, label: 'Team', href: ROUTES.DASHBOARD_TEAM, isAvailable: true, allowedRoles: ['super_admin', 'office_staff', 'stock_manager'] as UserRole[] },
+  { icon: Package, label: 'Inventory', href: ROUTES.DASHBOARD_INVENTORY, isAvailable: true, allowedRoles: ['super_admin', 'office_staff', 'stock_manager'] as UserRole[] },
   { icon: Briefcase, label: 'Digital Bag', href: ROUTES.DASHBOARD_DIGITAL_BAG, isAvailable: true, allowedRoles: ['super_admin', 'office_staff', 'stock_manager'] as UserRole[] },
   { icon: Briefcase, label: 'My Bag', href: ROUTES.DASHBOARD_MY_BAG, isAvailable: true, allowedRoles: ['technician'] as UserRole[] },
-  { icon: DollarSign, label: 'Payouts', href: ROUTES.DASHBOARD_PAYOUTS, isAvailable: true, allowedRoles: ['super_admin', 'office_staff'] as UserRole[] },
-  { icon: DollarSign, label: 'Billing', href: '#', isAvailable: false },
-  { icon: BarChart3, label: 'Reports', href: '#', isAvailable: false },
+  { icon: DollarSign, label: 'Payouts', href: ROUTES.DASHBOARD_PAYOUTS, isAvailable: true, allowedRoles: ['super_admin', 'office_staff', 'technician'] as UserRole[] },
+  { icon: DollarSign, label: 'Billing', href: '#', isAvailable: false, allowedRoles: ['super_admin', 'office_staff', 'stock_manager'] as UserRole[] },
+  { icon: BarChart3, label: 'Reports', href: '#', isAvailable: false, allowedRoles: ['super_admin', 'office_staff', 'stock_manager'] as UserRole[] },
   { icon: Settings, label: 'Settings', href: '#', isAvailable: false },
 ];
 

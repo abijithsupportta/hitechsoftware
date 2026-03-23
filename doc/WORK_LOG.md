@@ -3,6 +3,20 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-23 14:16:06 +05:30] Restrict Technician Sidebar Navigation
+- Summary: Restricted sidebar navigation for technician role — technicians now only see Dashboard, Service Module, My Bag, Payouts, and Settings. All other modules (Attendance, Customers, Team, Inventory, Digital Bag admin, Billing, Reports) are hidden from technicians. Also added technician to Payouts visibility so they can view their own payouts.
+- Work done:
+  - Added `allowedRoles: ['super_admin', 'office_staff', 'stock_manager']` to Attendance, Customers, Team, Inventory, Billing, Reports nav items
+  - Changed Payouts `allowedRoles` from `['super_admin', 'office_staff']` to `['super_admin', 'office_staff', 'technician']`
+  - Attendance was previously `allowedRoles: ['technician']` only — changed to admin-only per user request
+- Files changed:
+  - web/app/dashboard/layout.tsx (modified NAV_ITEMS allowedRoles)
+  - doc/WORK_LOG.md (updated)
+- Verification:
+  - Build passes cleanly (npx next build)
+- Next:
+  - none
+
 ## [2026-03-23 13:02:20 +05:30] Build Complete Digital Bag Module
 - Summary: Built the entire Digital Bag module from scratch — database migration, backend services, React hooks, and 4 UI pages — enabling inventory issuance tracking, consumption logging per subject, and technician payout management.
 - Work done:
