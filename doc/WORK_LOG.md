@@ -3,6 +3,27 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-23 12:50:37 +05:30] Investigate & Confirm Categories + Product Types Fix
+- Summary: Investigated reported inability to add new categories and product types. Root cause confirmed as the Zod v4 `.partial()` crash (fixed in commit 9c5f7f5) which crashed the entire app at module evaluation, preventing ALL pages from loading — including categories and product-types pages.
+- Work done:
+  - Thoroughly examined the full data flow for categories: Page → Hook (useProductCategories) → Service (addProductCategory) → Repository (createProductCategory) → Supabase DB
+  - Thoroughly examined the full data flow for product types: Page → Hook (useProductTypes) → Service (addProductType) → Repository (createProductType) → Supabase DB
+  - Verified database operations work correctly: authenticated as super_admin, successfully created and deleted both a test category and a test product type via Supabase API
+  - Confirmed RLS policies are correct: read for all authenticated, write restricted to super_admin/office_staff/stock_manager
+  - Confirmed permissions config grants `inventory:create` to super_admin, office_staff, stock_manager
+  - Traced the crash propagation: product.validation.ts crash → imported by product.service.ts → imported by hooks → triggers AuthErrorBoundary in root layout → entire app shows "Something went wrong loading the application" error screen
+  - Verified the Zod fix (extracting productBaseSchema) resolves the crash: both schemas load and validate at runtime via tsx test
+  - Audited all other validation files (customer, stock-entry, brand, dealer, etc.) — no additional `.partial()` on refined schemas found
+  - Build passes: all 28 pages compile, zero TypeScript errors
+- Files changed: none (fix was already applied in commit 9c5f7f5)
+- Verification:
+  - Runtime test: `createProductSchema` and `updateProductSchema` load without crash, both validate correctly
+  - Database test: category and product type CRUD operations succeed via Supabase with proper auth
+  - Build: all 28 pages compile successfully
+  - TypeScript: zero type errors from `tsc --noEmit`
+- Bugs/Issues: none — the Zod v4 `.partial()` fix from commit 9c5f7f5 was the complete solution
+- Next: none
+
 ## [2026-03-23 12:40:12 +05:30] Fix Zod v4 .partial() Crash on Product Validation Schema
 - Summary: Fixed runtime crash ".partial() cannot be used on object schemas containing refinements" that broke the entire application on load. Root cause was Zod v4 breaking change — calling `.partial()` on a schema that already has `.refine()` is no longer allowed.
 - Work done:
