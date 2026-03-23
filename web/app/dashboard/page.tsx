@@ -89,7 +89,7 @@ export default function DashboardPage() {
         .select('total_pending');
       if (result.error) throw new Error(result.error.message);
       return (result.data ?? []).reduce(
-        (sum, row) => sum + Number((row as { total_pending: number }).total_pending || 0),
+        (sum: number, row: Record<string, unknown>) => sum + Number((row as { total_pending: number }).total_pending || 0),
         0,
       );
     },

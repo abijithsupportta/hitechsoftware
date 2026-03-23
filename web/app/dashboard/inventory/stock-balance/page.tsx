@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { Search, Package, AlertTriangle, XCircle, Info } from 'lucide-react';
-import { useStockLevels } from '@/hooks/products/useStockLevels';
+import { useStockLevels, type StockLevel } from '@/hooks/products/useStockLevels';
 import { useProductCategories } from '@/hooks/product-categories/useProductCategories';
 import { useProductTypes } from '@/hooks/product-types/useProductTypes';
 import { usePermission } from '@/hooks/auth/usePermission';
@@ -49,14 +49,14 @@ export default function StockBalancePage() {
     if (search) {
       const q = search.toLowerCase();
       result = result.filter(
-        (sl) =>
+        (sl: StockLevel) =>
           sl.product_name.toLowerCase().includes(q) ||
           sl.material_code.toLowerCase().includes(q),
       );
     }
 
     if (statusFilter !== 'all') {
-      result = result.filter((sl) => sl.stock_status === statusFilter);
+      result = result.filter((sl: StockLevel) => sl.stock_status === statusFilter);
     }
 
     return result;
@@ -64,8 +64,8 @@ export default function StockBalancePage() {
 
   // Summary stats
   const totalProducts = allLevels.length;
-  const lowStockCount = allLevels.filter((sl) => sl.stock_status === 'low_stock').length;
-  const outOfStockCount = allLevels.filter((sl) => sl.stock_status === 'out_of_stock').length;
+  const lowStockCount = allLevels.filter((sl: StockLevel) => sl.stock_status === 'low_stock').length;
+  const outOfStockCount = allLevels.filter((sl: StockLevel) => sl.stock_status === 'out_of_stock').length;
 
   return (
     <div className="space-y-5 p-6">
@@ -189,7 +189,7 @@ export default function StockBalancePage() {
                       </td>
                     </tr>
                   )
-                : filteredLevels.map((sl) => (
+                : filteredLevels.map((sl: StockLevel) => (
                     <tr key={sl.product_id} className="hover:bg-slate-50/50">
                       <td className="px-4 py-3">
                         <p className="text-sm font-medium text-slate-800">{sl.product_name}</p>

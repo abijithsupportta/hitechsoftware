@@ -3,6 +3,23 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-23 17:30:00 +05:30] Fix Cloudflare Pages Build — Supabase Client + TypeScript Errors
+- Summary: Fixed Next.js build failure on Cloudflare Pages caused by module-level Supabase client creation throwing when env vars are absent during SSG page-data collection.
+- Work done:
+  - Root cause: 20 repository files call `createClient()` at module level. `@supabase/ssr` throws when `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` are missing during Cloudflare build.
+  - Fixed `web/lib/supabase/client.ts` to provide harmless placeholder fallbacks when env vars are missing at build time. The build-time client is never used — browsers re-evaluate modules at runtime with real env vars.
+  - Fixed pre-existing TypeScript `noImplicitAny` errors in `stock-balance/page.tsx` (filter callbacks missing type annotations) and `dashboard/page.tsx` (reduce callback lacking parameter types) that were masked by the earlier build failure.
+- Files changed:
+  - web/lib/supabase/client.ts
+  - web/app/dashboard/inventory/stock-balance/page.tsx
+  - web/app/dashboard/page.tsx
+- Verification:
+  - `npx next build` completes successfully with no TypeScript errors
+  - All routes (static + dynamic) listed in build output
+- Next:
+  - Ensure `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are set in Cloudflare Pages environment variables dashboard
+  - Re-deploy on Cloudflare Pages
+
 ## [2026-03-23 17:24:04 +05:30] Push to Old GitHub Main
 - Summary: Pushed local `main` branch state to the old GitHub remote (`origin`).
 - Work done:
