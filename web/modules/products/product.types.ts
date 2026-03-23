@@ -51,6 +51,16 @@ export interface Product {
    * Used for tax classification on invoices.
    */
   hsn_sac_code: string | null;
+  /** Latest purchase cost recorded for this product */
+  purchase_price: number | null;
+  /** Maximum Retail Price used for commercial reference */
+  mrp: number | null;
+  /** Last known purchase price — auto-updated from the most recent stock entry */
+  default_purchase_price: number | null;
+  /** Floor selling price — cannot sell below this */
+  minimum_selling_price: number | null;
+  /** Weighted average cost computed from all stock entry items */
+  weighted_average_cost: number | null;
   /** Threshold quantity below which the product is flagged as Low Stock */
   minimum_stock_level: number;
   /** Movement classification: fast_moving, slow_moving, dead_stock, or unclassified */
@@ -79,6 +89,10 @@ export interface CreateProductInput {
   is_refurbished?: boolean;
   refurbished_label?: string | null;
   hsn_sac_code?: string | null;
+  purchase_price?: number | null;
+  mrp?: number | null;
+  default_purchase_price?: number | null;
+  minimum_selling_price?: number | null;
   minimum_stock_level?: number;
   stock_classification?: string;
   is_active?: boolean;

@@ -56,6 +56,10 @@ export const stockEntryItemSchema = z.object({
   material_code: materialCodeSchema,
   // Integer check: ensures no fractional quantities (e.g. 0.5 units is invalid)
   quantity: z.number().int().min(1, 'Quantity must be at least 1'),
+  // Pricing fields per stock entry line
+  purchase_price: z.number().min(0, 'Purchase price must be 0 or more'),
+  mrp: z.number().min(0, 'MRP must be 0 or more'),
+  selling_price: z.number().min(0, 'Selling price must be 0 or more').nullish(),
   hsn_sac_code: z.string().max(20).trim().nullish(),
 });
 

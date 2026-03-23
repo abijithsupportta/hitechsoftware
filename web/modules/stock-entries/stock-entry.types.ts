@@ -47,6 +47,14 @@ export interface StockEntryItem {
   /** Stored in UPPERCASE; denormalised from the product for historical integrity */
   material_code: string;
   quantity: number;
+  /** Actual price paid on this specific invoice */
+  purchase_price: number | null;
+  /** Suggested selling price for this batch */
+  selling_price: number | null;
+  /** MRP (Maximum Retail Price) for this batch */
+  mrp: number | null;
+  /** Auto-calculated: quantity × purchase_price */
+  total_purchase_value: number | null;
   /** GST HSN/SAC code copied from the product at the time of entry */
   hsn_sac_code: string | null;
   created_at: string;
@@ -79,6 +87,12 @@ export interface StockEntryItemInput {
   product_id: string | null;
   material_code: string;
   quantity: number;
+  /** Actual price paid on this invoice — mandatory */
+  purchase_price: number;
+  /** MRP for this batch — mandatory */
+  mrp: number;
+  /** Suggested selling price — optional, defaults to MRP */
+  selling_price?: number | null;
   hsn_sac_code?: string | null;
 }
 

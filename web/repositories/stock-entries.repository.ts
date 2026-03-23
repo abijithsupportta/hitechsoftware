@@ -58,6 +58,9 @@ export interface StockEntryItemInput {
   product_id: string | null;
   material_code: string;
   quantity: number;
+  purchase_price: number;
+  mrp: number;
+  selling_price?: number | null;
   hsn_sac_code?: string | null;
 }
 
@@ -71,6 +74,10 @@ export interface StockEntryItemRow {
   product_id: string | null;
   material_code: string;
   quantity: number;
+  purchase_price: number | null;
+  selling_price: number | null;
+  mrp: number | null;
+  total_purchase_value: number | null;
   hsn_sac_code: string | null;
   created_at: string;
   product: { id: string; product_name: string; material_code: string } | null;
@@ -141,7 +148,7 @@ export async function listStockEntries(filters: StockEntryFilters = {}) {
     .from('stock_entries')
     .select(
       `id,invoice_number,entry_date,notes,is_deleted,created_by,created_at,updated_at,
-       items:stock_entry_items(id,stock_entry_id,product_id,material_code,quantity,hsn_sac_code,created_at,product:inventory_products(id,product_name,material_code))`,
+       items:stock_entry_items(id,stock_entry_id,product_id,material_code,quantity,purchase_price,selling_price,mrp,total_purchase_value,hsn_sac_code,created_at,product:inventory_products(id,product_name,material_code))`,
       { count: 'exact' },
     )
     .eq('is_deleted', false)
@@ -167,7 +174,7 @@ export async function findStockEntryById(id: string) {
     .from('stock_entries')
     .select(
       `id,invoice_number,entry_date,notes,is_deleted,created_by,created_at,updated_at,
-       items:stock_entry_items(id,stock_entry_id,product_id,material_code,quantity,hsn_sac_code,created_at,product:inventory_products(id,product_name,material_code))`,
+       items:stock_entry_items(id,stock_entry_id,product_id,material_code,quantity,purchase_price,selling_price,mrp,total_purchase_value,hsn_sac_code,created_at,product:inventory_products(id,product_name,material_code))`,
     )
     .eq('id', id)
     .eq('is_deleted', false)
@@ -210,6 +217,9 @@ export async function createStockEntry(input: CreateStockEntryInput) {
     product_id: item.product_id,
     material_code: item.material_code.trim().toUpperCase(),
     quantity: item.quantity,
+    purchase_price: item.purchase_price,
+    mrp: item.mrp,
+    selling_price: item.selling_price ?? null,
     hsn_sac_code: item.hsn_sac_code?.trim() ?? null,
   }));
 

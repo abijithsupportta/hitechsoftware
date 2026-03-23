@@ -51,7 +51,7 @@
  */
 
 import Link from 'next/link';
-import { Plus, Search, Pencil, Trash2, RefreshCw, Package, AlertTriangle } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, RefreshCw, Package, AlertTriangle, Info } from 'lucide-react';
 import { useProducts } from '@/hooks/products/useProducts';
 import { useProductCategories } from '@/hooks/product-categories/useProductCategories';
 import { useProductTypes } from '@/hooks/product-types/useProductTypes';
@@ -59,6 +59,16 @@ import { useStockLevels } from '@/hooks/products/useStockLevels';
 import { usePermission } from '@/hooks/auth/usePermission';
 import { ROUTES } from '@/lib/constants/routes';
 import { useState, useMemo } from 'react';
+
+function formatCurrency(value: number | null) {
+  if (value === null) return null;
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
 
 export default function ProductsPage() {
   const { can } = usePermission();
@@ -205,6 +215,20 @@ export default function ProductsPage() {
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Material Code</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Category</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Type</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Last Bought At</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">MRP</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <span className="inline-flex items-center gap-1">
+                  Avg Cost
+                  <span className="group relative">
+                    <Info size={12} className="text-slate-400 cursor-help" />
+                    <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-52 rounded-lg bg-slate-800 px-3 py-2 text-xs font-normal normal-case tracking-normal text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                      Weighted average cost calculated from all purchase history for this product.
+                    </span>
+                  </span>
+                </span>
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Min Selling Price</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Stock</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">HSN/SAC</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Flags</th>
@@ -216,7 +240,7 @@ export default function ProductsPage() {
             {isLoading
               ? Array.from({ length: 6 }).map((_, i) => (
                   <tr key={`skel-${i}`} className="animate-pulse">
-                    {Array.from({ length: 9 }).map((__, j) => (
+                    {Array.from({ length: 13 }).map((__, j) => (
                       <td key={j} className="px-4 py-3">
                         <div className="h-4 w-24 rounded bg-slate-200" />
                       </td>
@@ -226,7 +250,7 @@ export default function ProductsPage() {
               : error
                 ? (
                     <tr>
-                      <td colSpan={9} className="px-4 py-10 text-center text-sm text-rose-600">
+                      <td colSpan={13} className="px-4 py-10 text-center text-sm text-rose-600">
                         {error}
                       </td>
                     </tr>
@@ -234,7 +258,7 @@ export default function ProductsPage() {
                 : items.length === 0
                   ? (
                       <tr>
-                        <td colSpan={9} className="px-4 py-10 text-center">
+                        <td colSpan={13} className="px-4 py-10 text-center">
                           <div className="flex flex-col items-center gap-2 text-slate-400">
                             <Package size={32} className="opacity-40" />
                             <p className="text-sm">No products found.</p>
@@ -260,6 +284,18 @@ export default function ProductsPage() {
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-600">
                           {item.product_type?.name ?? <span className="text-slate-300">—</span>}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-600">
+                          {formatCurrency(item.default_purchase_price ?? item.purchase_price) ?? <span className="text-slate-300">—</span>}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-600">
+                          {formatCurrency(item.mrp) ?? <span className="text-slate-300">—</span>}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-600">
+                          {formatCurrency(item.weighted_average_cost) ?? <span className="text-slate-300">—</span>}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-600">
+                          {formatCurrency(item.minimum_selling_price) ?? <span className="text-slate-300">—</span>}
                         </td>
                         <td className="px-4 py-3">
                           {(() => {

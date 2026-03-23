@@ -3,6 +3,105 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-23 17:15:00 +05:30] Fix Vercel Deployment Build Failure
+- Summary: Fixed Vercel build failure caused by `cd web && npx turbo build` command failing with "No such file or directory" error on Vercel's build environment.
+- Work done:
+  - Root cause: `vercel.json` used `cd web && npx turbo build` as the build command, which failed in Vercel's Turborepo-detected build environment where the working directory context was altered.
+  - Fix: Changed build command from `"cd web && npx turbo build"` to `"npx turbo build --filter=web"` — the proper Turborepo pattern for filtering builds to a specific workspace package.
+  - Re-added external remote `git@github.com:cbabi2023/hitechsoftware.git` (was missing from local config).
+- Files changed:
+  - vercel.json
+- Verification:
+  - `npx next build` compiled successfully in 12.6s — zero errors
+  - All 44 routes generated successfully
+- Bugs/Issues: External git remote `cbabi2023/hitechsoftware` was missing from local config — re-added.
+- Next:
+  - Push to both origin and external remotes
+  - Verify Vercel deployment succeeds after push
+
+## [2026-03-23 16:30:00 +05:30] Stock Pricing System — Per-Entry Purchase Price, MRP, Selling Price
+- Summary: Implemented full stock pricing system separating purchase price, MRP, and selling price at the stock entry level with weighted average cost calculation.
+- Work done:
+  - Created migration `20260323_021_stock_pricing.sql`:
+    - Added `default_purchase_price`, `minimum_selling_price`, `weighted_average_cost` columns to `inventory_products`
+    - Added `purchase_price`, `selling_price`, `mrp`, `total_purchase_value` (generated) columns to `stock_entry_items`
+    - Created `calculate_weighted_average_cost(product_id)` function
+    - Created trigger `trg_stock_entry_items_pricing` to auto-update product WAC and default purchase price on insert/update
+    - Updated `current_stock_levels` view with `latest_purchase_price`, `weighted_average_cost`, `mrp`, `total_stock_value`
+  - Updated product module types (`product.types.ts`): added `default_purchase_price`, `minimum_selling_price`, `weighted_average_cost`
+  - Updated product validation (`product.validation.ts`): added Zod rules for new fields
+  - Updated products repository (`products.repository.ts`): added new fields to `ProductRow`, `CreateProductInput`, `SELECT_COLS`, `createProduct`, `updateProduct`
+  - Updated `ProductForm.tsx`: added minimum_selling_price input field with helper text
+  - Updated stock entry types (`stock-entry.types.ts`): added `purchase_price`, `selling_price`, `mrp`, `total_purchase_value` to `StockEntryItem` and input types
+  - Updated stock entry validation (`stock-entry.validation.ts`): made `purchase_price` and `mrp` mandatory, `selling_price` optional
+  - Updated stock entries repository (`stock-entries.repository.ts`): added pricing fields to item interfaces, select queries, and insert payload
+  - Updated stock entry form (`stock/new/page.tsx`): added Purchase Price, MRP, Selling Price fields per line item; auto-fills MRP from product master; shows per-line Total Purchase Value and Grand Total
+  - Updated products list page (`products/page.tsx`): replaced "Purchase Price" with "Last Bought At" (default_purchase_price), added "Avg Cost" with info tooltip, added "Min Selling Price" column
+  - Updated `useStockLevels.ts` hook: added `latest_purchase_price`, `weighted_average_cost`, `mrp`, `total_stock_value` to StockLevel interface
+  - Updated stock balance page (`stock-balance/page.tsx`): added Latest Purchase Price, Avg Cost (with tooltip), MRP, Total Stock Value columns
+  - Updated stock list page (`stock/page.tsx`): added Purchase Price, MRP, Total columns to expanded entry items table
+- Files changed:
+  - supabase/migrations/20260323_021_stock_pricing.sql (new)
+  - web/modules/products/product.types.ts
+  - web/modules/products/product.validation.ts
+  - web/repositories/products.repository.ts
+  - web/components/inventory/ProductForm.tsx
+  - web/modules/stock-entries/stock-entry.types.ts
+  - web/modules/stock-entries/stock-entry.validation.ts
+  - web/repositories/stock-entries.repository.ts
+  - web/app/dashboard/inventory/stock/new/page.tsx
+  - web/app/dashboard/inventory/products/page.tsx
+  - web/hooks/products/useStockLevels.ts
+  - web/app/dashboard/inventory/stock-balance/page.tsx
+  - web/app/dashboard/inventory/stock/page.tsx
+  - doc/WORK_LOG.md
+- Verification:
+  - `npx next build` compiled successfully in 11.5s — zero TypeScript errors
+  - `get_errors` returned no errors
+  - All 44 routes generated successfully
+- Next:
+  - Apply migration `20260323_021_stock_pricing.sql` to Supabase database
+  - Verify selling price >= MRP enforcement in billing/subject_accessories flows
+  - Git commit and push to origin/main and external repo
+
+## [2026-03-23 18:00:00 +05:30] Add Purchase Price and MRP to Products
+- Summary: Added purchase price and MRP support to inventory products so both values can be stored, edited, and viewed in the product catalogue.
+- Work done:
+  - Added Supabase migration to add `purchase_price` and `mrp` columns with non-negative checks
+  - Extended product types, validation, and repository payloads/selects with pricing fields
+  - Added purchase price and MRP inputs to the shared product create/edit form
+  - Added purchase price and MRP columns to the products list page with INR currency formatting
+- Files changed:
+  - supabase/migrations/20260323_020_add_product_pricing.sql
+  - web/modules/products/product.types.ts
+  - web/modules/products/product.validation.ts
+  - web/repositories/products.repository.ts
+  - web/components/inventory/ProductForm.tsx
+  - web/app/dashboard/inventory/products/page.tsx
+  - doc/WORK_LOG.md
+- Verification:
+  - Next.js production build passed after implementing the pricing fields
+  - Product create/update/list flow reviewed end to end for pricing support
+- Next:
+  - Apply the new Supabase migration before using the pricing fields in a live environment
+
+## [2026-03-23 17:45:00 +05:30] Enable Add Buttons for Categories and Product Types
+- Summary: Enabled the Add buttons on inventory category and product type pages so they are clickable even before text is entered, while preserving validation on submit.
+- Work done:
+  - Removed the `!newName.trim()` disabled condition from both Add buttons
+  - Added explicit toast validation for empty category submission
+  - Added explicit toast validation for empty product type submission
+  - Trimmed submitted values before sending mutations
+- Files changed:
+  - web/app/dashboard/inventory/categories/page.tsx
+  - web/app/dashboard/inventory/product-types/page.tsx
+  - doc/WORK_LOG.md
+- Verification:
+  - Logic reviewed to confirm buttons are only disabled during pending mutation state
+  - Submission guard remains in place for empty values
+- Next:
+  - None
+
 ## [2026-03-23 17:34:00 +05:30] Force Push Repository to External Main Branch
 - Summary: Force-pushed the current repository contents to the `main` branch of the external GitHub repository after a non-fast-forward rejection.
 - Work done:

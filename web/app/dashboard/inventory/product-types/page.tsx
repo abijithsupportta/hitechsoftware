@@ -24,6 +24,7 @@
  */
 
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { Check, Pencil, Trash2, X, Plus } from 'lucide-react';
 import { useProductTypes } from '@/hooks/product-types/useProductTypes';
 import { usePermission } from '@/hooks/auth/usePermission';
@@ -48,9 +49,12 @@ export default function ProductTypesPage() {
 
   const handleCreate = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!newName.trim()) return;
+    if (!newName.trim()) {
+      toast.error('Enter a product type name before adding.');
+      return;
+    }
     try {
-      const result = await createMutation.mutateAsync({ name: newName });
+      const result = await createMutation.mutateAsync({ name: newName.trim() });
       if (result.ok) setNewName('');
     } catch {
       // onError callback in the hook shows the toast
@@ -101,7 +105,7 @@ export default function ProductTypesPage() {
             />
             <button
               type="submit"
-              disabled={createMutation.isPending || !newName.trim()}
+              disabled={createMutation.isPending}
               className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
             >
               <Plus size={14} />

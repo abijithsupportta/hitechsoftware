@@ -17,6 +17,10 @@ export interface StockLevel {
   total_received: number;
   current_quantity: number;
   last_received_date: string | null;
+  latest_purchase_price: number | null;
+  weighted_average_cost: number | null;
+  mrp: number | null;
+  total_stock_value: number | null;
   stock_status: 'in_stock' | 'low_stock' | 'out_of_stock';
 }
 

@@ -107,6 +107,10 @@ export function ProductForm({ defaultValues, onSubmit, isSubmitting, submitLabel
       is_refurbished: defaultValues?.is_refurbished ?? false,
       refurbished_label: defaultValues?.refurbished_label ?? '',
       hsn_sac_code: defaultValues?.hsn_sac_code ?? '',
+      purchase_price: defaultValues?.purchase_price ?? null,
+      mrp: defaultValues?.mrp ?? null,
+      default_purchase_price: defaultValues?.default_purchase_price ?? null,
+      minimum_selling_price: defaultValues?.minimum_selling_price ?? null,
       minimum_stock_level: defaultValues?.minimum_stock_level ?? 5,
       is_active: defaultValues?.is_active ?? true,
     },
@@ -131,6 +135,10 @@ export function ProductForm({ defaultValues, onSubmit, isSubmitting, submitLabel
         is_refurbished: defaultValues.is_refurbished ?? false,
         refurbished_label: defaultValues.refurbished_label ?? '',
         hsn_sac_code: defaultValues.hsn_sac_code ?? '',
+        purchase_price: defaultValues.purchase_price ?? null,
+        mrp: defaultValues.mrp ?? null,
+        default_purchase_price: defaultValues.default_purchase_price ?? null,
+        minimum_selling_price: defaultValues.minimum_selling_price ?? null,
         minimum_stock_level: defaultValues.minimum_stock_level ?? 5,
         is_active: defaultValues.is_active ?? true,
       });
@@ -186,6 +194,64 @@ export function ProductForm({ defaultValues, onSubmit, isSubmitting, submitLabel
               placeholder="e.g. 84158100"
               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             />
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">Purchase Price</label>
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              {...register('purchase_price', {
+                setValueAs: (value) => value === '' ? null : Number(value),
+              })}
+              placeholder="e.g. 1250.00"
+              className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
+                errors.purchase_price ? 'border-rose-400' : 'border-slate-200 focus:border-blue-500'
+              }`}
+            />
+            {errors.purchase_price && (
+              <p className="mt-1 text-xs text-rose-600">{errors.purchase_price.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">MRP</label>
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              {...register('mrp', {
+                setValueAs: (value) => value === '' ? null : Number(value),
+              })}
+              placeholder="e.g. 1499.00"
+              className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
+                errors.mrp ? 'border-rose-400' : 'border-slate-200 focus:border-blue-500'
+              }`}
+            />
+            {errors.mrp && (
+              <p className="mt-1 text-xs text-rose-600">{errors.mrp.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">Minimum Selling Price</label>
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              {...register('minimum_selling_price', {
+                setValueAs: (value) => value === '' ? null : Number(value),
+              })}
+              placeholder="Floor selling price"
+              className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
+                errors.minimum_selling_price ? 'border-rose-400' : 'border-slate-200 focus:border-blue-500'
+              }`}
+            />
+            {errors.minimum_selling_price && (
+              <p className="mt-1 text-xs text-rose-600">{errors.minimum_selling_price.message}</p>
+            )}
+            <p className="mt-1 text-xs text-slate-400">Cannot sell below this price. Defaults to MRP if not set.</p>
           </div>
 
           {/* Minimum Stock Level */}

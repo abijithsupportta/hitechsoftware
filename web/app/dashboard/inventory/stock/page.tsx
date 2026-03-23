@@ -219,6 +219,9 @@ export default function StockEntriesPage() {
                                 <th className="pb-2 font-medium">Material Code</th>
                                 <th className="pb-2 font-medium">HSN/SAC</th>
                                 <th className="pb-2 text-right font-medium">Qty</th>
+                                <th className="pb-2 text-right font-medium">Purchase Price</th>
+                                <th className="pb-2 text-right font-medium">MRP</th>
+                                <th className="pb-2 text-right font-medium">Total</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -237,6 +240,15 @@ export default function StockEntriesPage() {
                                   </td>
                                   <td className="py-1.5 text-right font-semibold text-slate-800">
                                     {item.quantity}
+                                  </td>
+                                  <td className="py-1.5 text-right text-slate-600">
+                                    {item.purchase_price != null ? `₹${Number(item.purchase_price).toFixed(2)}` : '—'}
+                                  </td>
+                                  <td className="py-1.5 text-right text-slate-600">
+                                    {item.mrp != null ? `₹${Number(item.mrp).toFixed(2)}` : '—'}
+                                  </td>
+                                  <td className="py-1.5 text-right font-semibold text-slate-800">
+                                    {item.total_purchase_value != null ? `₹${Number(item.total_purchase_value).toFixed(2)}` : '—'}
                                   </td>
                                 </tr>
                               ))}

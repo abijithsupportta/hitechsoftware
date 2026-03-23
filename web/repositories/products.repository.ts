@@ -59,6 +59,11 @@ export interface ProductRow {
   is_refurbished: boolean;
   refurbished_label: string | null;
   hsn_sac_code: string | null;
+  purchase_price: number | null;
+  mrp: number | null;
+  default_purchase_price: number | null;
+  minimum_selling_price: number | null;
+  weighted_average_cost: number | null;
   minimum_stock_level: number;
   stock_classification: string;
   is_active: boolean;
@@ -89,6 +94,10 @@ export interface CreateProductInput {
   is_refurbished?: boolean;
   refurbished_label?: string | null;
   hsn_sac_code?: string | null;
+  purchase_price?: number | null;
+  mrp?: number | null;
+  default_purchase_price?: number | null;
+  minimum_selling_price?: number | null;
   minimum_stock_level?: number;
   stock_classification?: string;
   is_active?: boolean;
@@ -120,6 +129,8 @@ const SELECT_COLS = `
   id,product_name,description,material_code,
   category_id,product_type_id,
   is_refurbished,refurbished_label,hsn_sac_code,
+  purchase_price,mrp,
+  default_purchase_price,minimum_selling_price,weighted_average_cost,
   minimum_stock_level,stock_classification,
   is_active,is_deleted,created_at,updated_at,
   category:product_categories(id,name),
@@ -223,6 +234,10 @@ export async function createProduct(input: CreateProductInput) {
       is_refurbished: input.is_refurbished ?? false,
       refurbished_label: input.is_refurbished ? (input.refurbished_label?.trim() ?? null) : null,
       hsn_sac_code: input.hsn_sac_code?.trim() ?? null,
+      purchase_price: input.purchase_price ?? null,
+      mrp: input.mrp ?? null,
+      default_purchase_price: input.default_purchase_price ?? null,
+      minimum_selling_price: input.minimum_selling_price ?? null,
       minimum_stock_level: input.minimum_stock_level ?? 5,
       is_active: input.is_active ?? true,
     })
@@ -255,6 +270,10 @@ export async function updateProduct(id: string, input: Partial<CreateProductInpu
   }
   if (input.refurbished_label !== undefined) payload.refurbished_label = input.refurbished_label?.trim() ?? null;
   if (input.hsn_sac_code !== undefined) payload.hsn_sac_code = input.hsn_sac_code?.trim() ?? null;
+  if (input.purchase_price !== undefined) payload.purchase_price = input.purchase_price ?? null;
+  if (input.mrp !== undefined) payload.mrp = input.mrp ?? null;
+  if (input.default_purchase_price !== undefined) payload.default_purchase_price = input.default_purchase_price ?? null;
+  if (input.minimum_selling_price !== undefined) payload.minimum_selling_price = input.minimum_selling_price ?? null;
   if (input.minimum_stock_level !== undefined) payload.minimum_stock_level = input.minimum_stock_level;
   if (input.stock_classification !== undefined) payload.stock_classification = input.stock_classification;
   if (input.is_active !== undefined) payload.is_active = input.is_active;

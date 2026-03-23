@@ -313,7 +313,7 @@ export default function NewStockEntryPage() {
       invoice_number: '',
       entry_date: today(),
       notes: null,
-      items: [{ product_id: null, material_code: '', quantity: 1, hsn_sac_code: null }],
+      items: [{ product_id: null, material_code: '', quantity: 1, purchase_price: 0, mrp: 0, selling_price: null, hsn_sac_code: null }],
     },
   });
 
@@ -327,6 +327,10 @@ export default function NewStockEntryPage() {
         setValue(`items.${index}.product_id`, product.id);
         setValue(`items.${index}.material_code`, product.material_code);
         setValue(`items.${index}.hsn_sac_code`, product.hsn_sac_code ?? '');
+        // Auto-fill MRP from product master (editable by user)
+        if (product.mrp != null) {
+          setValue(`items.${index}.mrp`, product.mrp);
+        }
       } else {
         setValue(`items.${index}.product_id`, null);
         setValue(`items.${index}.material_code`, '');
@@ -435,7 +439,7 @@ export default function NewStockEntryPage() {
             <h2 className="text-sm font-semibold text-slate-700">Items</h2>
             <button
               type="button"
-              onClick={() => append({ product_id: null, material_code: '', quantity: 1, hsn_sac_code: null })}
+              onClick={() => append({ product_id: null, material_code: '', quantity: 1, purchase_price: 0, mrp: 0, selling_price: null, hsn_sac_code: null })}
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
             >
               <Plus size={12} />
@@ -552,7 +556,7 @@ export default function NewStockEntryPage() {
                     {/* Quantity */}
                     <div>
                       <label className="mb-1 block text-xs font-medium text-slate-600">
-                        Quantity <span className="text-rose-500">*</span>
+                        Quantity Received <span className="text-rose-500">*</span>
                       </label>
                       <input
                         type="number"
@@ -571,6 +575,71 @@ export default function NewStockEntryPage() {
                       )}
                     </div>
 
+                    {/* Purchase Price */}
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-slate-600">
+                        Purchase Price (what you paid) <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        {...register(`items.${index}.purchase_price`, { valueAsNumber: true })}
+                        placeholder="e.g. 45.00"
+                        className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
+                          errors.items?.[index]?.purchase_price
+                            ? 'border-rose-400'
+                            : 'border-slate-200 focus:border-blue-500'
+                        }`}
+                      />
+                      {errors.items?.[index]?.purchase_price && (
+                        <p className="mt-0.5 text-xs text-rose-600">
+                          {errors.items[index].purchase_price?.message}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* MRP */}
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-slate-600">
+                        MRP (printed on product) <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        {...register(`items.${index}.mrp`, { valueAsNumber: true })}
+                        placeholder="e.g. 99.00"
+                        className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
+                          errors.items?.[index]?.mrp
+                            ? 'border-rose-400'
+                            : 'border-slate-200 focus:border-blue-500'
+                        }`}
+                      />
+                      {errors.items?.[index]?.mrp && (
+                        <p className="mt-0.5 text-xs text-rose-600">
+                          {errors.items[index].mrp?.message}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Selling Price */}
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-slate-600">
+                        Selling Price (suggested)
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        {...register(`items.${index}.selling_price`, {
+                          setValueAs: (value: string) => value === '' ? null : Number(value),
+                        })}
+                        placeholder="Defaults to MRP if not set"
+                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                      />
+                    </div>
+
                     {/* HSN/SAC */}
                     <div>
                       <label className="mb-1 block text-xs font-medium text-slate-600">
@@ -583,11 +652,44 @@ export default function NewStockEntryPage() {
                       />
                     </div>
                   </div>
+
+                  {/* Per-line Total Purchase Value */}
+                  {(() => {
+                    const qty = watchItems[index]?.quantity ?? 0;
+                    const pp = watchItems[index]?.purchase_price ?? 0;
+                    const lineTotal = qty * pp;
+                    return lineTotal > 0 ? (
+                      <div className="mt-3 flex items-center justify-end rounded-lg bg-blue-50 px-3 py-2">
+                        <span className="text-xs font-medium text-blue-700">
+                          Total Purchase Value: ₹{lineTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    ) : null;
+                  })()}
                 </div>
               );
             })}
           </div>
         </div>
+
+        {/* Grand Total */}
+        {(() => {
+          const grandTotal = (watchItems ?? []).reduce((sum, item) => {
+            const qty = item?.quantity ?? 0;
+            const pp = item?.purchase_price ?? 0;
+            return sum + qty * pp;
+          }, 0);
+          return grandTotal > 0 ? (
+            <div className="rounded-xl border border-green-200 bg-green-50 p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-green-800">Grand Total (Purchase Value)</span>
+                <span className="text-lg font-bold text-green-900">
+                  ₹{grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+          ) : null;
+        })()}
 
         {/* Submit */}
         <div className="flex justify-end gap-3">
