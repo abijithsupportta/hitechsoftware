@@ -3,6 +3,23 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-23 18:20:00 +05:30] Switch to Vercel — Remove Cloudflare Artifacts
+- Summary: Deployment moved to Vercel (no issues). Removed all Cloudflare-specific packages, scripts, and config files.
+- Work done:
+  - Removed `@opennextjs/cloudflare` and `wrangler` from web/package.json
+  - Removed `pages:build` and `pages:preview` scripts from web/package.json
+  - Deleted `wrangler.toml` (root), `web/wrangler.toml`, and `web/.open-next/` build artifacts
+- Files changed:
+  - web/package.json
+  - package-lock.json
+  - wrangler.toml (deleted)
+  - web/wrangler.toml (deleted)
+  - web/.open-next/ (deleted)
+- Verification:
+  - Deployed successfully on Vercel
+- Next:
+  - none
+
 ## [2026-03-23 18:10:00 +05:30] Fix Cloudflare Pages Deployment — Add @cloudflare/next-on-pages Adapter
 - Summary: Build succeeded but deploy failed because there was no Cloudflare adapter for Next.js. Installed @cloudflare/next-on-pages and wrangler, created wrangler.toml, and added Cloudflare Pages build scripts.
 - Work done:
