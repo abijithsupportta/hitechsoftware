@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Briefcase, Plus, Search, X, Eye } from 'lucide-react';
+import { Briefcase, Plus, X, Eye } from 'lucide-react';
 import { usePermission } from '@/hooks/auth/usePermission';
 import { useDigitalBagSessions } from '@/hooks/digital-bag/useDigitalBag';
 import { useTeam } from '@/hooks/team/useTeam';
@@ -10,7 +10,6 @@ import { useAuthStore } from '@/stores/auth.store';
 import { ROUTES } from '@/lib/constants/routes';
 import { SESSION_STATUS_LABELS, SESSION_STATUS_COLORS } from '@/modules/digital-bag/digital-bag.constants';
 import type { BagSessionStatus, CreateSessionInput, CreateBagItemInput } from '@/modules/digital-bag/digital-bag.types';
-import type { UserRole } from '@/types/database.types';
 
 export default function DigitalBagDashboardPage() {
   const { can } = usePermission();
@@ -277,7 +276,7 @@ export default function DigitalBagDashboardPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <Link
-                            href={ROUTES.DASHBOARD_DIGITAL_BAG_DETAIL(session.technician_id)}
+                            href={ROUTES.DASHBOARD_DIGITAL_BAG_DETAIL(session.id)}
                             className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
                           >
                             <Eye size={14} /> View

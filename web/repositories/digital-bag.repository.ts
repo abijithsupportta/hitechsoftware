@@ -106,14 +106,17 @@ export async function updateSession(id: string, data: Record<string, unknown>) {
 }
 
 export async function closeSession(id: string, notes?: string) {
+  const updateData: Record<string, unknown> = {
+    status: 'closed',
+    closed_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+  if (notes !== undefined) {
+    updateData.notes = notes;
+  }
   return supabase
     .from('digital_bag_sessions')
-    .update({
-      status: 'closed',
-      closed_at: new Date().toISOString(),
-      notes: notes ?? null,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updateData)
     .eq('id', id)
     .select(SESSION_SELECT)
     .single();
@@ -212,13 +215,15 @@ export async function addConsumption(data: {
 
   if (fetchErr || !currentItem) return { data: consumption, error: fetchErr };
 
-  await supabase
+  const { error: updateErr } = await supabase
     .from('digital_bag_items')
     .update({
       quantity_consumed: currentItem.quantity_consumed + data.quantity,
       updated_at: new Date().toISOString(),
     })
     .eq('id', data.bag_item_id);
+
+  if (updateErr) return { data: consumption, error: updateErr };
 
   return { data: consumption, error: null };
 }

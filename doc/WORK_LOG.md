@@ -3,6 +3,29 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-23 15:05:00 +05:30] Code Review & Bug Fixes — Digital Bag Module
+- Summary: Ran full build + code review. Found and fixed 1 critical bug, 3 medium bugs, and 2 low issues in the Digital Bag module.
+- Work done:
+  - **Critical fix**: "View" link on digital-bag dashboard passed `technician_id` instead of `session.id`, causing "Session not found" on every click. Fixed to use `session.id`.
+  - **Route param rename**: `DASHBOARD_DIGITAL_BAG_DETAIL` parameter renamed from `technicianId` to `sessionId` for clarity.
+  - **closeSession notes erasure**: `closeSession()` unconditionally set `notes: null` when called without notes arg (e.g. from "Close" button). Fixed to only include `notes` in update when explicitly provided.
+  - **Nav/permission mismatch**: Digital Bag sidebar showed for `office_staff` and `stock_manager` but permissions only grant access to `super_admin` and `technician`. Fixed nav to `['super_admin']` only.
+  - **Unchecked error in addConsumption**: The `quantity_consumed` update result was not checked. Added error handling.
+  - **Unused imports**: Removed `Search` and `UserRole` unused imports from digital-bag page.
+- Files changed:
+  - web/app/dashboard/digital-bag/page.tsx (fixed View link ID, removed unused imports)
+  - web/lib/constants/routes.ts (renamed param technicianId → sessionId)
+  - web/repositories/digital-bag.repository.ts (fixed closeSession notes, addConsumption error check)
+  - web/app/dashboard/layout.tsx (Digital Bag allowedRoles → super_admin only)
+  - doc/WORK_LOG.md (updated)
+- Verification:
+  - Next.js production build passed with zero errors
+  - No TypeScript/lint errors in IDE
+  - All 30 static pages and dynamic routes compiled successfully
+- Next:
+  - Consider adding over-return validation (quantity_returned > quantity_issued guard)
+  - Consider using Supabase RPC for atomic increment in returnBagItem/addConsumption to prevent race conditions
+
 ## [2026-03-23 14:34:36 +05:30] Restore Technician Calendar with Full Task Details
 - Summary: Restored the Attendance calendar sidebar item for technicians and enhanced it to show allocated task details for any selected day (not just today). Each day's tasks are now clickable links to the subject detail page.
 - Work done:
