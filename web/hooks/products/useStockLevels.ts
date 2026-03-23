@@ -1,0 +1,40 @@
+/**
+ * @file useStockLevels.ts
+ * @module hooks/products
+ *
+ * @description
+ * React Query hook for fetching current stock levels from the
+ * `current_stock_levels` database view.
+ */
+import { useQuery } from '@tanstack/react-query';
+import { createClient } from '@/lib/supabase/client';
+
+export interface StockLevel {
+  product_id: string;
+  material_code: string;
+  product_name: string;
+  minimum_stock_level: number;
+  total_received: number;
+  current_quantity: number;
+  last_received_date: string | null;
+  stock_status: 'in_stock' | 'low_stock' | 'out_of_stock';
+}
+
+const supabase = createClient();
+
+async function fetchStockLevels() {
+  const { data, error } = await supabase
+    .from('current_stock_levels')
+    .select('*')
+    .returns<StockLevel[]>();
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export function useStockLevels() {
+  return useQuery({
+    queryKey: ['stock-levels'],
+    queryFn: fetchStockLevels,
+  });
+}

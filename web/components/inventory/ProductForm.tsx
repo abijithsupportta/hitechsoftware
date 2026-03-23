@@ -107,6 +107,7 @@ export function ProductForm({ defaultValues, onSubmit, isSubmitting, submitLabel
       is_refurbished: defaultValues?.is_refurbished ?? false,
       refurbished_label: defaultValues?.refurbished_label ?? '',
       hsn_sac_code: defaultValues?.hsn_sac_code ?? '',
+      minimum_stock_level: defaultValues?.minimum_stock_level ?? 5,
       is_active: defaultValues?.is_active ?? true,
     },
   });
@@ -130,6 +131,7 @@ export function ProductForm({ defaultValues, onSubmit, isSubmitting, submitLabel
         is_refurbished: defaultValues.is_refurbished ?? false,
         refurbished_label: defaultValues.refurbished_label ?? '',
         hsn_sac_code: defaultValues.hsn_sac_code ?? '',
+        minimum_stock_level: defaultValues.minimum_stock_level ?? 5,
         is_active: defaultValues.is_active ?? true,
       });
     }
@@ -184,6 +186,24 @@ export function ProductForm({ defaultValues, onSubmit, isSubmitting, submitLabel
               placeholder="e.g. 84158100"
               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             />
+          </div>
+
+          {/* Minimum Stock Level */}
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">Minimum Stock Level</label>
+            <input
+              type="number"
+              min={0}
+              {...register('minimum_stock_level', { valueAsNumber: true })}
+              placeholder="5"
+              className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
+                errors.minimum_stock_level ? 'border-rose-400' : 'border-slate-200 focus:border-blue-500'
+              }`}
+            />
+            {errors.minimum_stock_level && (
+              <p className="mt-1 text-xs text-rose-600">{errors.minimum_stock_level.message}</p>
+            )}
+            <p className="mt-1 text-xs text-slate-400">Products below this quantity will show as Low Stock alert.</p>
           </div>
 
           {/* Description */}

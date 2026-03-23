@@ -3,6 +3,79 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-23 14:30:00 +05:30] Inventory Module Cleanup — Remove Old System & Complete New System
+- Summary: Removed the entire old inventory system (Migration 001 tables/code) and enhanced the new system (Migration 016) with stock level tracking, minimum stock level, stock classification, and a new Stock Balance dashboard page.
+- Work done:
+  - Deleted 14 old system files: repositories (inventory.repository.ts, stock.repository.ts), modules (inventory.service/types/constants/validation.ts), hooks (useInventory.ts, useInventoryItem.ts), components (InventoryForm.tsx, StockBadge.tsx, StockAdjustmentForm.tsx), pages ([id]/page.tsx, [id]/edit/page.tsx, new/page.tsx)
+  - Cleaned up 5 empty directories after deletions
+  - Verified zero broken imports across entire codebase — all importing files were themselves deleted
+  - Created Migration 018 (20260322_018_inventory_cleanup.sql):
+    - Drops old tables (digital_bag_approvals, digital_bag_items, digital_bag, stock_transactions, stock, inventory) only if empty
+    - Adds minimum_stock_level (int, default 5) and stock_classification (text, default 'unclassified') columns to inventory_products
+    - Creates current_stock_levels view aggregating stock_entry_items quantity per product
+  - Updated product types (product.types.ts) with minimum_stock_level and stock_classification fields
+  - Updated product validation (product.validation.ts) with minimum_stock_level as optional number min 0 default 5
+  - Updated products repository (products.repository.ts) with new columns in SELECT, create, and update
+  - Added Minimum Stock Level field to ProductForm.tsx with helper text
+  - Created useStockLevels.ts hook for fetching from current_stock_levels view
+  - Updated products list page: added Stock column with colored badges (green/amber/red), Low Stock filter button, 9-column layout
+  - Created Stock Balance page (stock-balance/page.tsx) with summary cards, search, status filter, and table
+  - Added Stock Balance to inventory layout tab navigation and sidebar navigation
+  - Added DASHBOARD_INVENTORY_STOCK_BALANCE route constant
+- Files changed:
+  - DELETED: web/repositories/inventory.repository.ts, web/repositories/stock.repository.ts
+  - DELETED: web/modules/inventory/inventory.service.ts, inventory.types.ts, inventory.constants.ts, inventory.validation.ts
+  - DELETED: web/hooks/inventory/useInventory.ts, useInventoryItem.ts
+  - DELETED: web/components/inventory/InventoryForm.tsx, StockBadge.tsx, StockAdjustmentForm.tsx
+  - DELETED: web/app/dashboard/inventory/[id]/page.tsx, [id]/edit/page.tsx, new/page.tsx
+  - NEW: supabase/migrations/20260322_018_inventory_cleanup.sql
+  - NEW: web/hooks/products/useStockLevels.ts
+  - NEW: web/app/dashboard/inventory/stock-balance/page.tsx
+  - MODIFIED: web/modules/products/product.types.ts
+  - MODIFIED: web/modules/products/product.validation.ts
+  - MODIFIED: web/repositories/products.repository.ts
+  - MODIFIED: web/components/inventory/ProductForm.tsx
+  - MODIFIED: web/app/dashboard/inventory/products/page.tsx
+  - MODIFIED: web/app/dashboard/inventory/layout.tsx
+  - MODIFIED: web/app/dashboard/layout.tsx
+  - MODIFIED: web/lib/constants/routes.ts
+  - MODIFIED: doc/WORK_LOG.md
+- Bugs/Issues:
+  - Next.js build cache retained stale type references to deleted [id] routes — resolved by clearing .next directory before rebuild
+  - User's SQL had column mismatches vs actual schema (quantity_received→quantity, name→product_name, received_date→entry_date) — corrected in migration
+- Verification:
+  - npm run build: PASSED — 0 TypeScript errors, all 28 pages compiled
+  - Stock Balance page route confirmed in build output
+  - Old inventory/[id] routes confirmed absent from build
+  - grep for old system imports: zero matches
+- Next:
+  - Run Migration 018 on Supabase to apply database changes
+  - Connect digital bag and consumption tracking to current_stock_levels view when those features are built
+
+## [2026-03-23 13:15:00 +05:30] Inventory Module Comprehensive Analysis
+- Summary: Performed full analysis of the inventory module before starting development. Discovered two parallel inventory systems (old from Migration 001, new from Migration 016) with different database schemas and code paths.
+- Work done:
+  - Audited all inventory-related files: pages, components, hooks, services, repositories, types, validation schemas, and database migrations
+  - Identified OLD system (inventory, stock, stock_transactions tables) used by web/modules/inventory/ and related hooks/components
+  - Identified NEW system (inventory_products, product_categories, product_types, stock_entries tables) used by web/modules/products/ and related repositories/services/hooks/pages
+  - Documented key differences: classification model, stock tracking approach, audit trail, refurbished support, tax codes
+  - Identified 5 issues: orphaned old system code, no stock movement audit in new system, material code case sensitivity risk, no API routes (direct Supabase calls), no current stock quantity aggregate view
+  - Confirmed no TypeScript compile errors across all inventory files
+- Files changed:
+  - doc/WORK_LOG.md
+- Bugs/Issues:
+  - Two parallel inventory systems create maintenance burden and potential confusion
+  - New system lacks stock movement tracking (no equivalent of stock_transactions)
+  - New system has no aggregate "current quantity on hand" view per product
+- Verification:
+  - All inventory files compile cleanly — no TypeScript errors
+  - All pages, hooks, services, repositories, and components accounted for
+- Next:
+  - User to decide: remove old system, consolidate into new system, or keep both for different purposes
+  - Add stock movement audit trail to new system
+  - Add current stock quantity aggregation
+  - Add missing API middleware routes if needed
+
 ## [2026-03-23 11:46:48 +05:30] Install Turborepo for Monorepo Build Orchestration
 - Summary: Installed Turborepo to solve Vercel monorepo deployment issues. Vercel could not determine which folder to build because there was no build orchestrator. Turborepo tells Vercel exactly which workspace to build and where the output is.
 - Work done:

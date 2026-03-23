@@ -60,6 +60,7 @@ const INVENTORY_MODULE_ITEMS = [
   { icon: LayoutGrid, label: 'Categories', href: ROUTES.DASHBOARD_INVENTORY_CATEGORIES },
   { icon: Tags, label: 'Product Types', href: ROUTES.DASHBOARD_INVENTORY_PRODUCT_TYPES },
   { icon: ClipboardList, label: 'Stock Entries', href: ROUTES.DASHBOARD_INVENTORY_STOCK },
+  { icon: BarChart3, label: 'Stock Balance', href: ROUTES.DASHBOARD_INVENTORY_STOCK_BALANCE },
 ];
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {

@@ -51,13 +51,14 @@
  */
 
 import Link from 'next/link';
-import { Plus, Search, Pencil, Trash2, RefreshCw, Package } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, RefreshCw, Package, AlertTriangle } from 'lucide-react';
 import { useProducts } from '@/hooks/products/useProducts';
 import { useProductCategories } from '@/hooks/product-categories/useProductCategories';
 import { useProductTypes } from '@/hooks/product-types/useProductTypes';
+import { useStockLevels } from '@/hooks/products/useStockLevels';
 import { usePermission } from '@/hooks/auth/usePermission';
 import { ROUTES } from '@/lib/constants/routes';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
 export default function ProductsPage() {
   const { can } = usePermission();
@@ -78,7 +79,29 @@ export default function ProductsPage() {
 
   const { data: categories } = useProductCategories();
   const { data: productTypes } = useProductTypes();
+  const { data: stockLevels } = useStockLevels();
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [showLowStockOnly, setShowLowStockOnly] = useState(false);
+
+  // Build a lookup map from product_id → stock level
+  const stockMap = useMemo(() => {
+    const map = new Map<string, { current_quantity: number; stock_status: string }>();
+    if (stockLevels) {
+      for (const sl of stockLevels) {
+        map.set(sl.product_id, { current_quantity: sl.current_quantity, stock_status: sl.stock_status });
+      }
+    }
+    return map;
+  }, [stockLevels]);
+
+  // Filter items client-side for low-stock filter
+  const displayItems = useMemo(() => {
+    if (!showLowStockOnly) return items;
+    return items.filter((item) => {
+      const sl = stockMap.get(item.id);
+      return sl && (sl.stock_status === 'low_stock' || sl.stock_status === 'out_of_stock');
+    });
+  }, [items, showLowStockOnly, stockMap]);
 
   if (!can('inventory:view')) {
     return (
@@ -158,6 +181,19 @@ export default function ProductsPage() {
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
         </select>
+
+        <button
+          type="button"
+          onClick={() => setShowLowStockOnly((prev) => !prev)}
+          className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+            showLowStockOnly
+              ? 'border-amber-300 bg-amber-50 text-amber-700'
+              : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          <AlertTriangle size={14} />
+          Low Stock
+        </button>
       </div>
 
       {/* Table */}
@@ -169,6 +205,7 @@ export default function ProductsPage() {
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Material Code</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Category</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Type</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Stock</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">HSN/SAC</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Flags</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Status</th>
@@ -179,7 +216,7 @@ export default function ProductsPage() {
             {isLoading
               ? Array.from({ length: 6 }).map((_, i) => (
                   <tr key={`skel-${i}`} className="animate-pulse">
-                    {Array.from({ length: 8 }).map((__, j) => (
+                    {Array.from({ length: 9 }).map((__, j) => (
                       <td key={j} className="px-4 py-3">
                         <div className="h-4 w-24 rounded bg-slate-200" />
                       </td>
@@ -189,7 +226,7 @@ export default function ProductsPage() {
               : error
                 ? (
                     <tr>
-                      <td colSpan={8} className="px-4 py-10 text-center text-sm text-rose-600">
+                      <td colSpan={9} className="px-4 py-10 text-center text-sm text-rose-600">
                         {error}
                       </td>
                     </tr>
@@ -197,7 +234,7 @@ export default function ProductsPage() {
                 : items.length === 0
                   ? (
                       <tr>
-                        <td colSpan={8} className="px-4 py-10 text-center">
+                        <td colSpan={9} className="px-4 py-10 text-center">
                           <div className="flex flex-col items-center gap-2 text-slate-400">
                             <Package size={32} className="opacity-40" />
                             <p className="text-sm">No products found.</p>
@@ -205,7 +242,7 @@ export default function ProductsPage() {
                         </td>
                       </tr>
                     )
-                  : items.map((item) => (
+                  : displayItems.map((item) => (
                       <tr key={item.id} className="hover:bg-slate-50/50">
                         <td className="px-4 py-3">
                           <p className="text-sm font-medium text-slate-800">{item.product_name}</p>
@@ -223,6 +260,32 @@ export default function ProductsPage() {
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-600">
                           {item.product_type?.name ?? <span className="text-slate-300">—</span>}
+                        </td>
+                        <td className="px-4 py-3">
+                          {(() => {
+                            const sl = stockMap.get(item.id);
+                            if (!sl) return <span className="text-xs text-slate-300">—</span>;
+                            const qty = sl.current_quantity;
+                            if (sl.stock_status === 'out_of_stock') {
+                              return (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">
+                                  Out of Stock
+                                </span>
+                              );
+                            }
+                            if (sl.stock_status === 'low_stock') {
+                              return (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                                  {qty} — Low Stock
+                                </span>
+                              );
+                            }
+                            return (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                                {qty}
+                              </span>
+                            );
+                          })()}
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-600">
                           {item.hsn_sac_code ?? <span className="text-slate-300">—</span>}

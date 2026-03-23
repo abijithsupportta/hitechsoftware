@@ -51,6 +51,10 @@ export interface Product {
    * Used for tax classification on invoices.
    */
   hsn_sac_code: string | null;
+  /** Threshold quantity below which the product is flagged as Low Stock */
+  minimum_stock_level: number;
+  /** Movement classification: fast_moving, slow_moving, dead_stock, or unclassified */
+  stock_classification: string;
   /** Whether this product is currently available for use/stock entries */
   is_active: boolean;
   is_deleted: boolean;
@@ -75,6 +79,8 @@ export interface CreateProductInput {
   is_refurbished?: boolean;
   refurbished_label?: string | null;
   hsn_sac_code?: string | null;
+  minimum_stock_level?: number;
+  stock_classification?: string;
   is_active?: boolean;
 }
 

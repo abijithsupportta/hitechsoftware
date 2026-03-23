@@ -65,6 +65,7 @@ export const createProductSchema = z
     is_refurbished: z.boolean(),
     refurbished_label: z.string().max(100).trim().nullish(),
     hsn_sac_code: z.string().max(20).trim().nullish(),
+    minimum_stock_level: z.number().int().min(0, 'Must be 0 or more').optional().default(5),
     is_active: z.boolean(),
   })
   .refine(

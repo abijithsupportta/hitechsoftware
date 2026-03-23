@@ -23,6 +23,7 @@ export const ROUTES = {
   DASHBOARD_INVENTORY_PRODUCT_EDIT: (id: string) => `/dashboard/inventory/products/${id}/edit`,
   DASHBOARD_INVENTORY_STOCK: '/dashboard/inventory/stock',
   DASHBOARD_INVENTORY_STOCK_NEW: '/dashboard/inventory/stock/new',
+  DASHBOARD_INVENTORY_STOCK_BALANCE: '/dashboard/inventory/stock-balance',
   DASHBOARD_TEAM: '/dashboard/team',
   DASHBOARD_TEAM_DETAIL: (id: string) => `/dashboard/team/${id}`,
   DASHBOARD_TECHNICIAN: '/dashboard',

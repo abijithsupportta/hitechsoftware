@@ -41,7 +41,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutGrid, Tags, Package, ClipboardList } from 'lucide-react';
+import { LayoutGrid, Tags, Package, ClipboardList, BarChart3 } from 'lucide-react';
 import { ROUTES } from '@/lib/constants/routes';
 
 interface InventoryLayoutProps {
@@ -58,6 +58,7 @@ const INVENTORY_NAV = [
   { label: 'Categories', href: ROUTES.DASHBOARD_INVENTORY_CATEGORIES, icon: LayoutGrid },
   { label: 'Product Types', href: ROUTES.DASHBOARD_INVENTORY_PRODUCT_TYPES, icon: Tags },
   { label: 'Stock Entries', href: ROUTES.DASHBOARD_INVENTORY_STOCK, icon: ClipboardList },
+  { label: 'Stock Balance', href: ROUTES.DASHBOARD_INVENTORY_STOCK_BALANCE, icon: BarChart3 },
 ];
 
 export default function InventoryLayout({ children }: InventoryLayoutProps) {

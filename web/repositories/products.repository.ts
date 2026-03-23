@@ -59,6 +59,8 @@ export interface ProductRow {
   is_refurbished: boolean;
   refurbished_label: string | null;
   hsn_sac_code: string | null;
+  minimum_stock_level: number;
+  stock_classification: string;
   is_active: boolean;
   is_deleted: boolean;
   created_at: string;
@@ -87,6 +89,8 @@ export interface CreateProductInput {
   is_refurbished?: boolean;
   refurbished_label?: string | null;
   hsn_sac_code?: string | null;
+  minimum_stock_level?: number;
+  stock_classification?: string;
   is_active?: boolean;
 }
 
@@ -116,6 +120,7 @@ const SELECT_COLS = `
   id,product_name,description,material_code,
   category_id,product_type_id,
   is_refurbished,refurbished_label,hsn_sac_code,
+  minimum_stock_level,stock_classification,
   is_active,is_deleted,created_at,updated_at,
   category:product_categories(id,name),
   product_type:product_types(id,name)
@@ -218,6 +223,7 @@ export async function createProduct(input: CreateProductInput) {
       is_refurbished: input.is_refurbished ?? false,
       refurbished_label: input.is_refurbished ? (input.refurbished_label?.trim() ?? null) : null,
       hsn_sac_code: input.hsn_sac_code?.trim() ?? null,
+      minimum_stock_level: input.minimum_stock_level ?? 5,
       is_active: input.is_active ?? true,
     })
     .select(SELECT_COLS)
@@ -249,6 +255,8 @@ export async function updateProduct(id: string, input: Partial<CreateProductInpu
   }
   if (input.refurbished_label !== undefined) payload.refurbished_label = input.refurbished_label?.trim() ?? null;
   if (input.hsn_sac_code !== undefined) payload.hsn_sac_code = input.hsn_sac_code?.trim() ?? null;
+  if (input.minimum_stock_level !== undefined) payload.minimum_stock_level = input.minimum_stock_level;
+  if (input.stock_classification !== undefined) payload.stock_classification = input.stock_classification;
   if (input.is_active !== undefined) payload.is_active = input.is_active;
 
   return supabase
