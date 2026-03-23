@@ -3,6 +3,22 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-23 11:42:09 +05:30] Fix Vercel "No Output Directory named public" Error
+- Summary: Fixed Vercel deployment error caused by `framework: "nextjs"` in root vercel.json conflicting with monorepo layout. Next.js framework adapter expects `.next` at project root, but the app lives in `web/`.
+- Work done:
+  - Stripped root `vercel.json` down to schema-only (removed buildCommand, installCommand, framework, outputDirectory)
+  - Updated `web/vercel.json` with `installCommand: "cd .. && npm install"` for monorepo workspace resolution
+  - User must set **Root Directory** to `web` in Vercel Project Settings > General for auto-detection to work
+- Files changed:
+  - vercel.json (root)
+  - web/vercel.json
+- Bugs/Issues: none
+- Verification:
+  - Local build passes: 0 errors, all pages generated
+- Next:
+  - In Vercel dashboard: Project Settings > General > Root Directory → set to `web`
+  - Redeploy after changing Root Directory
+
 ## [2026-03-23 11:39:09 +05:30] Remove All Cron Jobs
 - Summary: Removed all cron job infrastructure — routes, Vercel cron config, CRON_SECRET, and API documentation references.
 - Work done:
