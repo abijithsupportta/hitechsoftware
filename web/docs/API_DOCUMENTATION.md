@@ -38,8 +38,6 @@ As of now, implemented routes are:
 - `PATCH /api/subjects/{id}/billing`
 - `GET /api/bills/{id}/download`
 - `POST /api/attendance/toggle`
-- `GET /api/cron/attendance-absent-flag`
-- `GET /api/cron/attendance-reset`
 - `GET /api/dashboard/technician/completed-summary`
 
 Important notes:
@@ -347,25 +345,6 @@ or
   - First toggle of the day marks technician online and creates/updates today's attendance row with `toggled_on_at`.
   - Toggle off is allowed only after 18:00 local server time.
   - Toggle off marks profile offline and sets `toggled_off_at`.
-
-### Cron: Attendance Absent Flag
-
-- Method/Path: `GET /api/cron/attendance-absent-flag`
-- AuthZ: Bearer token with `CRON_SECRET`
-- Behavior:
-  - Finds technicians without `toggled_on_at` for current date.
-  - Inserts missing absent attendance rows.
-  - Queues `ATTENDANCE_ABSENT_FLAG` notifications to office staff and super admins.
-
-### Cron: Attendance Reset
-
-- Method/Path: `GET /api/cron/attendance-reset`
-- AuthZ: Bearer token with `CRON_SECRET`
-- Behavior:
-  - Operates on previous date.
-  - Inserts absent records for technicians with no ON toggle.
-  - Auto-closes open attendance rows by setting `toggled_off_at`.
-  - Resets technician online status (`profiles.is_online = false`).
 
 ### Technician Completed Summary
 

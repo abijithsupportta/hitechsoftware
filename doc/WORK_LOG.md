@@ -3,6 +3,25 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-23 11:39:09 +05:30] Remove All Cron Jobs
+- Summary: Removed all cron job infrastructure — routes, Vercel cron config, CRON_SECRET, and API documentation references.
+- Work done:
+  - Deleted `web/app/api/cron/attendance-reset/route.ts` and `web/app/api/cron/attendance-absent-flag/route.ts`
+  - Removed `crons` array from root `vercel.json`
+  - Removed `CRON_SECRET` env variable and comment from `web/.env.local`
+  - Removed cron endpoint listings and detail sections from `web/docs/API_DOCUMENTATION.md`
+- Files changed:
+  - web/app/api/cron/attendance-reset/route.ts (deleted)
+  - web/app/api/cron/attendance-absent-flag/route.ts (deleted)
+  - vercel.json
+  - web/.env.local
+  - web/docs/API_DOCUMENTATION.md
+- Bugs/Issues: none
+- Verification:
+  - Build passed: 0 TypeScript errors, cron routes no longer appear in route list
+- Next:
+  - Remove CRON_SECRET from Vercel Environment Variables dashboard if previously set
+
 ## [2026-03-23 11:34:57 +05:30] Fix Vercel Deployment Issues
 - Summary: Fixed multiple Vercel deployment issues including Next.js 16 middleware conflict, turbopack root config, duplicate cron config, and redundant lockfile.
 - Work done:
