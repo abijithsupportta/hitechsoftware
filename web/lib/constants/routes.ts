@@ -29,6 +29,7 @@ export const ROUTES = {
   DASHBOARD_TECHNICIAN: '/dashboard',
   DASHBOARD_DIGITAL_BAG: '/dashboard/digital-bag',
   DASHBOARD_DIGITAL_BAG_DETAIL: (sessionId: string) => `/dashboard/digital-bag/${sessionId}`,
+  DASHBOARD_DIGITAL_BAG_HISTORY: '/dashboard/digital-bag/history',
   DASHBOARD_PAYOUTS: '/dashboard/payouts',
   DASHBOARD_MY_BAG: '/dashboard/my-bag',
 } as const;

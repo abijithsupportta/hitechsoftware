@@ -66,8 +66,8 @@ Handles warranty, AMC, digital bag, payouts, and reporting.
 4. Flutter admin app — hitech_admin/ already scaffolded
 
 ## Database — Critical Numbers
-Latest migration number: 025
-Next migration to create: 026
+Latest migration number: 027
+Next migration to create: 028
 Always verify by checking supabase/migrations/ folder for highest number.
 Update this number here after every new migration is created.
 

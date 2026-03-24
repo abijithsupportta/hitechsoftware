@@ -44,7 +44,7 @@ const NAV_ITEMS = [
   { icon: Users, label: 'Customers', href: ROUTES.DASHBOARD_CUSTOMERS, isAvailable: true, allowedRoles: ['super_admin', 'office_staff', 'stock_manager'] as UserRole[] },
   { icon: UserCog, label: 'Team', href: ROUTES.DASHBOARD_TEAM, isAvailable: true, allowedRoles: ['super_admin', 'office_staff', 'stock_manager'] as UserRole[] },
   { icon: Package, label: 'Inventory', href: ROUTES.DASHBOARD_INVENTORY, isAvailable: true, allowedRoles: ['super_admin', 'office_staff', 'stock_manager'] as UserRole[] },
-  { icon: Briefcase, label: 'Digital Bag', href: ROUTES.DASHBOARD_DIGITAL_BAG, isAvailable: true, allowedRoles: ['super_admin'] as UserRole[] },
+  { icon: Briefcase, label: 'Digital Bag', href: ROUTES.DASHBOARD_DIGITAL_BAG, isAvailable: true, allowedRoles: ['super_admin', 'office_staff'] as UserRole[] },
   { icon: Briefcase, label: 'My Bag', href: ROUTES.DASHBOARD_MY_BAG, isAvailable: true, allowedRoles: ['technician'] as UserRole[] },
   { icon: DollarSign, label: 'Payouts', href: ROUTES.DASHBOARD_PAYOUTS, isAvailable: true, allowedRoles: ['super_admin', 'office_staff', 'technician'] as UserRole[] },
   { icon: DollarSign, label: 'Billing', href: '#', isAvailable: false, allowedRoles: ['super_admin', 'office_staff', 'stock_manager'] as UserRole[] },

@@ -11,7 +11,7 @@ import type { ServiceResult } from '@/types/common.types';
 import {
   listSessions,
   findSessionById,
-  createSession,
+  createSession as repoCreateSession,
   closeSession,
   addSessionItems,
   returnBagItem,
@@ -19,17 +19,29 @@ import {
   listTechnicianBagItems,
   listConsumptionsBySubject,
   getBagCapacityRemaining,
+  getTodaySession as repoGetTodaySession,
+  listTodaySessions,
+  listSessionHistory as repoListHistory,
+  issueBagItem,
+  removeBagItem,
+  closeBagSession as repoCloseBag,
+  searchAvailableProducts as repoSearchProducts,
 } from '@/repositories/digital-bag.repository';
 import type {
   BagSessionListResponse,
   BagSessionFilters,
   DigitalBagSessionWithProfiles,
-  DigitalBagSessionDetail,
-  CreateSessionInput,
+  DigitalBagSession,
+  DigitalBagItem,
+  AddItemInput,
+  CloseSessionInput,
+  SessionHistoryFilters,
+  SessionListResponse,
+  AvailableProduct,
+  BagCapacityStatus,
   ReturnItemsInput,
   ConsumeItemInput,
   TechnicianBagSummary,
-  DigitalBagItem,
 } from './digital-bag.types';
 import { BAG_CAPACITY } from './digital-bag.constants';
 
@@ -39,7 +51,120 @@ function mapError(message?: string): string {
   return message?.trim() ?? 'Failed to process digital bag operation';
 }
 
-// ── Sessions ─────────────────────────────────────────────────────────────────
+// ── Core Functions (new workflow) ────────────────────────────────────────────
+
+export async function getTodaySession(
+  technicianId: string,
+): Promise<ServiceResult<DigitalBagSession | null>> {
+  const result = await repoGetTodaySession(technicianId);
+  if (result.error) return { ok: false, error: { message: mapError(result.error.message) } };
+  return { ok: true, data: (result.data as unknown as DigitalBagSession) ?? null };
+}
+
+export async function createNewSession(
+  technicianId: string,
+  createdBy: string,
+): Promise<ServiceResult<DigitalBagSession>> {
+  if (!technicianId) return { ok: false, error: { message: 'Technician is required' } };
+
+  // Check if session already exists today
+  const existing = await repoGetTodaySession(technicianId);
+  if (existing.data) {
+    return { ok: false, error: { message: 'A session already exists for this technician today' } };
+  }
+
+  const result = await repoCreateSession({ technician_id: technicianId, issued_by: createdBy });
+  if (result.error || !result.data) {
+    return { ok: false, error: { message: mapError(result.error?.message) } };
+  }
+  return { ok: true, data: result.data as unknown as DigitalBagSession };
+}
+
+export async function getSessionById(
+  sessionId: string,
+): Promise<ServiceResult<DigitalBagSession>> {
+  const result = await findSessionById(sessionId);
+  if (result.error || !result.data) {
+    return { ok: false, error: { message: mapError(result.error?.message ?? 'Session not found') } };
+  }
+  return { ok: true, data: result.data as unknown as DigitalBagSession };
+}
+
+export async function getAllActiveSessions(): Promise<ServiceResult<DigitalBagSession[]>> {
+  const result = await listTodaySessions();
+  if (result.error) return { ok: false, error: { message: mapError(result.error.message) } };
+  return { ok: true, data: (result.data ?? []) as unknown as DigitalBagSession[] };
+}
+
+export async function addItemToSession(
+  input: AddItemInput,
+): Promise<ServiceResult<{ id: string }>> {
+  if (input.quantity < 1) return { ok: false, error: { message: 'Quantity must be at least 1' } };
+
+  const result = await issueBagItem(input.session_id, input.product_id, input.quantity);
+  if (result.error) return { ok: false, error: { message: mapError(result.error.message) } };
+  return { ok: true, data: { id: result.data as string } };
+}
+
+export async function removeItemFromSession(
+  itemId: string,
+): Promise<ServiceResult<void>> {
+  const result = await removeBagItem(itemId);
+  if (result.error) return { ok: false, error: { message: mapError(result.error.message) } };
+  return { ok: true, data: undefined };
+}
+
+export async function closeSessionWithDetails(
+  input: CloseSessionInput,
+): Promise<ServiceResult<void>> {
+  if (!input.items.length) return { ok: false, error: { message: 'No items to close' } };
+
+  const result = await repoCloseBag(input.session_id, input.items);
+  if (result.error) return { ok: false, error: { message: mapError(result.error.message) } };
+  return { ok: true, data: undefined };
+}
+
+export async function getSessionHistory(
+  filters: SessionHistoryFilters = {},
+): Promise<ServiceResult<SessionListResponse>> {
+  const page = filters.page ?? 1;
+  const page_size = filters.page_size ?? PAGE_SIZE;
+
+  const result = await repoListHistory({ ...filters, page, page_size });
+  if (result.error) return { ok: false, error: { message: mapError(result.error.message) } };
+
+  const total = result.count ?? 0;
+  return {
+    ok: true,
+    data: {
+      data: (result.data ?? []) as unknown as DigitalBagSession[],
+      total,
+      page,
+      page_size,
+      total_pages: Math.ceil(total / page_size),
+    },
+  };
+}
+
+export async function searchProducts(
+  search?: string,
+  limit?: number,
+): Promise<ServiceResult<AvailableProduct[]>> {
+  const result = await repoSearchProducts(search, limit);
+  if (result.error) return { ok: false, error: { message: mapError(result.error.message) } };
+  return { ok: true, data: (result.data ?? []) as unknown as AvailableProduct[] };
+}
+
+export function getBagCapacity(totalIssued: number): BagCapacityStatus {
+  return {
+    total_capacity: BAG_CAPACITY,
+    items_issued: totalIssued,
+    remaining: Math.max(0, BAG_CAPACITY - totalIssued),
+    is_full: totalIssued >= BAG_CAPACITY,
+  };
+}
+
+// ── Backward compat (old hooks, payout module) ───────────────────────────────
 
 export async function getSessions(
   filters: BagSessionFilters = {},
@@ -63,61 +188,15 @@ export async function getSessions(
   };
 }
 
-export async function getSessionDetail(id: string): Promise<ServiceResult<DigitalBagSessionDetail>> {
-  const result = await findSessionById(id);
-  if (result.error || !result.data) {
-    return { ok: false, error: { message: mapError(result.error?.message ?? 'Session not found'), code: result.error?.code } };
-  }
-  return { ok: true, data: result.data as unknown as DigitalBagSessionDetail };
+export async function getSessionDetail(id: string): Promise<ServiceResult<DigitalBagSession>> {
+  return getSessionById(id);
 }
 
 export async function createBagSession(
-  input: CreateSessionInput,
+  input: { technician_id: string },
   issuedBy: string,
 ): Promise<ServiceResult<DigitalBagSessionWithProfiles>> {
-  if (!input.technician_id) {
-    return { ok: false, error: { message: 'Technician is required' } };
-  }
-  if (!input.items.length) {
-    return { ok: false, error: { message: 'At least one item is required' } };
-  }
-
-  // Check capacity
-  const capResult = await getBagCapacityRemaining(input.technician_id, BAG_CAPACITY);
-  if (capResult.error) {
-    return { ok: false, error: { message: mapError(capResult.error.message) } };
-  }
-
-  const totalRequested = input.items.reduce((sum, i) => sum + i.quantity_issued, 0);
-  const remaining = capResult.data ?? BAG_CAPACITY;
-  if (totalRequested > remaining) {
-    return {
-      ok: false,
-      error: { message: `Exceeds bag capacity. Remaining: ${remaining}, Requested: ${totalRequested}` },
-    };
-  }
-
-  // Create session
-  const sessionResult = await createSession({
-    technician_id: input.technician_id,
-    issued_by: issuedBy,
-    session_date: input.session_date,
-    notes: input.notes,
-  });
-
-  if (sessionResult.error || !sessionResult.data) {
-    return { ok: false, error: { message: mapError(sessionResult.error?.message) } };
-  }
-
-  const sessionData = sessionResult.data as unknown as Record<string, unknown>;
-
-  // Add items
-  const itemsResult = await addSessionItems(sessionData.id as string, input.items);
-  if (itemsResult.error) {
-    return { ok: false, error: { message: mapError(itemsResult.error.message) } };
-  }
-
-  return { ok: true, data: sessionData as unknown as DigitalBagSessionWithProfiles };
+  return createNewSession(input.technician_id, issuedBy) as Promise<ServiceResult<DigitalBagSessionWithProfiles>>;
 }
 
 export async function closeBagSession(
@@ -139,7 +218,6 @@ export async function returnItems(
   if (input.quantity_returned <= 0) {
     return { ok: false, error: { message: 'Return quantity must be positive' } };
   }
-
   const result = await returnBagItem(input.bag_item_id, input.quantity_returned);
   if (result.error || !result.data) {
     return { ok: false, error: { message: mapError(result.error?.message) } };
@@ -156,7 +234,6 @@ export async function consumeItem(
   if (input.quantity <= 0) {
     return { ok: false, error: { message: 'Consume quantity must be positive' } };
   }
-
   const result = await addConsumption({
     bag_item_id: input.bag_item_id,
     subject_id: input.subject_id,
@@ -164,7 +241,6 @@ export async function consumeItem(
     quantity: input.quantity,
     notes: input.notes,
   });
-
   if (result.error || !result.data) {
     return { ok: false, error: { message: mapError(result.error?.message) } };
   }
@@ -189,20 +265,13 @@ export async function getTechnicianBag(
     return { ok: false, error: { message: mapError(result.error.message) } };
   }
 
-  // Group items by session
   const sessionsMap = new Map<string, { session_id: string; session_date: string; status: string; items: DigitalBagItem[] }>();
 
   for (const row of (result.data ?? []) as unknown as Array<Record<string, unknown>>) {
     const session = row.session as { id: string; session_date: string; status: string } | null;
     if (!session) continue;
-
     if (!sessionsMap.has(session.id)) {
-      sessionsMap.set(session.id, {
-        session_id: session.id,
-        session_date: session.session_date,
-        status: session.status,
-        items: [],
-      });
+      sessionsMap.set(session.id, { session_id: session.id, session_date: session.session_date, status: session.status, items: [] });
     }
     sessionsMap.get(session.id)!.items.push(row as unknown as DigitalBagItem);
   }
@@ -210,20 +279,15 @@ export async function getTechnicianBag(
   const capResult = await getBagCapacityRemaining(technicianId, BAG_CAPACITY);
   const capacityRemaining = capResult.data ?? BAG_CAPACITY;
 
-  const summaries: TechnicianBagSummary[] = Array.from(sessionsMap.values()).map((s) => {
-    const totalHeld = s.items.reduce(
-      (sum, i) => sum + (i.quantity_issued - i.quantity_returned - i.quantity_consumed),
-      0,
-    );
-    return {
+  return {
+    ok: true,
+    data: Array.from(sessionsMap.values()).map((s) => ({
       session_id: s.session_id,
       session_date: s.session_date,
       status: s.status as TechnicianBagSummary['status'],
       items: s.items,
-      total_held: totalHeld,
+      total_held: s.items.reduce((sum, i) => sum + (i.quantity_issued - i.quantity_returned - i.quantity_consumed), 0),
       capacity_remaining: capacityRemaining,
-    };
-  });
-
-  return { ok: true, data: summaries };
+    })),
+  };
 }

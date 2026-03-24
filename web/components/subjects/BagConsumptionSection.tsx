@@ -97,7 +97,7 @@ export function BagConsumptionSection({ subject, userRole, userId }: Props) {
             <option value="">Select item from bag…</option>
             {allItems.map((item) => (
               <option key={item.id} value={item.id}>
-                {item.product?.product_name ?? item.material_code} (held: {item.held})
+                {item.product_name ?? item.material_code} (held: {item.held})
               </option>
             ))}
           </select>

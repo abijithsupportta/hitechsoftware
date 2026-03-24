@@ -3,6 +3,48 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-25 14:30:00 +05:30] Digital Bag Module — Complete Rebuild
+- Summary: Full rebuild of the Digital Bag module with new workflow: office staff creates empty sessions per technician daily, adds products via search (stock deducted immediately), closes sessions at end of day with item-by-item checklist, damage fees auto-deducted from payout.
+- Work done:
+	- Created migration 027 with ALTER tables, 3 SECURITY DEFINER functions (issue_bag_item, remove_bag_item, close_bag_session), updated RLS for office_staff, updated current_stock_levels VIEW
+	- Rewrote digital-bag.types.ts with new types (SessionStatus, AddItemInput, CloseItemDetail, CloseSessionInput, BagCapacityStatus, AvailableProduct, SessionHistoryFilters, SessionListResponse) + backward compat aliases
+	- Updated digital-bag.constants.ts with DIGITAL_BAG_QUERY_KEYS factory functions
+	- Rewrote digital-bag.repository.ts with new functions (createSession, getTodaySession, listTodaySessions, listSessionHistory, issueBagItem, removeBagItem, closeBagSession, searchAvailableProducts) + backward compat
+	- Rewrote digital-bag.service.ts with new workflow functions + backward compat wrappers
+	- Rewrote useDigitalBag.ts hooks with new hooks (useAllActiveSessions, useTodaySession, useSessionById, useCreateSession, useAddItem, useRemoveItem, useCloseSession, useSessionHistory, useAvailableProducts) + backward compat
+	- Created BagProductSearch.tsx reusable component with debounce, dropdown, "In bag" badge, quantity input, stock validation
+	- Rewrote admin dashboard page with stat cards, pending closures alert, create session inline, technician table
+	- Rewrote session detail page with dual-mode (open: add/remove items, closed: read-only with damage), Close Session modal with item checklist
+	- Created history page with filters, expandable rows, pagination
+	- Rewrote my-bag page with today's session view
+	- Updated routes.ts (added DASHBOARD_DIGITAL_BAG_HISTORY)
+	- Updated permissions.ts (office_staff added to digital-bag:view, create, edit)
+	- Updated layout.tsx sidebar (office_staff added to Digital Bag nav item)
+	- Fixed BagConsumptionSection.tsx product property reference
+- Files changed:
+	- supabase/migrations/20260325_027_digital_bag_complete.sql (new)
+	- web/modules/digital-bag/digital-bag.types.ts
+	- web/modules/digital-bag/digital-bag.constants.ts
+	- web/modules/digital-bag/digital-bag.service.ts
+	- web/repositories/digital-bag.repository.ts
+	- web/hooks/digital-bag/useDigitalBag.ts
+	- web/components/digital-bag/BagProductSearch.tsx (new)
+	- web/app/dashboard/digital-bag/page.tsx
+	- web/app/dashboard/digital-bag/[id]/page.tsx
+	- web/app/dashboard/digital-bag/history/page.tsx (new)
+	- web/app/dashboard/my-bag/page.tsx
+	- web/lib/constants/routes.ts
+	- web/config/permissions.ts
+	- web/app/dashboard/layout.tsx
+	- web/components/subjects/BagConsumptionSection.tsx
+- Verification:
+	- npm run build passes cleanly with 0 TypeScript errors
+	- All 31 routes generated successfully including /dashboard/digital-bag/history
+- Next:
+	- Run migration 027 on Supabase
+	- End-to-end testing of bag workflow
+	- Update AGENTS.md migration number to 027
+
 ## [2026-03-25 01:00:00 +05:30] Auth & Dashboard Performance Optimization
 - Summary: Implemented 5-phase performance optimization to reduce first-login latency from 5-10s to ~1-2s. Reduced auth timeouts, skip bootstrap on login page, added dashboard data prefetching during login, optimized query caching, and added Supabase connection warm-up cron.
 - Work done:

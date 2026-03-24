@@ -47,9 +47,9 @@ export const PERMISSIONS: Record<Permission, UserRole[]> = {
   'stock:edit': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF, ROLES.STOCK_MANAGER],
   'stock:delete': [ROLES.SUPER_ADMIN],
 
-  'digital-bag:view': [ROLES.SUPER_ADMIN, ROLES.TECHNICIAN],
-  'digital-bag:create': [ROLES.SUPER_ADMIN],
-  'digital-bag:edit': [ROLES.SUPER_ADMIN, ROLES.TECHNICIAN],
+  'digital-bag:view': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF, ROLES.TECHNICIAN],
+  'digital-bag:create': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF],
+  'digital-bag:edit': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF],
   'digital-bag:delete': [ROLES.SUPER_ADMIN],
 
   'billing:view': [ROLES.SUPER_ADMIN, ROLES.OFFICE_STAFF],
