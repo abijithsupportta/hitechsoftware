@@ -6,6 +6,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { getDashboardRouteByRole } from '@/modules/auth/auth.service';
 import { AppLoadingScreen } from '@/components/ui/AppLoadingScreen';
+import { prefetchDashboardData } from '@/lib/prefetch';
 
 const DEFAULT_EMAIL = 'Varghesejoby2003@gmail.com';
 
@@ -74,6 +75,9 @@ function LoginContent() {
       });
 
       if (result.ok) {
+        // Fire-and-forget: prefetch dashboard data while router navigates
+        prefetchDashboardData(result.data.role);
+
         // Redirect immediately — don't rely on useEffect timing
         const destination = getDashboardRouteByRole(result.data.role);
         router.replace(destination);

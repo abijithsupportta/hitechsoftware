@@ -9,7 +9,7 @@ export function useAuth() {
 
   const signInMutation = useMutation({
     mutationFn: async (input: SignInInput) => {
-      const signInTimeoutMs = 15000;
+      const signInTimeoutMs = 8000;
 
       const timeoutResult = new Promise<Awaited<ReturnType<typeof signIn>>>((resolve) => {
         setTimeout(() => {

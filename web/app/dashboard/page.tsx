@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { Users, ClipboardList, Package, ArrowRight } from 'lucide-react';
 import { getCustomerList } from '@/modules/customers/customer.service';
 import { CUSTOMER_QUERY_KEYS } from '@/modules/customers/customer.constants';
@@ -48,6 +48,7 @@ export default function DashboardPage() {
     },
     enabled: Boolean(user?.id) && userRole === 'technician',
     staleTime: 30 * 1000,
+    placeholderData: keepPreviousData,
   });
 
   const technicianCompletedSummaryQuery = useQuery({
@@ -79,6 +80,7 @@ export default function DashboardPage() {
     },
     enabled: Boolean(user?.id) && userRole === 'technician',
     staleTime: 30 * 1000,
+    placeholderData: keepPreviousData,
   });
 
   const adminPendingSubjectsCountQuery = useQuery({
@@ -95,6 +97,7 @@ export default function DashboardPage() {
     },
     enabled: userRole !== 'technician',
     staleTime: 300_000,
+    placeholderData: keepPreviousData,
   });
 
   const adminOverduePendingCountQuery = useQuery({
@@ -109,6 +112,7 @@ export default function DashboardPage() {
     },
     enabled: userRole !== 'technician',
     staleTime: 300_000,
+    placeholderData: keepPreviousData,
   });
 
   const customerCountQuery = useQuery({
@@ -121,7 +125,8 @@ export default function DashboardPage() {
       return result.data.total;
     },
     enabled: userRole !== 'technician',
-    staleTime: 30 * 1000,
+    staleTime: 60_000,
+    placeholderData: keepPreviousData,
   });
 
   const teamMemberCountQuery = useQuery({
@@ -134,7 +139,8 @@ export default function DashboardPage() {
       return result.data.length;
     },
     enabled: userRole !== 'technician',
-    staleTime: 30 * 1000,
+    staleTime: 60_000,
+    placeholderData: keepPreviousData,
   });
 
   const liveTechnicianStatusQuery = useAllTechnicianStatus();

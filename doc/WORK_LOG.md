@@ -3,6 +3,31 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-25 01:00:00 +05:30] Auth & Dashboard Performance Optimization
+- Summary: Implemented 5-phase performance optimization to reduce first-login latency from 5-10s to ~1-2s. Reduced auth timeouts, skip bootstrap on login page, added dashboard data prefetching during login, optimized query caching, and added Supabase connection warm-up cron.
+- Work done:
+	- Phase 1: Reduced AuthProvider bootstrap timeout 3s→1.5s, safety-net timeout 5s→2.5s, signIn timeout 15s→8s
+	- Phase 2: Added pathname check in AuthProvider to skip expensive bootstrap on /login — form renders instantly
+	- Phase 3: Created lib/prefetch.ts utility and exported singleton QueryClient from query-provider. Login success handler now fire-and-forget prefetches dashboard data based on role before navigation
+	- Phase 4: Increased staleTime for customerCount/teamMemberCount queries 30s→60s, added keepPreviousData to all 6 dashboard queries to prevent flash on re-navigation
+	- Phase 5: Created /api/health endpoint (pings Supabase profiles table) and configured Vercel cron to hit it every 5 minutes to prevent cold starts
+- Files changed:
+	- web/components/providers/AuthProvider.tsx
+	- web/hooks/auth/useAuth.ts
+	- web/app/login/page.tsx
+	- web/components/providers/query-provider.tsx
+	- web/app/dashboard/page.tsx
+	- web/lib/prefetch.ts (new)
+	- web/app/api/health/route.ts (new)
+	- web/vercel.json
+- Verification:
+	- npm run build: zero errors, 45 routes (including new /api/health)
+	- npx vitest run: 71/71 tests pass
+	- TypeScript: zero errors across all 7 modified files
+- Next:
+	- Monitor real-world login latency after deployment
+	- Consider Supabase Pro plan to eliminate cold starts entirely
+
 ## [2026-03-25 00:40:00 +05:30] Fix TypeScript type errors in inventory test files
 - Summary: Fixed 30 TypeScript compile errors across 8 inventory test files. The mock chain objects were typed as Record<string, unknown> which was not assignable to Vitest's strict NormalizedProcedure type for mockImplementation. Changed to any with eslint-disable comments. Full audit confirmed zero build errors, zero runtime issues, and zero code mismatches between migration 025 and the TypeScript codebase.
 - Work done:

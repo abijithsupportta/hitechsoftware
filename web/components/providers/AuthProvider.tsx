@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { getCurrentAuthState } from '@/modules/auth/auth.service';
 import { onAuthStateChange } from '@/repositories/auth.repository';
 import { useAuthStore } from '@/stores/auth.store';
@@ -12,7 +12,7 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-async function getAuthStateWithTimeout(timeoutMs = 3000) {
+async function getAuthStateWithTimeout(timeoutMs = 1500) {
   const timeoutResult = new Promise<ReturnType<typeof getCurrentAuthState>>((resolve) => {
     setTimeout(() => {
       resolve(Promise.resolve({ ok: false as const, error: { message: 'Auth state fetch timed out' } }));
@@ -24,11 +24,24 @@ async function getAuthStateWithTimeout(timeoutMs = 3000) {
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { isHydrated } = useAuthStore();
 
   // ─── Initial bootstrap: do not depend solely on auth events ─────────────────
   useEffect(() => {
     let isCancelled = false;
+
+    // On the login page, skip the expensive bootstrap — no session exists for
+    // unauthenticated users. Let the form render instantly.
+    if (pathname === '/login') {
+      useAuthStore.setState({
+        user: null,
+        session: null,
+        role: null,
+        isHydrated: true,
+      });
+      return;
+    }
 
     const bootstrap = async () => {
       try {
@@ -74,14 +87,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     if (isHydrated) return;
     const timeout = setTimeout(() => {
-      console.error('[AuthProvider] Auth hydration timeout — forcing unblock after 5s');
+      console.error('[AuthProvider] Auth hydration timeout — forcing unblock after 2.5s');
       useAuthStore.setState({ 
         user: null, 
         session: null, 
         role: null, 
         isHydrated: true 
       });
-    }, 5_000);
+    }, 2_500);
     return () => clearTimeout(timeout);
   }, [isHydrated]);
 
