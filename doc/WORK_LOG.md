@@ -3,6 +3,23 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-24 12:30:00 +05:30] Seed Inventory Data — 35 Products
+- Summary: Created seed script and populated the database with 7 product categories, 5 product types, and 35 inventory products covering home appliance repair parts.
+- Work done:
+  - Created scripts/seed-inventory.js — idempotent seed script using Supabase service role client
+  - Seeded 7 categories: Spare Parts, Consumables, Accessories, Tools, Electrical Components, Mechanical Parts, Cleaning Supplies
+  - Seeded 5 product types: OEM, Aftermarket, Generic, Premium, Refurbished
+  - Seeded 35 products (5 per category) with realistic material codes, HSN codes, purchase prices, MRP, and minimum stock levels
+  - Script skips existing entries (safe to re-run)
+- Files changed:
+  - scripts/seed-inventory.js (new)
+- Verification:
+  - Script ran successfully: 35/35 products created, 0 errors
+  - All 7 categories created (1 pre-existing: Tools)
+  - All 5 types created (1 pre-existing: Refurbished)
+- Next:
+  - none
+
 ## [2026-03-24 12:00:00 +05:30] Stock Balance — Category & Product Type Filters
 - Summary: Added category and product type dropdown filters to the stock balance dashboard page. Created migration 024 to add category_id and product_type_id columns to the current_stock_levels database view. Updated AGENTS.md with accurate module descriptions and migration number.
 - Work done:
