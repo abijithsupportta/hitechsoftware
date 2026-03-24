@@ -81,7 +81,7 @@ describe('Group 6 — Session Close Flow', () => {
     expect(result.ok).toBe(true);
     // Verify damage_fee_per_unit is NOT in the payload (DB defaults to MRP)
     const rpcCall = mockSupabaseClient.rpc.mock.calls[0];
-    const sentItems = rpcCall[1].p_items;
+    const sentItems = (rpcCall[1] as Record<string, unknown>).p_items as Array<Record<string, unknown>>;
     expect(sentItems[0].damage_fee_per_unit).toBeUndefined();
   });
 
@@ -98,7 +98,7 @@ describe('Group 6 — Session Close Flow', () => {
 
     const result = await closeSessionWithDetails(input);
     expect(result.ok).toBe(true);
-    const sentItems = mockSupabaseClient.rpc.mock.calls[0][1].p_items;
+    const sentItems = mockSupabaseClient.rpc.mock.calls[0][1]!.p_items as Array<Record<string, unknown>>;
     expect(sentItems[0].damage_fee_per_unit).toBe(75.50);
   });
 
@@ -337,7 +337,7 @@ describe('Group 7 — Damage Fees and Payout Integration', () => {
     const result = await closeSessionWithDetails(input);
     expect(result.ok).toBe(true);
 
-    const sentItems = mockSupabaseClient.rpc.mock.calls[0][1].p_items;
+    const sentItems = mockSupabaseClient.rpc.mock.calls[0][1]!.p_items as Array<Record<string, unknown>>;
     expect(sentItems[0].damage_fee_per_unit).toBe(99.99);
     expect(sentItems[1].damage_fee_per_unit).toBeUndefined();
   });
@@ -356,7 +356,7 @@ describe('Group 7 — Damage Fees and Payout Integration', () => {
     const result = await closeSessionWithDetails(input);
     // Service layer passes through — DB function determines behavior
     expect(result.ok).toBe(true);
-    const sentItems = mockSupabaseClient.rpc.mock.calls[0][1].p_items;
+    const sentItems = mockSupabaseClient.rpc.mock.calls[0][1]!.p_items as Array<Record<string, unknown>>;
     expect(sentItems[0].damage_fee_per_unit).toBe(0);
   });
 

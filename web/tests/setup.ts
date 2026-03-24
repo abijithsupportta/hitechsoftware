@@ -181,7 +181,7 @@ function createMockSupabaseClient() {
       }),
     },
     from: vi.fn((table: string) => createChain(table)),
-    rpc: vi.fn(async () => ({ data: null, error: null })),
+    rpc: vi.fn<(fn: string, params?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string; code?: string } | null }>>(async () => ({ data: null, error: null })),
     storage: {
       from: vi.fn(() => ({
         upload: vi.fn(async () => ({ data: null, error: null })),
