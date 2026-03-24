@@ -3,6 +3,20 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-26 02:35:00 +05:30] Digital Bag — Fix closed session still showing as active
+- Summary: Closed sessions were still appearing in the Active Sessions dashboard because listTodaySessions() had no status filter.
+- Work done:
+	- Root cause: listTodaySessions() in repository fetched all sessions for today without filtering by status — closed sessions appeared alongside open ones in the active sessions list.
+	- Added .eq('status', 'open') filter to listTodaySessions() so only open sessions show in the dashboard.
+- Files changed:
+	- web/repositories/digital-bag.repository.ts (added status filter to listTodaySessions)
+	- doc/WORK_LOG.md
+- Verification:
+	- 67/67 digital bag tests pass
+	- Build: 0 TypeScript errors
+- Next:
+	- none
+
 ## [2026-03-26 02:30:00 +05:30] Digital Bag — Fix session creation after close
 - Summary: Fixed bug where creating a new session for a technician after closing the previous one on the same day would fail with "A session already exists" error.
 - Work done:

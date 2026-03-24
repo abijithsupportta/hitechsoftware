@@ -77,6 +77,7 @@ export async function listTodaySessions() {
     .from('digital_bag_sessions')
     .select(SESSION_DETAIL_SELECT)
     .eq('session_date', today)
+    .eq('status', 'open')
     .order('created_at', { ascending: false });
 }
 
