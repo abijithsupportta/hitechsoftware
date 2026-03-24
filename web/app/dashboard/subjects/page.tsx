@@ -116,6 +116,21 @@ function getServiceTypeMeta(subject: SubjectListItem) {
   return { label: 'Chargeable', className: 'bg-slate-100 text-slate-600' };
 }
 
+function getBillingMeta(status: SubjectListItem['billing_status']) {
+  switch (status) {
+    case 'paid':
+      return { label: 'Paid', className: 'bg-green-100 text-green-700' };
+    case 'due':
+      return { label: 'Due', className: 'bg-amber-100 text-amber-700' };
+    case 'partially_paid':
+      return { label: 'Partial', className: 'bg-orange-100 text-orange-700' };
+    case 'waived':
+      return { label: 'Waived', className: 'bg-slate-100 text-slate-500' };
+    case 'not_applicable':
+      return { label: 'N/A', className: 'bg-slate-50 text-slate-400' };
+  }
+}
+
 const ACTIVE_PENDING_STATUSES = ['PENDING', 'ALLOCATED', 'ACCEPTED', 'ARRIVED', 'IN_PROGRESS', 'INCOMPLETE', 'AWAITING_PARTS', 'RESCHEDULED', 'REJECTED'];
 
 function isPendingStatus(status: string) {
@@ -309,9 +324,9 @@ export default function SubjectsDashboardPage() {
   return (
     <AttendanceGuard>
       <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Service Subjects</h1>
-        <p className="mt-1 text-sm text-slate-600">
+      <div className="mb-4">
+        <h1 className="text-xl font-semibold text-slate-900">Service Subjects</h1>
+        <p className="mt-0.5 text-sm text-slate-500">
           {role === 'technician'
             ? 'Showing your pending assigned services, including carry-forward unfinished tasks.'
             : queueParam === 'overdue'
@@ -593,65 +608,57 @@ export default function SubjectsDashboardPage() {
 
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="min-w-[1180px] w-full table-fixed divide-y divide-slate-200">
+          <table className="min-w-[1400px] w-full table-fixed divide-y divide-slate-200">
+            <colgroup>
+              <col className="w-[13%]" />
+              <col className="w-[12%]" />
+              <col className="w-[9%]" />
+              <col className="w-[7%]" />
+              <col className="w-[6%]" />
+              <col className="w-[8%]" />
+              <col className="w-[10%]" />
+              <col className="w-[8%]" />
+              <col className="w-[6%]" />
+              <col className="w-[6%]" />
+              <col className="w-[8%]" />
+              <col className="w-[7%]" />
+            </colgroup>
             <thead className="bg-slate-50">
               <tr>
-                <th className="w-[220px] whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Subject</th>
-                <th className="w-[180px] whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Customer</th>
-                <th className="w-[120px] whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Source</th>
-                <th className="w-[100px] whitespace-nowrap px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">Priority</th>
-                <th className="w-[110px] whitespace-nowrap px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">Status</th>
-                <th className="w-[130px] whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Assigned To</th>
-                <th className="w-[130px] whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Coverage</th>
-                <th className="w-[110px] whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Date</th>
-                <th className="w-[80px] whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Actions</th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Subject No.</th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Customer</th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Source</th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Category</th>
+                <th className="px-3 py-2 text-center text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Priority</th>
+                <th className="px-3 py-2 text-center text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Status</th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Technician</th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Coverage</th>
+                <th className="px-3 py-2 text-center text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Billing</th>
+                <th className="px-3 py-2 text-center text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Type</th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Date</th>
+                <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, index) => (
                   <tr key={`subject-skeleton-${index}`} className="animate-pulse">
-                    <td className="px-4 py-3">
-                      <div className="h-4 w-24 rounded bg-slate-200" />
-                      <div className="mt-2 h-3 w-16 rounded bg-slate-100" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="h-4 w-28 rounded bg-slate-200" />
-                      <div className="mt-2 h-3 w-20 rounded bg-slate-100" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="h-4 w-24 rounded bg-slate-200" />
-                      <div className="mt-2 h-3 w-14 rounded bg-slate-100" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="h-6 w-20 rounded-full bg-slate-200" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="h-6 w-24 rounded-full bg-slate-200" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="h-6 w-24 rounded-full bg-slate-200" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="h-6 w-24 rounded-full bg-slate-200" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="h-4 w-20 rounded bg-slate-200" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="h-8 w-16 rounded-md bg-slate-200" />
-                    </td>
+                    {Array.from({ length: 12 }).map((__, j) => (
+                      <td key={j} className="px-3 py-2">
+                        <div className="h-3 w-16 rounded bg-slate-200" />
+                      </td>
+                    ))}
                   </tr>
                 ))
               ) : error ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center text-sm text-rose-600">
+                  <td colSpan={12} className="px-3 py-8 text-center text-xs text-rose-600">
                     {error}
                   </td>
                 </tr>
               ) : subjects.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center text-sm text-slate-500">
+                  <td colSpan={12} className="px-3 py-8 text-center text-xs text-slate-500">
                     No subjects found.
                   </td>
                 </tr>
@@ -661,6 +668,7 @@ export default function SubjectsDashboardPage() {
                   const priorityMeta = getPriorityMeta(subject.priority);
                   const statusMeta = getStatusMeta(subject.status);
                   const serviceTypeMeta = getServiceTypeMeta(subject);
+                  const billingMeta = getBillingMeta(subject.billing_status);
                   const needsAttentionBorder = isUnassigned || subject.priority === 'critical';
                   const effectiveDate = subject.technician_allocated_date ?? subject.allocated_date;
                   const isBackdatedAssignment = Boolean(subject.technician_allocated_date) && effectiveDate < today;
@@ -673,104 +681,135 @@ export default function SubjectsDashboardPage() {
                       key={subject.id}
                       className={`hover:bg-slate-50/70${needsAttentionBorder ? ' border-l-4 border-l-rose-400' : ''}`}
                     >
-                      <td className="w-[220px] overflow-hidden px-4 py-3 text-sm">
+                      {/* Subject Number */}
+                      <td className="px-3 py-2">
                         <Link href={ROUTES.DASHBOARD_SUBJECTS_DETAIL(subject.id)} onMouseEnter={() => handlePrefetch(subject.id)} onFocus={() => handlePrefetch(subject.id)} onTouchStart={() => handlePrefetch(subject.id)} className="block">
-                          <div className="relative group">
-                            <span className="block truncate max-w-[200px] font-medium text-blue-600 cursor-pointer hover:underline">
-                              {formatSubjectPreview(subject.subject_number)}
-                            </span>
-                            <div className="absolute left-0 top-full mt-1 z-50 hidden group-hover:block bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap shadow-lg">
-                              {subject.subject_number}
-                            </div>
-                          </div>
+                          <code className="rounded bg-slate-100 px-1 py-0.5 text-xs font-mono font-medium text-blue-600 hover:underline cursor-pointer">
+                            {subject.subject_number}
+                          </code>
                         </Link>
                         {subject.is_rejected_pending_reschedule && (
-                          <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold text-rose-700">
-                            ⚠ Reschedule Urgently
+                          <span className="mt-0.5 inline-flex rounded-full bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold text-rose-700">
+                            ⚠ Reschedule
                           </span>
                         )}
                         {role !== 'technician' && isBackdatedAssignment && (
-                          <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-800">
+                          <span className="mt-0.5 inline-flex rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-800">
                             Backdated
                           </span>
                         )}
                         {isOverduePending && (
-                          <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
-                            Overdue Pending
+                          <span className="mt-0.5 inline-flex rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
+                            Overdue
                           </span>
                         )}
-                        <p className="max-w-[180px] truncate whitespace-nowrap text-xs text-slate-500">
-                          {subject.category_name ?? '-'}
-                        </p>
                       </td>
-                      <td className="w-[180px] overflow-hidden px-4 py-3 text-sm">
+
+                      {/* Customer */}
+                      <td className="px-3 py-2">
                         {subject.customer_name ? (
                           <>
-                            <p className="max-w-[210px] truncate whitespace-nowrap font-medium text-slate-900">
-                              {truncateText(subject.customer_name, 20)}
-                            </p>
-                            <p className="max-w-[210px] truncate whitespace-nowrap text-xs text-slate-500">
-                              {subject.customer_phone ?? ''}
-                            </p>
+                            <p className="text-xs font-medium text-slate-800 truncate">{subject.customer_name}</p>
+                            <p className="text-xs text-slate-400 truncate">{subject.customer_phone ?? ''}</p>
                           </>
                         ) : (
-                          <span className="max-w-[210px] truncate whitespace-nowrap italic text-slate-400">Walk-in</span>
+                          <span className="text-xs italic text-slate-300">Walk-in</span>
                         )}
                       </td>
-                      <td className="w-[120px] overflow-hidden px-4 py-3 text-sm">
-                        <p className="max-w-[120px] truncate whitespace-nowrap font-medium text-slate-900">
-                          {truncateText(subject.source_name, 12)}
-                        </p>
-                        <p className="max-w-[120px] truncate whitespace-nowrap text-xs text-slate-500">
+
+                      {/* Source */}
+                      <td className="px-3 py-2">
+                        <p className="text-xs font-medium text-slate-800 truncate">{subject.source_name}</p>
+                        <span className={`inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+                          subject.source_type === 'brand' ? 'bg-violet-100 text-violet-700' : 'bg-cyan-100 text-cyan-700'
+                        }`}>
                           {subject.source_type === 'brand' ? 'Brand' : 'Dealer'}
-                        </p>
+                        </span>
                       </td>
-                      <td className="w-[100px] overflow-hidden px-4 py-3 text-center">
-                        <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${priorityMeta.className}`}>
+
+                      {/* Category */}
+                      <td className="px-3 py-2 text-xs text-slate-600 truncate">
+                        {subject.category_name ?? <span className="text-slate-300">—</span>}
+                      </td>
+
+                      {/* Priority */}
+                      <td className="px-3 py-2 text-center">
+                        <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${priorityMeta.className}`}>
                           {priorityMeta.label}
                         </span>
                       </td>
-                      <td className="w-[110px] overflow-hidden px-4 py-3 text-center">
-                        <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${statusMeta.className}`}>
+
+                      {/* Status */}
+                      <td className="px-3 py-2 text-center">
+                        <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${statusMeta.className}`}>
                           {statusMeta.label}
                         </span>
                       </td>
-                      <td className="w-[130px] overflow-hidden px-4 py-3 text-sm">
+
+                      {/* Technician */}
+                      <td className="px-3 py-2">
                         {subject.assigned_technician_name ? (
-                          <p className="max-w-[110px] truncate whitespace-nowrap font-medium text-slate-900">
-                            {subject.assigned_technician_name}
-                          </p>
+                          <>
+                            <p className="text-xs font-medium text-slate-800 truncate">{subject.assigned_technician_name}</p>
+                            {subject.assigned_technician_code && (
+                              <p className="text-[10px] text-slate-400">{subject.assigned_technician_code}</p>
+                            )}
+                          </>
                         ) : (
-                          <span className="inline-flex whitespace-nowrap rounded-full bg-rose-100 px-2.5 py-1 text-xs font-semibold text-rose-600">
+                          <span className="inline-flex whitespace-nowrap rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-600">
                             Unassigned
                           </span>
                         )}
                       </td>
-                      <td className="w-[130px] overflow-hidden px-4 py-3">
-                        <span className={`inline-flex max-w-[120px] truncate whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${serviceTypeMeta.className}`}>
+
+                      {/* Coverage */}
+                      <td className="px-3 py-2">
+                        <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium truncate ${serviceTypeMeta.className}`}>
                           {serviceTypeMeta.label}
                         </span>
                       </td>
-                      <td className="w-[120px] overflow-hidden px-4 py-3 text-sm text-slate-600">
+
+                      {/* Billing */}
+                      <td className="px-3 py-2 text-center">
+                        <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${billingMeta.className}`}>
+                          {billingMeta.label}
+                        </span>
+                      </td>
+
+                      {/* Service Type */}
+                      <td className="px-3 py-2 text-center">
+                        <span className={`inline-flex whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                          subject.type_of_service === 'installation'
+                            ? 'bg-indigo-100 text-indigo-700'
+                            : 'bg-slate-100 text-slate-600'
+                        }`}>
+                          {subject.type_of_service === 'installation' ? 'Install' : 'Service'}
+                        </span>
+                      </td>
+
+                      {/* Date */}
+                      <td className="px-3 py-2 text-xs text-slate-600">
                         {subject.technician_allocated_date ? (
-                          <div className="flex flex-col gap-0.5">
+                          <>
                             <span className="inline-block rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">Tech</span>
-                            <span className="font-semibold text-blue-800">{formatDate(subject.technician_allocated_date)}</span>
-                          </div>
+                            <p className="font-semibold text-blue-800">{formatDate(subject.technician_allocated_date)}</p>
+                          </>
                         ) : (
-                          <div className="flex flex-col gap-0.5">
+                          <>
                             <span className="inline-block rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">Brand</span>
-                            <span className="truncate">{formatDate(subject.allocated_date)}</span>
-                          </div>
+                            <p className="truncate">{formatDate(subject.allocated_date)}</p>
+                          </>
                         )}
                       </td>
-                      <td className="w-[80px] overflow-hidden px-4 py-3">
+
+                      {/* Actions */}
+                      <td className="px-3 py-2 text-right">
                         <Link
                           href={ROUTES.DASHBOARD_SUBJECTS_DETAIL(subject.id)}
                           onMouseEnter={() => handlePrefetch(subject.id)}
                           onFocus={() => handlePrefetch(subject.id)}
                           onTouchStart={() => handlePrefetch(subject.id)}
-                          className="inline-flex items-center whitespace-nowrap rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+                          className="inline-flex items-center whitespace-nowrap rounded-md bg-blue-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-700"
                         >
                           View
                         </Link>
