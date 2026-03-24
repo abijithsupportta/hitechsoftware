@@ -21,7 +21,7 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import { Filter, Plus } from 'lucide-react';
+import { Filter, Plus, Copy } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useSearchParams } from 'next/navigation';
 import { usePermission } from '@/hooks/auth/usePermission';
@@ -38,7 +38,16 @@ import type { SubjectListItem } from '@/modules/subjects/subject.types';
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
 
 function formatDate(value: string) {
-  return new Date(value).toLocaleDateString('en-GB');
+  const d = new Date(value);
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yy = String(d.getFullYear()).slice(-2);
+  return `${dd}/${mm}/${yy}`;
+}
+
+function shortenSubjectNumber(value: string) {
+  if (value.length <= 10) return value;
+  return `...${value.slice(-8)}`;
 }
 
 function formatStatus(value: string) {
@@ -324,27 +333,38 @@ export default function SubjectsDashboardPage() {
   return (
     <AttendanceGuard>
       <div className="p-6">
-      <div className="mb-4">
-        <h1 className="text-xl font-semibold text-slate-900">Service Subjects</h1>
-        <p className="mt-0.5 text-sm text-slate-500">
-          {role === 'technician'
-            ? 'Showing your pending assigned services, including carry-forward unfinished tasks.'
-            : queueParam === 'overdue'
-              ? 'Showing overdue pending works (allocated date older than today) for fast admin follow-up.'
-              : queueParam === 'due'
-                ? 'Showing customer-chargeable completed jobs pending payment collection.'
-              : queueParam === 'pending'
-                ? 'Showing full pending queue, sorted with overdue items first.'
-                : 'Filter, track, and audit all service subjects.'}
-        </p>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold text-slate-900">Service Subjects</h1>
+          <p className="mt-0.5 text-sm text-slate-500">
+            {role === 'technician'
+              ? 'Showing your pending assigned services, including carry-forward unfinished tasks.'
+              : queueParam === 'overdue'
+                ? 'Showing overdue pending works (allocated date older than today) for fast admin follow-up.'
+                : queueParam === 'due'
+                  ? 'Showing customer-chargeable completed jobs pending payment collection.'
+                : queueParam === 'pending'
+                  ? 'Showing full pending queue, sorted with overdue items first.'
+                  : 'Filter, track, and audit all service subjects.'}
+          </p>
+        </div>
+        {can('subject:create') ? (
+          <Link
+            href={ROUTES.DASHBOARD_SUBJECTS_NEW}
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+          >
+            <Plus size={16} />
+            Create Subject
+          </Link>
+        ) : null}
       </div>
 
       {role !== 'technician' ? (
-        <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="mb-3 flex flex-wrap items-center gap-1.5">
           <button
             type="button"
             onClick={() => setQueueMode('all')}
-            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+            className={`rounded-full border px-3 py-1 text-sm font-medium transition ${
               queueMode === 'all'
                 ? 'border-slate-700 bg-slate-700 text-white'
                 : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
@@ -355,7 +375,7 @@ export default function SubjectsDashboardPage() {
           <button
             type="button"
             onClick={() => setQueueMode('pending')}
-            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+            className={`rounded-full border px-3 py-1 text-sm font-medium transition ${
               queueMode === 'pending'
                 ? 'border-amber-700 bg-amber-700 text-white'
                 : 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100'
@@ -366,7 +386,7 @@ export default function SubjectsDashboardPage() {
           <button
             type="button"
             onClick={() => setQueueMode('overdue')}
-            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+            className={`rounded-full border px-3 py-1 text-sm font-medium transition ${
               queueMode === 'overdue'
                 ? 'border-rose-700 bg-rose-700 text-white'
                 : 'border-rose-300 bg-rose-50 text-rose-800 hover:bg-rose-100'
@@ -377,7 +397,7 @@ export default function SubjectsDashboardPage() {
           <button
             type="button"
             onClick={() => setQueueMode('due')}
-            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+            className={`rounded-full border px-3 py-1 text-sm font-medium transition ${
               queueMode === 'due'
                 ? 'border-emerald-700 bg-emerald-700 text-white'
                 : 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
@@ -440,16 +460,6 @@ export default function SubjectsDashboardPage() {
                 </span>
               ) : null}
             </button>
-
-            {can('subject:create') ? (
-              <Link
-                href={ROUTES.DASHBOARD_SUBJECTS_NEW}
-                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
-              >
-                <Plus size={16} />
-                Create Subject
-              </Link>
-            ) : null}
           </div>
         </div>
 
@@ -608,57 +618,41 @@ export default function SubjectsDashboardPage() {
 
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="min-w-[1400px] w-full table-fixed divide-y divide-slate-200">
-            <colgroup>
-              <col className="w-[13%]" />
-              <col className="w-[12%]" />
-              <col className="w-[9%]" />
-              <col className="w-[7%]" />
-              <col className="w-[6%]" />
-              <col className="w-[8%]" />
-              <col className="w-[10%]" />
-              <col className="w-[8%]" />
-              <col className="w-[6%]" />
-              <col className="w-[6%]" />
-              <col className="w-[8%]" />
-              <col className="w-[7%]" />
-            </colgroup>
+          <table className="w-full min-w-[700px] divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>
                 <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Subject No.</th>
                 <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Customer</th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Source</th>
                 <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Category</th>
-                <th className="px-3 py-2 text-center text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Priority</th>
+                <th className="hidden xl:table-cell px-3 py-2 text-center text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Priority</th>
                 <th className="px-3 py-2 text-center text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Status</th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Technician</th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Coverage</th>
-                <th className="px-3 py-2 text-center text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Billing</th>
-                <th className="px-3 py-2 text-center text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Type</th>
+                <th className="hidden lg:table-cell px-3 py-2 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Technician</th>
                 <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Date</th>
-                <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Actions</th>
+                <th className="sticky right-0 bg-slate-50 px-3 py-2 text-right text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500 shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.08)]">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, index) => (
                   <tr key={`subject-skeleton-${index}`} className="animate-pulse">
-                    {Array.from({ length: 12 }).map((__, j) => (
+                    {Array.from({ length: 6 }).map((__, j) => (
                       <td key={j} className="px-3 py-2">
                         <div className="h-3 w-16 rounded bg-slate-200" />
                       </td>
                     ))}
+                    <td className="hidden xl:table-cell px-3 py-2"><div className="h-3 w-16 rounded bg-slate-200" /></td>
+                    <td className="sticky right-0 bg-white px-3 py-2"><div className="h-3 w-12 rounded bg-slate-200" /></td>
                   </tr>
                 ))
               ) : error ? (
                 <tr>
-                  <td colSpan={12} className="px-3 py-8 text-center text-xs text-rose-600">
+                  <td colSpan={8} className="px-3 py-8 text-center text-xs text-rose-600">
                     {error}
                   </td>
                 </tr>
               ) : subjects.length === 0 ? (
                 <tr>
-                  <td colSpan={12} className="px-3 py-8 text-center text-xs text-slate-500">
+                  <td colSpan={8} className="px-3 py-8 text-center text-xs text-slate-500">
                     No subjects found.
                   </td>
                 </tr>
@@ -667,8 +661,6 @@ export default function SubjectsDashboardPage() {
                   const isUnassigned = !subject.assigned_technician_id;
                   const priorityMeta = getPriorityMeta(subject.priority);
                   const statusMeta = getStatusMeta(subject.status);
-                  const serviceTypeMeta = getServiceTypeMeta(subject);
-                  const billingMeta = getBillingMeta(subject.billing_status);
                   const needsAttentionBorder = isUnassigned || subject.priority === 'critical';
                   const effectiveDate = subject.technician_allocated_date ?? subject.allocated_date;
                   const isBackdatedAssignment = Boolean(subject.technician_allocated_date) && effectiveDate < today;
@@ -681,50 +673,55 @@ export default function SubjectsDashboardPage() {
                       key={subject.id}
                       className={`hover:bg-slate-50/70${needsAttentionBorder ? ' border-l-4 border-l-rose-400' : ''}`}
                     >
-                      {/* Subject Number */}
+                      {/* Subject Number — shortened with copy + source info + badges */}
                       <td className="px-3 py-2">
-                        <Link href={ROUTES.DASHBOARD_SUBJECTS_DETAIL(subject.id)} onMouseEnter={() => handlePrefetch(subject.id)} onFocus={() => handlePrefetch(subject.id)} onTouchStart={() => handlePrefetch(subject.id)} className="block">
-                          <code className="rounded bg-slate-100 px-1 py-0.5 text-xs font-mono font-medium text-blue-600 hover:underline cursor-pointer">
-                            {subject.subject_number}
-                          </code>
-                        </Link>
-                        {subject.is_rejected_pending_reschedule && (
-                          <span className="mt-0.5 inline-flex rounded-full bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold text-rose-700">
-                            ⚠ Reschedule
-                          </span>
-                        )}
-                        {role !== 'technician' && isBackdatedAssignment && (
-                          <span className="mt-0.5 inline-flex rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-800">
-                            Backdated
-                          </span>
-                        )}
-                        {isOverduePending && (
-                          <span className="mt-0.5 inline-flex rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
-                            Overdue
-                          </span>
-                        )}
+                        <div className="flex items-center gap-1">
+                          <Link href={ROUTES.DASHBOARD_SUBJECTS_DETAIL(subject.id)} onMouseEnter={() => handlePrefetch(subject.id)} onFocus={() => handlePrefetch(subject.id)} onTouchStart={() => handlePrefetch(subject.id)} title={subject.subject_number}>
+                            <code className="rounded bg-slate-100 px-1 py-0.5 text-xs font-mono font-medium text-blue-600 hover:underline cursor-pointer whitespace-nowrap">
+                              {shortenSubjectNumber(subject.subject_number)}
+                            </code>
+                          </Link>
+                          <button
+                            type="button"
+                            title="Copy subject number"
+                            onClick={() => navigator.clipboard.writeText(subject.subject_number)}
+                            className="text-slate-300 hover:text-slate-500 shrink-0"
+                          >
+                            <Copy size={12} />
+                          </button>
+                        </div>
+                        <p className="mt-0.5 text-[10px] text-slate-400 truncate">
+                          {subject.source_name} · {subject.source_type === 'brand' ? 'Brand' : 'Dealer'}
+                        </p>
+                        <div className="flex flex-wrap gap-0.5 mt-0.5">
+                          {subject.is_rejected_pending_reschedule && (
+                            <span className="inline-flex rounded-full bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold text-rose-700">
+                              Reschedule
+                            </span>
+                          )}
+                          {role !== 'technician' && isBackdatedAssignment && (
+                            <span className="inline-flex rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-800">
+                              Backdated
+                            </span>
+                          )}
+                          {isOverduePending && (
+                            <span className="inline-flex rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
+                              Overdue
+                            </span>
+                          )}
+                        </div>
                       </td>
 
-                      {/* Customer */}
+                      {/* Customer — name + phone */}
                       <td className="px-3 py-2">
                         {subject.customer_name ? (
                           <>
                             <p className="text-xs font-medium text-slate-800 truncate">{subject.customer_name}</p>
-                            <p className="text-xs text-slate-400 truncate">{subject.customer_phone ?? ''}</p>
+                            <p className="text-[11px] text-slate-400">{subject.customer_phone ?? ''}</p>
                           </>
                         ) : (
                           <span className="text-xs italic text-slate-300">Walk-in</span>
                         )}
-                      </td>
-
-                      {/* Source */}
-                      <td className="px-3 py-2">
-                        <p className="text-xs font-medium text-slate-800 truncate">{subject.source_name}</p>
-                        <span className={`inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
-                          subject.source_type === 'brand' ? 'bg-violet-100 text-violet-700' : 'bg-cyan-100 text-cyan-700'
-                        }`}>
-                          {subject.source_type === 'brand' ? 'Brand' : 'Dealer'}
-                        </span>
                       </td>
 
                       {/* Category */}
@@ -732,8 +729,8 @@ export default function SubjectsDashboardPage() {
                         {subject.category_name ?? <span className="text-slate-300">—</span>}
                       </td>
 
-                      {/* Priority */}
-                      <td className="px-3 py-2 text-center">
+                      {/* Priority — hidden below xl */}
+                      <td className="hidden xl:table-cell px-3 py-2 text-center">
                         <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${priorityMeta.className}`}>
                           {priorityMeta.label}
                         </span>
@@ -746,15 +743,10 @@ export default function SubjectsDashboardPage() {
                         </span>
                       </td>
 
-                      {/* Technician */}
-                      <td className="px-3 py-2">
+                      {/* Technician — hidden below lg */}
+                      <td className="hidden lg:table-cell px-3 py-2">
                         {subject.assigned_technician_name ? (
-                          <>
-                            <p className="text-xs font-medium text-slate-800 truncate">{subject.assigned_technician_name}</p>
-                            {subject.assigned_technician_code && (
-                              <p className="text-[10px] text-slate-400">{subject.assigned_technician_code}</p>
-                            )}
-                          </>
+                          <p className="text-xs font-medium text-slate-800 truncate">{subject.assigned_technician_name}</p>
                         ) : (
                           <span className="inline-flex whitespace-nowrap rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-600">
                             Unassigned
@@ -762,48 +754,20 @@ export default function SubjectsDashboardPage() {
                         )}
                       </td>
 
-                      {/* Coverage */}
-                      <td className="px-3 py-2">
-                        <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium truncate ${serviceTypeMeta.className}`}>
-                          {serviceTypeMeta.label}
-                        </span>
-                      </td>
-
-                      {/* Billing */}
-                      <td className="px-3 py-2 text-center">
-                        <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${billingMeta.className}`}>
-                          {billingMeta.label}
-                        </span>
-                      </td>
-
-                      {/* Service Type */}
-                      <td className="px-3 py-2 text-center">
-                        <span className={`inline-flex whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
-                          subject.type_of_service === 'installation'
-                            ? 'bg-indigo-100 text-indigo-700'
-                            : 'bg-slate-100 text-slate-600'
-                        }`}>
-                          {subject.type_of_service === 'installation' ? 'Install' : 'Service'}
-                        </span>
-                      </td>
-
-                      {/* Date */}
+                      {/* Date — compact DD/MM/YY + Tech/Brand badge */}
                       <td className="px-3 py-2 text-xs text-slate-600">
-                        {subject.technician_allocated_date ? (
-                          <>
-                            <span className="inline-block rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">Tech</span>
-                            <p className="font-semibold text-blue-800">{formatDate(subject.technician_allocated_date)}</p>
-                          </>
-                        ) : (
-                          <>
-                            <span className="inline-block rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">Brand</span>
-                            <p className="truncate">{formatDate(subject.allocated_date)}</p>
-                          </>
-                        )}
+                        <p className="font-medium whitespace-nowrap">
+                          {formatDate(subject.technician_allocated_date ?? subject.allocated_date)}
+                        </p>
+                        <span className={`inline-block rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+                          subject.technician_allocated_date ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'
+                        }`}>
+                          {subject.technician_allocated_date ? 'Tech' : 'Brand'}
+                        </span>
                       </td>
 
-                      {/* Actions */}
-                      <td className="px-3 py-2 text-right">
+                      {/* Actions — sticky right */}
+                      <td className="sticky right-0 bg-white px-3 py-2 text-right shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.08)]">
                         <Link
                           href={ROUTES.DASHBOARD_SUBJECTS_DETAIL(subject.id)}
                           onMouseEnter={() => handlePrefetch(subject.id)}

@@ -201,7 +201,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       <div className="flex">
         <aside
           className={`min-h-[calc(100vh-4rem)] border-r border-blue-900/40 bg-ht-navy-950 transition-[width] duration-200 ${
-            sidebarExpanded ? 'w-[260px]' : 'w-20'
+            sidebarExpanded ? 'w-[200px]' : 'w-20'
           }`}
         >
           <nav className="space-y-1 p-3">
