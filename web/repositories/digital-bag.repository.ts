@@ -95,13 +95,12 @@ export async function listSessions(filters: SessionFilters = {}) {
     .from('digital_bag_sessions')
     .select(SESSION_SELECT, { count: 'exact' })
     .order('session_date', { ascending: false })
-    .order('created_at', { ascending: false })
-    .range(from, to);
+    .order('created_at', { ascending: false });
 
   if (technician_id) query = query.eq('technician_id', technician_id);
   if (status) query = query.eq('status', status);
 
-  return query;
+  return query.range(from, to);
 }
 
 export async function listSessionHistory(filters: {
@@ -119,14 +118,13 @@ export async function listSessionHistory(filters: {
     .from('digital_bag_sessions')
     .select(SESSION_DETAIL_SELECT, { count: 'exact' })
     .eq('status', 'closed')
-    .order('session_date', { ascending: false })
-    .range(from, to);
+    .order('session_date', { ascending: false });
 
   if (technician_id) query = query.eq('technician_id', technician_id);
   if (date_from) query = query.gte('session_date', date_from);
   if (date_to) query = query.lte('session_date', date_to);
 
-  return query;
+  return query.range(from, to);
 }
 
 export async function closeSession(id: string, notes?: string) {

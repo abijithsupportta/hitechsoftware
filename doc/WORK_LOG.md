@@ -3,6 +3,31 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-26 02:10:00 +05:30] Digital Bag — QA Testing (67 Unit Tests) and Bug Fixes
+- Summary: Wrote 67 unit tests across 11 groups for the Digital Bag module. Found and fixed 2 production bugs in the repository layer during testing.
+- Work done:
+	- Created 5 test files covering all Digital Bag functionality:
+		- session-creation-items-stock.test.ts (23 tests) — Groups 1-3: session creation, adding items, stock reduction
+		- remove-items-capacity.test.ts (9 tests) — Groups 4-5: removing items, 50-item capacity
+		- session-close-damage.test.ts (16 tests) — Groups 6-7: session close flow, damage fees and payout
+		- readonly-search.test.ts (9 tests) — Groups 8-9: read-only after close, product search
+		- history-edge-cases.test.ts (10 tests) — Groups 10-11: history/view, edge cases
+	- BUG FIXED: listSessionHistory() called .range() before conditional .eq()/.gte()/.lte() filters — range() is terminal in Supabase client chain, returns Promise not chainable query. All history filters (technician, date_from, date_to) would fail at runtime with TypeError.
+	- BUG FIXED: listSessions() had the same .range()-before-filters bug — technician and status filters would fail at runtime.
+- Files changed:
+	- web/tests/digital-bag/session-creation-items-stock.test.ts (new)
+	- web/tests/digital-bag/remove-items-capacity.test.ts (new)
+	- web/tests/digital-bag/session-close-damage.test.ts (new)
+	- web/tests/digital-bag/readonly-search.test.ts (new)
+	- web/tests/digital-bag/history-edge-cases.test.ts (new)
+	- web/repositories/digital-bag.repository.ts (bug fix — moved .range() after filters in listSessions and listSessionHistory)
+- Verification:
+	- 67/67 tests passed (vitest)
+	- Build: 0 TypeScript errors, 0 warnings
+	- All 5 test files, 11 groups validated
+- Next:
+	- WhatsApp notifications module (Fast2SMS)
+
 ## [2026-03-25 16:00:00 +05:30] Digital Bag — Runtime Bug Fixes
 - Summary: Fixed 6 runtime issues in the Digital Bag module (2 critical, 1 high, 3 medium) found during code review.
 - Work done:
