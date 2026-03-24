@@ -119,7 +119,7 @@ export function useCloseSession() {
     onSuccess: async (result) => {
       if (!result.ok) { toast.error(result.error.message); return; }
       toast.success('Bag session closed');
-      await queryClient.invalidateQueries({ queryKey: BASE_KEY });
+      await queryClient.invalidateQueries({ queryKey: BASE_KEY, refetchType: 'all' });
       await queryClient.invalidateQueries({ queryKey: ['stock-levels'] });
       await queryClient.invalidateQueries({ queryKey: ['products'] });
       await queryClient.invalidateQueries({ queryKey: ['payouts'] });
@@ -197,7 +197,7 @@ export function useDigitalBagSessions() {
     onSuccess: async (result) => {
       if (!result.ok) { toast.error(result.error.message); return; }
       toast.success('Bag session closed');
-      await queryClient.invalidateQueries({ queryKey: BASE_KEY });
+      await queryClient.invalidateQueries({ queryKey: BASE_KEY, refetchType: 'all' });
     },
   });
 

@@ -3,6 +3,20 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-26 02:40:00 +05:30] Digital Bag — Fix cache invalidation after session close
+- Summary: After closing a session, the dashboard and technician selector still showed it as active due to stale React Query cache.
+- Work done:
+	- Added refetchType: 'all' to cache invalidation in useCloseSession() — ensures inactive/disabled queries are also refetched, not just active ones.
+	- Applied same fix to backward-compat closeMutation in useDigitalBagSessions().
+- Files changed:
+	- web/hooks/digital-bag/useDigitalBag.ts (refetchType: 'all' on both close mutations)
+	- doc/WORK_LOG.md
+- Verification:
+	- 67/67 digital bag tests pass
+	- Build: 0 TypeScript errors
+- Next:
+	- none
+
 ## [2026-03-26 02:35:00 +05:30] Digital Bag — Fix closed session still showing as active
 - Summary: Closed sessions were still appearing in the Active Sessions dashboard because listTodaySessions() had no status filter.
 - Work done:
