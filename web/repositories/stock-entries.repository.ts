@@ -61,6 +61,9 @@ export interface StockEntryItemInput {
   purchase_price: number;
   mrp: number;
   hsn_sac_code?: string | null;
+  supplier_discount_type?: 'percentage' | 'flat';
+  supplier_discount_value?: number;
+  gst_rate?: number;
 }
 
 /**
@@ -77,6 +80,14 @@ export interface StockEntryItemRow {
   mrp: number | null;
   total_purchase_value: number | null;
   hsn_sac_code: string | null;
+  supplier_discount_type: 'percentage' | 'flat';
+  supplier_discount_value: number;
+  supplier_discount_amount: number | null;
+  discounted_purchase_price: number | null;
+  gst_rate: number;
+  gst_amount: number | null;
+  final_unit_cost: number | null;
+  line_total: number | null;
   created_at: string;
   product: { id: string; product_name: string; material_code: string } | null;
 }
@@ -91,6 +102,9 @@ export interface StockEntryRow {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  grand_total: number;
+  total_discount_given: number;
+  total_gst_paid: number;
 }
 
 /**
@@ -145,8 +159,8 @@ export async function listStockEntries(filters: StockEntryFilters = {}) {
   let query = supabase
     .from('stock_entries')
     .select(
-      `id,invoice_number,entry_date,notes,is_deleted,created_by,created_at,updated_at,
-       items:stock_entry_items(id,stock_entry_id,product_id,material_code,quantity,purchase_price,mrp,total_purchase_value,hsn_sac_code,created_at,product:inventory_products(id,product_name,material_code))`,
+      `id,invoice_number,entry_date,notes,is_deleted,created_by,created_at,updated_at,grand_total,total_discount_given,total_gst_paid,
+       items:stock_entry_items(id,stock_entry_id,product_id,material_code,quantity,purchase_price,mrp,total_purchase_value,hsn_sac_code,supplier_discount_type,supplier_discount_value,supplier_discount_amount,discounted_purchase_price,gst_rate,gst_amount,final_unit_cost,line_total,created_at,product:inventory_products(id,product_name,material_code))`,
       { count: 'exact' },
     )
     .eq('is_deleted', false)
@@ -171,8 +185,8 @@ export async function findStockEntryById(id: string) {
   return supabase
     .from('stock_entries')
     .select(
-      `id,invoice_number,entry_date,notes,is_deleted,created_by,created_at,updated_at,
-       items:stock_entry_items(id,stock_entry_id,product_id,material_code,quantity,purchase_price,mrp,total_purchase_value,hsn_sac_code,created_at,product:inventory_products(id,product_name,material_code))`,
+      `id,invoice_number,entry_date,notes,is_deleted,created_by,created_at,updated_at,grand_total,total_discount_given,total_gst_paid,
+       items:stock_entry_items(id,stock_entry_id,product_id,material_code,quantity,purchase_price,mrp,total_purchase_value,hsn_sac_code,supplier_discount_type,supplier_discount_value,supplier_discount_amount,discounted_purchase_price,gst_rate,gst_amount,final_unit_cost,line_total,created_at,product:inventory_products(id,product_name,material_code))`,
     )
     .eq('id', id)
     .eq('is_deleted', false)
@@ -218,6 +232,9 @@ export async function createStockEntry(input: CreateStockEntryInput) {
     purchase_price: item.purchase_price,
     mrp: item.mrp,
     hsn_sac_code: item.hsn_sac_code?.trim() ?? null,
+    supplier_discount_type: item.supplier_discount_type ?? 'percentage',
+    supplier_discount_value: item.supplier_discount_value ?? 0,
+    gst_rate: item.gst_rate ?? 18,
   }));
 
   const { error: itemsError } = await supabase.from('stock_entry_items').insert(itemRows);

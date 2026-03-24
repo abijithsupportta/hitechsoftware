@@ -70,8 +70,9 @@ import { ArrowLeft, Plus, Trash2, PackagePlus, X, AlertTriangle, TrendingUp } fr
 import Link from 'next/link';
 import { useStockEntries } from '@/hooks/stock-entries/useStockEntries';
 import { usePermission } from '@/hooks/auth/usePermission';
-import { useProducts } from '@/hooks/products/useProducts';
 import { useProductCategories } from '@/hooks/product-categories/useProductCategories';
+import { ProductSearchCombobox } from '@/components/inventory/ProductSearchCombobox';
+import type { Product } from '@/modules/products/product.types';
 import { useProductTypes } from '@/hooks/product-types/useProductTypes';
 import { ROUTES } from '@/lib/constants/routes';
 import { createStockEntrySchema, type CreateStockEntryFormValues } from '@/modules/stock-entries/stock-entry.validation';
@@ -295,7 +296,6 @@ export default function NewStockEntryPage() {
   const router = useRouter();
   const { can } = usePermission();
   const { createMutation } = useStockEntries();
-  const { items: products } = useProducts();
   const [showInlineForm, setShowInlineForm] = useState(false);
   const [inlineFormIndex, setInlineFormIndex] = useState<number | null>(null);
 
@@ -313,7 +313,7 @@ export default function NewStockEntryPage() {
       invoice_number: '',
       entry_date: today(),
       notes: null,
-      items: [{ product_id: null, material_code: '', quantity: 1, purchase_price: 0, mrp: 0, hsn_sac_code: null }],
+      items: [{ product_id: null, material_code: '', quantity: 1, purchase_price: 0, mrp: 0, hsn_sac_code: null, supplier_discount_type: 'percentage' as const, supplier_discount_value: 0, gst_rate: 18 }],
     },
   });
 
@@ -321,13 +321,11 @@ export default function NewStockEntryPage() {
   const watchItems = watch('items');
 
   const handleProductSelect = useCallback(
-    (index: number, productId: string) => {
-      const product = products.find((p) => p.id === productId);
+    (index: number, product: Product | null) => {
       if (product) {
         setValue(`items.${index}.product_id`, product.id);
         setValue(`items.${index}.material_code`, product.material_code);
         setValue(`items.${index}.hsn_sac_code`, product.hsn_sac_code ?? '');
-        // Auto-fill MRP from product master (editable by user)
         if (product.mrp != null) {
           setValue(`items.${index}.mrp`, product.mrp);
         }
@@ -337,7 +335,7 @@ export default function NewStockEntryPage() {
         setValue(`items.${index}.hsn_sac_code`, '');
       }
     },
-    [products, setValue],
+    [setValue],
   );
 
   const handleInlineProductCreated = useCallback(
@@ -439,7 +437,7 @@ export default function NewStockEntryPage() {
             <h2 className="text-sm font-semibold text-slate-700">Items</h2>
             <button
               type="button"
-              onClick={() => append({ product_id: null, material_code: '', quantity: 1, purchase_price: 0, mrp: 0, hsn_sac_code: null })}
+              onClick={() => append({ product_id: null, material_code: '', quantity: 1, purchase_price: 0, mrp: 0, hsn_sac_code: null, supplier_discount_type: 'percentage' as const, supplier_discount_value: 0, gst_rate: 18 })}
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
             >
               <Plus size={12} />
@@ -503,248 +501,337 @@ export default function NewStockEntryPage() {
                     </div>
                   )}
 
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {/* Product Select */}
-                    <div className="sm:col-span-2">
-                      <label className="mb-1 block text-xs font-medium text-slate-600">
-                        Product
-                      </label>
-                      <Controller
-                        name={`items.${index}.product_id`}
-                        control={control}
-                        render={({ field: f }) => (
-                          <select
-                            value={f.value ?? ''}
-                            onChange={(e) => {
-                              f.onChange(e.target.value || null);
-                              handleProductSelect(index, e.target.value);
-                            }}
-                            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                          >
-                            <option value="">Select product (or enter manually below)…</option>
-                            {products.filter((p) => p.is_active).map((p) => (
-                              <option key={p.id} value={p.id}>
-                                {p.product_name} — {p.material_code}
-                              </option>
-                            ))}
-                          </select>
-                        )}
-                      />
-                    </div>
+                  <div className="space-y-3">
+                    {/* Row 1: Product selector, Quantity, Purchase Price */}
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="sm:col-span-2">
+                        <label className="mb-1 block text-xs font-medium text-slate-600">Product</label>
+                        <ProductSearchCombobox
+                          value={currentProductId || null}
+                          onChange={(product) => handleProductSelect(index, product)}
+                        />
+                      </div>
 
-                    {/* Material Code */}
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-slate-600">
-                        Material Code <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        {...register(`items.${index}.material_code`)}
-                        placeholder="e.g. MC-001A"
-                        className={`w-full rounded-lg border px-3 py-2 font-mono text-sm uppercase focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
-                          errors.items?.[index]?.material_code
-                            ? 'border-rose-400'
-                            : 'border-slate-200 focus:border-blue-500'
-                        }`}
-                      />
-                      {errors.items?.[index]?.material_code && (
-                        <p className="mt-0.5 text-xs text-rose-600">
-                          {errors.items[index].material_code?.message}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Quantity */}
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-slate-600">
-                        Quantity Received <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        min={1}
-                        {...register(`items.${index}.quantity`, { valueAsNumber: true })}
-                        className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
-                          errors.items?.[index]?.quantity
-                            ? 'border-rose-400'
-                            : 'border-slate-200 focus:border-blue-500'
-                        }`}
-                      />
-                      {errors.items?.[index]?.quantity && (
-                        <p className="mt-0.5 text-xs text-rose-600">
-                          {errors.items[index].quantity?.message}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Purchase Price */}
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-slate-600">
-                        Purchase Price (what you paid) <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        {...register(`items.${index}.purchase_price`, { valueAsNumber: true })}
-                        placeholder="e.g. 45.00"
-                        className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
-                          errors.items?.[index]?.purchase_price
-                            ? 'border-rose-400'
-                            : 'border-slate-200 focus:border-blue-500'
-                        }`}
-                      />
-                      {errors.items?.[index]?.purchase_price && (
-                        <p className="mt-0.5 text-xs text-rose-600">
-                          {errors.items[index].purchase_price?.message}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* MRP (Selling Price) */}
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-slate-600">
-                        MRP (selling price) <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        {...register(`items.${index}.mrp`, { valueAsNumber: true })}
-                        placeholder="e.g. 99.00"
-                        className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
-                          errors.items?.[index]?.mrp
-                            ? 'border-rose-400'
-                            : 'border-slate-200 focus:border-blue-500'
-                        }`}
-                      />
-                      {errors.items?.[index]?.mrp && (
-                        <p className="mt-0.5 text-xs text-rose-600">
-                          {errors.items[index].mrp?.message}
-                        </p>
-                      )}
-                      {(() => {
-                        const mrpVal = watchItems[index]?.mrp;
-                        if (!mrpVal || mrpVal <= 0) return null;
-                        const base = mrpVal / 1.18;
-                        const gst = mrpVal - base;
-                        return (
-                          <p className="mt-1 text-xs text-slate-500">
-                            Base: ₹{base.toFixed(2)} + GST 18%: ₹{gst.toFixed(2)}
-                          </p>
-                        );
-                      })()}
-                    </div>
-
-                    {/* HSN/SAC */}
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-slate-600">
-                        HSN / SAC Code
-                      </label>
-                      <input
-                        {...register(`items.${index}.hsn_sac_code`)}
-                        placeholder="e.g. 84158100"
-                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Profit Margin & Pricing Alerts */}
-                  {(() => {
-                    const pp = watchItems[index]?.purchase_price ?? 0;
-                    const mrp = watchItems[index]?.mrp ?? 0;
-                    const qty = watchItems[index]?.quantity ?? 0;
-                    const lineTotal = qty * pp;
-
-                    // MRP vs Purchase Price check
-                    const isMrpBelowCost = pp > 0 && mrp > 0 && mrp <= pp;
-                    const margin = pp > 0 && mrp > 0 ? ((mrp - pp) / pp) * 100 : null;
-                    const isLowMargin = margin !== null && margin > 0 && margin < 10;
-
-                    // Profit per unit
-                    const profitPerUnit = pp > 0 && mrp > 0 ? mrp - pp : null;
-
-                    return (
-                      <div className="mt-3 space-y-2">
-                        {/* RED: MRP ≤ Purchase Price — blocks submission via Zod */}
-                        {isMrpBelowCost && (
-                          <div className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2">
-                            <AlertTriangle size={14} className="mt-0.5 flex-shrink-0 text-rose-600" />
-                            <div>
-                              <p className="text-xs font-semibold text-rose-700">Loss Alert — MRP ≤ Purchase Price</p>
-                              <p className="text-xs text-rose-600">
-                                MRP (₹{mrp.toFixed(2)}) is not higher than purchase price (₹{pp.toFixed(2)}).
-                                This will result in a loss. Correct the MRP before saving.
-                              </p>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* ORANGE: Low margin warning (0% < margin < 10%) */}
-                        {isLowMargin && !isMrpBelowCost && (
-                          <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-                            <AlertTriangle size={14} className="mt-0.5 flex-shrink-0 text-amber-600" />
-                            <p className="text-xs text-amber-700">
-                              <span className="font-semibold">Low margin warning:</span> Profit margin is only {margin!.toFixed(1)}%.
-                              Consider verifying the MRP.
-                            </p>
-                          </div>
-                        )}
-
-                        {/* Profit Margin & Line Total — shown when margin is valid */}
-                        {margin !== null && margin > 0 && !isMrpBelowCost && (
-                          <div className="flex items-center gap-3 rounded-lg bg-emerald-50 px-3 py-2">
-                            <TrendingUp size={14} className="flex-shrink-0 text-emerald-600" />
-                            <div className="flex flex-1 flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-                              <span className="font-medium text-emerald-700">
-                                Margin: {margin.toFixed(1)}%
-                              </span>
-                              {profitPerUnit !== null && (
-                                <span className="text-emerald-600">
-                                  Profit/unit: ₹{profitPerUnit.toFixed(2)}
-                                </span>
-                              )}
-                              {lineTotal > 0 && (
-                                <span className="ml-auto font-medium text-blue-700">
-                                  Line Total: ₹{lineTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Line total only — when margin is not calculable but total exists */}
-                        {(margin === null || isMrpBelowCost) && lineTotal > 0 && (
-                          <div className="flex items-center justify-end rounded-lg bg-blue-50 px-3 py-2">
-                            <span className="text-xs font-medium text-blue-700">
-                              Total Purchase Value: ₹{lineTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </span>
-                          </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-slate-600">
+                          Material Code <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          {...register(`items.${index}.material_code`)}
+                          placeholder="e.g. MC-001A"
+                          className={`w-full rounded-lg border px-3 py-2 font-mono text-sm uppercase focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
+                            errors.items?.[index]?.material_code
+                              ? 'border-rose-400'
+                              : 'border-slate-200 focus:border-blue-500'
+                          }`}
+                        />
+                        {errors.items?.[index]?.material_code && (
+                          <p className="mt-0.5 text-xs text-rose-600">{errors.items[index].material_code?.message}</p>
                         )}
                       </div>
-                    );
-                  })()}
+
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-slate-600">
+                          Quantity Received <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          {...register(`items.${index}.quantity`, { valueAsNumber: true })}
+                          className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
+                            errors.items?.[index]?.quantity
+                              ? 'border-rose-400'
+                              : 'border-slate-200 focus:border-blue-500'
+                          }`}
+                        />
+                        {errors.items?.[index]?.quantity && (
+                          <p className="mt-0.5 text-xs text-rose-600">{errors.items[index].quantity?.message}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-slate-600">
+                          Purchase Price excl. GST <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          {...register(`items.${index}.purchase_price`, { valueAsNumber: true })}
+                          placeholder="e.g. 85.00"
+                          className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
+                            errors.items?.[index]?.purchase_price
+                              ? 'border-rose-400'
+                              : 'border-slate-200 focus:border-blue-500'
+                          }`}
+                        />
+                        {errors.items?.[index]?.purchase_price && (
+                          <p className="mt-0.5 text-xs text-rose-600">{errors.items[index].purchase_price?.message}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-slate-600">HSN / SAC Code</label>
+                        <input
+                          {...register(`items.${index}.hsn_sac_code`)}
+                          placeholder="e.g. 84158100"
+                          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Row 2: Discount Type, Discount Value, GST Rate */}
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-slate-600">Discount Type</label>
+                        <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => setValue(`items.${index}.supplier_discount_type`, 'percentage')}
+                            className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${
+                              (watchItems[index]?.supplier_discount_type ?? 'percentage') === 'percentage'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-white text-slate-600 hover:bg-slate-50'
+                            }`}
+                          >
+                            %
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setValue(`items.${index}.supplier_discount_type`, 'flat')}
+                            className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${
+                              watchItems[index]?.supplier_discount_type === 'flat'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-white text-slate-600 hover:bg-slate-50'
+                            }`}
+                          >
+                            ₹ Flat
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-slate-600">
+                          Discount Value
+                        </label>
+                        <input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          {...register(`items.${index}.supplier_discount_value`, { valueAsNumber: true })}
+                          placeholder="0"
+                          className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
+                            errors.items?.[index]?.supplier_discount_value
+                              ? 'border-rose-400'
+                              : 'border-slate-200 focus:border-blue-500'
+                          }`}
+                        />
+                        {errors.items?.[index]?.supplier_discount_value && (
+                          <p className="mt-0.5 text-xs text-rose-600">{errors.items[index].supplier_discount_value?.message}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-slate-600">GST Rate</label>
+                        <div className="flex items-center rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-600">
+                          18%
+                        </div>
+                        <input type="hidden" {...register(`items.${index}.gst_rate`, { valueAsNumber: true })} />
+                      </div>
+                    </div>
+
+                    {/* Row 3: Calculated pricing summary box */}
+                    {(() => {
+                      const pp = watchItems[index]?.purchase_price ?? 0;
+                      const discType = watchItems[index]?.supplier_discount_type ?? 'percentage';
+                      const discVal = watchItems[index]?.supplier_discount_value ?? 0;
+                      const gstRate = 18;
+                      const qty = watchItems[index]?.quantity ?? 0;
+
+                      if (pp <= 0) return null;
+
+                      const discountAmount = discType === 'percentage'
+                        ? Math.round(pp * discVal / 100 * 100) / 100
+                        : Math.round(discVal * 100) / 100;
+                      const afterDiscount = Math.round((pp - discountAmount) * 100) / 100;
+                      const gstAmount = Math.round(afterDiscount * gstRate / 100 * 100) / 100;
+                      const finalUnitCost = Math.round((afterDiscount + gstAmount) * 100) / 100;
+                      const lineTotal = Math.round(finalUnitCost * qty * 100) / 100;
+
+                      const discLabel = discType === 'percentage' ? `${discVal}%` : `₹${discVal.toFixed(2)}`;
+
+                      return (
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-700 space-y-1">
+                          <div className="flex justify-between">
+                            <span>Purchase Price:</span>
+                            <span className="font-medium">₹{pp.toFixed(2)}</span>
+                          </div>
+                          {discountAmount > 0 && (
+                            <div className="flex justify-between text-amber-700">
+                              <span>Discount ({discLabel}):</span>
+                              <span className="font-medium">-₹{discountAmount.toFixed(2)}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between">
+                            <span>After Discount:</span>
+                            <span className="font-medium">₹{afterDiscount.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-blue-700">
+                            <span>GST {gstRate}%:</span>
+                            <span className="font-medium">+₹{gstAmount.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between border-t border-slate-200 pt-1 font-semibold text-slate-900">
+                            <span>Final Unit Cost:</span>
+                            <span>₹{finalUnitCost.toFixed(2)} <span className="font-normal text-slate-500">(incl GST)</span></span>
+                          </div>
+                          {qty > 0 && (
+                            <>
+                              <div className="flex justify-between text-slate-500">
+                                <span>× Quantity {qty}:</span>
+                                <span></span>
+                              </div>
+                              <div className="flex justify-between border-t border-slate-200 pt-1 text-sm font-bold text-blue-800">
+                                <span>Line Total:</span>
+                                <span>₹{lineTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    {/* Row 4: MRP and Margin */}
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-slate-600">
+                          MRP incl. GST — selling reference <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          {...register(`items.${index}.mrp`, { valueAsNumber: true })}
+                          placeholder="e.g. 150.00"
+                          className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
+                            errors.items?.[index]?.mrp
+                              ? 'border-rose-400'
+                              : 'border-slate-200 focus:border-blue-500'
+                          }`}
+                        />
+                        {errors.items?.[index]?.mrp && (
+                          <p className="mt-0.5 text-xs text-rose-600">{errors.items[index].mrp?.message}</p>
+                        )}
+                      </div>
+
+                      <div className="flex items-end pb-0.5">
+                        {(() => {
+                          const pp = watchItems[index]?.purchase_price ?? 0;
+                          const discType = watchItems[index]?.supplier_discount_type ?? 'percentage';
+                          const discVal = watchItems[index]?.supplier_discount_value ?? 0;
+                          const mrpVal = watchItems[index]?.mrp ?? 0;
+
+                          if (pp <= 0 || mrpVal <= 0) return null;
+
+                          const discountAmount = discType === 'percentage'
+                            ? Math.round(pp * discVal / 100 * 100) / 100
+                            : Math.round(discVal * 100) / 100;
+                          const afterDiscount = Math.round((pp - discountAmount) * 100) / 100;
+                          const gstAmount = Math.round(afterDiscount * 18 / 100 * 100) / 100;
+                          const finalUnitCost = Math.round((afterDiscount + gstAmount) * 100) / 100;
+
+                          const isBelowCost = mrpVal <= finalUnitCost;
+                          const marginOnMrp = ((mrpVal - finalUnitCost) / finalUnitCost) * 100;
+
+                          if (isBelowCost) {
+                            return (
+                              <div className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 w-full">
+                                <AlertTriangle size={14} className="mt-0.5 flex-shrink-0 text-rose-600" />
+                                <p className="text-xs text-rose-700">
+                                  MRP is below your cost price — you will sell at a loss
+                                </p>
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 w-full">
+                              <TrendingUp size={14} className="flex-shrink-0 text-emerald-600" />
+                              <span className="text-xs font-medium text-emerald-700">
+                                Margin on MRP: {marginOnMrp.toFixed(1)}%
+                              </span>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
+
+
+                  </div>
                 </div>
               );
             })}
           </div>
         </div>
 
-        {/* Grand Total */}
+        {/* Grand Total Summary */}
         {(() => {
-          const grandTotal = (watchItems ?? []).reduce((sum, item) => {
-            const qty = item?.quantity ?? 0;
+          const items = watchItems ?? [];
+          if (items.length === 0) return null;
+
+          let totalItems = items.length;
+          let totalQuantity = 0;
+          let totalDiscountGiven = 0;
+          let totalGstPaid = 0;
+          let grandTotal = 0;
+
+          for (const item of items) {
             const pp = item?.purchase_price ?? 0;
-            return sum + qty * pp;
-          }, 0);
-          return grandTotal > 0 ? (
-            <div className="rounded-xl border border-green-200 bg-green-50 p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-green-800">Grand Total (Purchase Value)</span>
-                <span className="text-lg font-bold text-green-900">
+            const qty = item?.quantity ?? 0;
+            const discType = item?.supplier_discount_type ?? 'percentage';
+            const discVal = item?.supplier_discount_value ?? 0;
+
+            if (pp <= 0) continue;
+
+            const discountAmount = discType === 'percentage'
+              ? Math.round(pp * discVal / 100 * 100) / 100
+              : Math.round(discVal * 100) / 100;
+            const afterDiscount = Math.round((pp - discountAmount) * 100) / 100;
+            const gstAmount = Math.round(afterDiscount * 18 / 100 * 100) / 100;
+            const finalUnitCost = Math.round((afterDiscount + gstAmount) * 100) / 100;
+            const lineTotal = Math.round(finalUnitCost * qty * 100) / 100;
+
+            totalQuantity += qty;
+            totalDiscountGiven += Math.round(discountAmount * qty * 100) / 100;
+            totalGstPaid += Math.round(gstAmount * qty * 100) / 100;
+            grandTotal += lineTotal;
+          }
+
+          if (grandTotal <= 0) return null;
+
+          return (
+            <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 space-y-2">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-slate-700">
+                <span>Total Items:</span>
+                <span className="text-right font-medium">{totalItems}</span>
+                <span>Total Quantity:</span>
+                <span className="text-right font-medium">{totalQuantity}</span>
+                <span className="text-amber-700">Total Discount Given:</span>
+                <span className="text-right font-medium text-amber-700">
+                  ₹{totalDiscountGiven.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+                <span className="text-blue-700">Total GST Paid:</span>
+                <span className="text-right font-medium text-blue-700">
+                  ₹{totalGstPaid.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+              <div className="flex items-center justify-between border-t border-blue-200 pt-2">
+                <span className="text-sm font-bold text-blue-900">GRAND TOTAL (incl GST)</span>
+                <span className="text-lg font-bold text-blue-900">
                   ₹{grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
             </div>
-          ) : null;
+          );
         })()}
 
         {/* Submit */}

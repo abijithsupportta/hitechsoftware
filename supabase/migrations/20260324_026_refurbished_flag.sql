@@ -1,0 +1,3 @@
+-- Migration 026: PLACEHOLDER — not applied
+-- This file was created for refurbished flag but the feature was cancelled.
+-- No schema changes.

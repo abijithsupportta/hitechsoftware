@@ -212,48 +212,103 @@ export default function StockEntriesPage() {
                           {entry.notes && (
                             <p className="mb-3 text-xs text-slate-500 italic">{entry.notes}</p>
                           )}
-                          <table className="min-w-full text-sm">
-                            <thead>
-                              <tr className="text-left text-xs text-slate-400">
-                                <th className="pb-2 font-medium">Product</th>
-                                <th className="pb-2 font-medium">Material Code</th>
-                                <th className="pb-2 font-medium">HSN/SAC</th>
-                                <th className="pb-2 text-right font-medium">Qty</th>
-                                <th className="pb-2 text-right font-medium">Purchase Price</th>
-                                <th className="pb-2 text-right font-medium">MRP</th>
-                                <th className="pb-2 text-right font-medium">Total</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                              {entry.items.map((item) => (
-                                <tr key={item.id}>
-                                  <td className="py-1.5 text-slate-700">
-                                    {item.product?.product_name ?? <span className="text-slate-400">—</span>}
-                                  </td>
-                                  <td className="py-1.5">
-                                    <code className="rounded bg-white px-1.5 py-0.5 text-xs font-mono text-slate-600 border border-slate-200">
-                                      {item.material_code}
-                                    </code>
-                                  </td>
-                                  <td className="py-1.5 text-slate-500 text-xs">
-                                    {item.hsn_sac_code ?? '—'}
-                                  </td>
-                                  <td className="py-1.5 text-right font-semibold text-slate-800">
-                                    {item.quantity}
-                                  </td>
-                                  <td className="py-1.5 text-right text-slate-600">
-                                    {item.purchase_price != null ? `₹${Number(item.purchase_price).toFixed(2)}` : '—'}
-                                  </td>
-                                  <td className="py-1.5 text-right text-slate-600">
-                                    {item.mrp != null ? `₹${Number(item.mrp).toFixed(2)}` : '—'}
-                                  </td>
-                                  <td className="py-1.5 text-right font-semibold text-slate-800">
-                                    {item.total_purchase_value != null ? `₹${Number(item.total_purchase_value).toFixed(2)}` : '—'}
-                                  </td>
+                          <div className="overflow-x-auto">
+                            <table className="min-w-full text-sm">
+                              <thead>
+                                <tr className="text-left text-xs text-slate-400">
+                                  <th className="pb-2 font-medium">Product</th>
+                                  <th className="pb-2 font-medium">Mat. Code</th>
+                                  <th className="pb-2 text-right font-medium">Qty</th>
+                                  <th className="pb-2 text-right font-medium">Purchase Price</th>
+                                  <th className="pb-2 text-right font-medium">Discount</th>
+                                  <th className="pb-2 text-right font-medium">After Discount</th>
+                                  <th className="pb-2 text-right font-medium">GST 18%</th>
+                                  <th className="pb-2 text-right font-medium">Final Unit Cost</th>
+                                  <th className="pb-2 text-right font-medium">MRP</th>
+                                  <th className="pb-2 text-right font-medium">Line Total</th>
                                 </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100">
+                                {entry.items.map((item) => {
+                                  const discType = item.supplier_discount_type ?? 'percentage';
+                                  const discVal = Number(item.supplier_discount_value ?? 0);
+                                  const discAmount = Number(item.supplier_discount_amount ?? 0);
+                                  const afterDiscount = Number(item.discounted_purchase_price ?? item.purchase_price ?? 0);
+                                  const gstAmount = Number(item.gst_amount ?? 0);
+                                  const finalUnitCost = Number(item.final_unit_cost ?? 0);
+                                  const lineTotal = Number(item.line_total ?? item.total_purchase_value ?? 0);
+
+                                  const discLabel = discVal > 0
+                                    ? discType === 'percentage' ? `${discVal}%` : `₹${discVal.toFixed(2)}`
+                                    : '—';
+
+                                  return (
+                                    <tr key={item.id}>
+                                      <td className="py-1.5 text-slate-700">
+                                        {item.product?.product_name ?? <span className="text-slate-400">—</span>}
+                                      </td>
+                                      <td className="py-1.5">
+                                        <code className="rounded bg-white px-1.5 py-0.5 text-xs font-mono text-slate-600 border border-slate-200">
+                                          {item.material_code}
+                                        </code>
+                                      </td>
+                                      <td className="py-1.5 text-right font-semibold text-slate-800">
+                                        {item.quantity}
+                                      </td>
+                                      <td className="py-1.5 text-right text-slate-600">
+                                        {item.purchase_price != null ? `₹${Number(item.purchase_price).toFixed(2)}` : '—'}
+                                      </td>
+                                      <td className="py-1.5 text-right text-amber-700">
+                                        {discAmount > 0 ? `-₹${discAmount.toFixed(2)} (${discLabel})` : discLabel}
+                                      </td>
+                                      <td className="py-1.5 text-right text-slate-600">
+                                        ₹{afterDiscount.toFixed(2)}
+                                      </td>
+                                      <td className="py-1.5 text-right text-blue-600">
+                                        +₹{gstAmount.toFixed(2)}
+                                      </td>
+                                      <td className="py-1.5 text-right font-medium text-slate-800">
+                                        ₹{finalUnitCost.toFixed(2)}
+                                      </td>
+                                      <td className="py-1.5 text-right text-slate-600">
+                                        {item.mrp != null ? `₹${Number(item.mrp).toFixed(2)}` : '—'}
+                                      </td>
+                                      <td className="py-1.5 text-right font-semibold text-blue-800">
+                                        ₹{lineTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          {/* Entry totals */}
+                          {(() => {
+                            const totalDiscount = Number(entry.total_discount_given ?? 0);
+                            const totalGst = Number(entry.total_gst_paid ?? 0);
+                            const grandTotal = Number(entry.grand_total ?? 0);
+
+                            if (grandTotal <= 0) return null;
+
+                            return (
+                              <div className="mt-3 flex flex-wrap items-center justify-end gap-4 border-t border-slate-200 pt-3 text-xs">
+                                {totalDiscount > 0 && (
+                                  <span className="text-amber-700">
+                                    Total Discount: <b>₹{totalDiscount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b>
+                                  </span>
+                                )}
+                                {totalGst > 0 && (
+                                  <span className="text-blue-700">
+                                    Total GST: <b>₹{totalGst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b>
+                                  </span>
+                                )}
+                                <span className="text-sm font-bold text-blue-900">
+                                  Grand Total: ₹{grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                              </div>
+                            );
+                          })()}
                         </div>
                       )}
                     </div>

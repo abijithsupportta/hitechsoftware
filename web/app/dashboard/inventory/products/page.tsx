@@ -155,7 +155,7 @@ export default function ProductsPage() {
             type="search"
             value={searchInput}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or material code…"
+            placeholder="Search by material code or product name…"
             className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           />
         </div>
@@ -210,8 +210,8 @@ export default function ProductsPage() {
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
         <table className="w-full table-fixed divide-y divide-slate-200">
           <colgroup>
-            <col className="w-[18%]" />
             <col className="w-[12%]" />
+            <col className="w-[18%]" />
             <col className="w-[10%]" />
             <col className="w-[10%]" />
             <col className="w-[8%]" />
@@ -225,8 +225,8 @@ export default function ProductsPage() {
           </colgroup>
           <thead className="bg-slate-50">
             <tr>
-              <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Product Name</th>
               <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Mat. Code</th>
+              <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Product Name</th>
               <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Category</th>
               <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Type</th>
               <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Cost</th>
@@ -282,15 +282,15 @@ export default function ProductsPage() {
                   : displayItems.map((item) => (
                       <tr key={item.id} className="hover:bg-slate-50/50">
                         <td className="px-3 py-2">
+                          <code className="rounded bg-slate-100 px-1 py-0.5 text-xs font-mono text-slate-700">
+                            {item.material_code}
+                          </code>
+                        </td>
+                        <td className="px-3 py-2">
                           <p className="text-xs font-medium text-slate-800 truncate">{item.product_name}</p>
                           {item.description && (
                             <p className="text-xs text-gray-400 truncate max-w-[160px]">{item.description}</p>
                           )}
-                        </td>
-                        <td className="px-3 py-2">
-                          <code className="rounded bg-slate-100 px-1 py-0.5 text-xs font-mono text-slate-700">
-                            {item.material_code}
-                          </code>
                         </td>
                         <td className="px-3 py-2 text-xs text-slate-600 truncate">
                           {item.category?.name ?? <span className="text-slate-300">—</span>}

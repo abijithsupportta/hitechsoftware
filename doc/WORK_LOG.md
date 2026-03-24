@@ -3,6 +3,141 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-24 23:45:00 +05:30] Remove refurbished section from product add/edit pages
+- Summary: Removed the entire "Refurbished Options" UI section (is_refurbished toggle + conditional refurbished_label field) from the shared ProductForm component, which affects both the Add Product and Edit Product pages. Updated Zod validation to make is_refurbished optional and removed cross-field .refine() rules. DB columns remain untouched — repository defaults is_refurbished to false.
+- Work done:
+	- Removed RefreshCw icon import from ProductForm
+	- Removed is_refurbished and refurbished_label from form defaultValues and reset
+	- Removed isRefurbished watch variable
+	- Removed entire Refurbished Options card section (toggle + conditional label input)
+	- Made is_refurbished optional in Zod schema (z.boolean().optional())
+	- Removed .refine() cross-field validation from createProductSchema
+	- Removed .refine() cross-field validation from updateProductSchema
+	- Updated docstrings to remove refurbished references
+- Files changed:
+	- web/components/inventory/ProductForm.tsx
+	- web/modules/products/product.validation.ts
+- Verification:
+	- npm run build — zero TypeScript errors, all pages generated successfully
+	- grep for "refurbished" in ProductForm.tsx returns zero matches
+- Next:
+	- None
+
+## [2026-03-24 23:10:00 +05:30] Revert refurbished flag and verify products & stock flow
+- Summary: Cancelled refurbished flag feature entirely. Reverted all refurbished-related code from stock entry types, validation, repository, and form UI. Verified the core product and stock entry system works correctly by running automated tests against the database — 37 products, 13 categories, 8 types confirmed. Tested stock entry creation (with and without discounts) — all calculations (discount, GST, line totals) verified correct.
+- Work done:
+	- Reverted StockEntryItem and StockEntryItemInput interfaces — removed is_refurbished and refurbished_condition fields
+	- Reverted StockEntryItemRow and StockEntryItemInput in repository — removed refurbished fields from types, select strings, and insert payload
+	- Reverted Zod validation schema — removed refurbished-related superRefine validation
+	- Reverted stock entry form — removed refurbished checkbox and condition dropdown, reverted defaultValues and append calls
+	- Neutralized migration 026 file to a no-op placeholder (empty SQL with comment)
+	- Reverted AGENTS.md migration number back to 025/next 026
+	- Ran seed script confirming 37 products, 13 categories, 8 product types exist in database
+	- Created and ran test script (scripts/test-products-and-stock.js) that verified:
+		- All 37 products queryable and active
+		- Stock entry creation (header + line items) works end-to-end
+		- PostgREST nested select (items with product join) works correctly
+		- Discount calculations verified: percentage (10% on ₹500 = ₹50 discount) and flat (₹50 off ₹1000)
+		- Generated columns: discounted_purchase_price, gst_amount, final_unit_cost, line_total all compute correctly
+		- Grand total, total_discount_given, total_gst_paid aggregate correctly on header
+		- Stock entry list query returns entries correctly
+		- Test entries soft-deleted after verification
+- Files changed:
+	- web/modules/stock-entries/stock-entry.types.ts (reverted)
+	- web/modules/stock-entries/stock-entry.validation.ts (reverted)
+	- web/repositories/stock-entries.repository.ts (reverted)
+	- web/app/dashboard/inventory/stock/new/page.tsx (reverted)
+	- supabase/migrations/20260324_026_refurbished_flag.sql (neutralized to placeholder)
+	- AGENTS.md (reverted migration number)
+	- scripts/test-products-and-stock.js (new — test script)
+- Verification:
+	- npm run build — zero TypeScript errors, all 30 pages generated successfully
+	- node scripts/seed-inventory.js — 37 products confirmed (35 seeded + 2 pre-existing)
+	- node scripts/test-products-and-stock.js — all 6 tests PASS (products, categories, types, stock creation, discount stock creation, list query)
+- Next:
+	- None — products and stock system verified working correctly
+
+## [2026-03-24 21:45:00 +05:30] Add refurbished flag to stock entry line items [REVERTED]
+- Summary: CANCELLED AND REVERTED — see entry above. Originally added is_refurbished and refurbished_condition to stock_entry_items. Feature was cancelled by user.
+- Files changed: all changes reverted
+- Verification: reverted and build passes
+
+## [2026-03-24 16:21:14 +05:30] Fix — Stock entry save button not working
+- Summary: Stock entry form submit button did nothing when clicked. Root cause: two `.refine()` calls on `stockEntryItemSchema` turned it into a `ZodEffects` type, which `zodResolver` cannot properly handle inside `z.array()` — silent validation failure prevented `onSubmit` from ever being called.
+- Work done:
+	- Removed both `.refine()` calls from `stockEntryItemSchema`, keeping it as a plain `ZodObject`
+	- Moved the cross-field discount validation to `createStockEntrySchema.superRefine()` at the parent level, where `zodResolver` handles error path mapping correctly
+	- Validation logic unchanged: percentage discount ≤ 100%, flat discount ≤ purchase price
+- Files changed:
+	- web/modules/stock-entries/stock-entry.validation.ts
+- Verification:
+	- npm run build — passed with zero TypeScript errors
+- Next:
+	- Test stock entry creation end-to-end in browser
+
+## [2026-03-24 16:08:11 +05:30] Stock Entry Pricing — Supplier Discount + GST Calculation
+- Summary: Added supplier discount (percentage or flat) and GST 18% calculation system to stock entry line items. Includes DB migration with generated columns and trigger, updated types/validation/repository, rebuilt form UI with real-time calculation preview, and updated list view accordion with new pricing columns and entry totals.
+- Work done:
+	- Migration 025: Added supplier_discount_type, supplier_discount_value, gst_rate input columns and supplier_discount_amount, discounted_purchase_price, gst_amount, final_unit_cost, line_total as GENERATED STORED columns on stock_entry_items. Added grand_total, total_discount_given, total_gst_paid on stock_entries maintained by trigger. Backfill for existing data included.
+	- TypeScript types: Extended StockEntryItem with 8 new fields, StockEntry with 3 new fields, StockEntryItemInput with 3 optional inputs.
+	- Validation: Added supplier_discount_type enum (percentage/flat), supplier_discount_value with conditional max (percentage ≤ 100, flat ≤ purchase_price), gst_rate default 18. Removed old MRP > PP blocking refine.
+	- Repository: Updated input/row types, select queries to include all new columns, insert mapping with defaults.
+	- New stock entry form: Discount type toggle (% / ₹ Flat), discount value input, GST 18% readonly display, real-time grey calculation summary box (Purchase Price → Discount → After Discount → GST → Final Unit Cost → Line Total), MRP with margin display, new grand total summary with Total Items/Quantity/Discount/GST/Grand Total.
+	- Stock entries list accordion: Expanded table now shows Purchase Price, Discount, After Discount, GST 18%, Final Unit Cost, MRP, Line Total columns. Entry footer shows Total Discount, Total GST, Grand Total.
+- Files changed:
+	- supabase/migrations/20260324_025_stock_entry_pricing.sql (new)
+	- web/modules/stock-entries/stock-entry.types.ts
+	- web/modules/stock-entries/stock-entry.validation.ts
+	- web/repositories/stock-entries.repository.ts
+	- web/app/dashboard/inventory/stock/new/page.tsx
+	- web/app/dashboard/inventory/stock/page.tsx
+- Verification:
+	- npm run build — passed with zero TypeScript errors
+	- Migration not yet applied to Supabase (SQL file created, needs manual apply)
+- Next:
+	- Apply migration 025 to Supabase database
+	- Verify real-time calculations match DB generated column values after data entry
+
+## [2026-03-24 01:00:00 +05:30] Material code priority and products table column reorder
+- Summary: Three-part fix — (1) stock entry edit page doesn't exist (entries are immutable by design, skipped), (2) updated ProductSearchCombobox to show material code first with match-priority sorting, (3) reordered products list table to put Material Code as the first column.
+- Work done:
+	- Fix 1: Confirmed stock entries are intentionally immutable — no edit page exists. No changes needed.
+	- Fix 2 — ProductSearchCombobox:
+		- Dropdown list items now show material code in bold mono font first, then product name in gray (was reversed).
+		- Added client-side sort: exact material code matches appear first, then partial material code matches, then name-only matches.
+		- Selected product input now shows "MATERIAL-CODE — Product Name" format.
+		- Placeholder updated to "Search by material code or product name..."
+	- Fix 3 — Products list page:
+		- Moved Mat. Code column to position 1 (before Product Name) in both thead and tbody.
+		- Swapped colgroup widths (12% for code first, 18% for name second).
+		- Updated search placeholder to "Search by material code or product name…"
+- Files changed:
+	- web/components/inventory/ProductSearchCombobox.tsx
+	- web/app/dashboard/inventory/products/page.tsx
+- Verification:
+	- TypeScript: zero errors
+	- Next.js production build: passes cleanly
+- Next:
+	- none
+
+## [2026-03-24 00:00:00 +05:30] Replace stock entry product dropdown with searchable combobox
+- Summary: Replaced the plain `<select>` product dropdown in the stock entry form with a searchable combobox component featuring debounced search, auto-fill, and click-outside-to-close behavior.
+- Work done:
+	- Created `ProductSearchCombobox` component with search input, debounced filtering (300ms, min 2 chars), dropdown with product name (bold) + material code (gray), clear X button, no-results message, and z-50/max-h-60 styling.
+	- Each combobox instance uses its own `useProducts` hook for independent search per item row.
+	- Updated stock entry page to import and use the new combobox in place of the `<select>` dropdown.
+	- Removed unused `useProducts` import from the page since combobox manages its own hook instance.
+	- Updated `handleProductSelect` to accept a `Product | null` object instead of a product ID string.
+	- Auto-fills material_code, hsn_sac_code, and MRP from selected product data.
+- Files changed:
+	- web/components/inventory/ProductSearchCombobox.tsx (new)
+	- web/app/dashboard/inventory/stock/new/page.tsx (modified)
+- Verification:
+	- TypeScript type check: zero errors
+	- Next.js production build: passes cleanly
+- Next:
+	- none
+
 ## [2026-03-24 13:00:00 +05:30] Products Table — Compact Dense Layout
 - Summary: Made the products data table compact and information-dense for office staff daily use. Reduced font sizes, padding, badge sizes, and column widths. Merged Flags+Status into one column, removed Flags column.
 - Work done:

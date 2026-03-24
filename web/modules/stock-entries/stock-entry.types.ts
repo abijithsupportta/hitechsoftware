@@ -47,14 +47,30 @@ export interface StockEntryItem {
   /** Stored in UPPERCASE; denormalised from the product for historical integrity */
   material_code: string;
   quantity: number;
-  /** Actual price paid on this specific invoice */
+  /** Actual price paid on this specific invoice (excl. GST) */
   purchase_price: number | null;
-  /** MRP (selling price) for this batch */
+  /** MRP (selling price) for this batch — always inclusive of GST */
   mrp: number | null;
-  /** Auto-calculated: quantity × purchase_price */
+  /** Auto-calculated: quantity × purchase_price (legacy) */
   total_purchase_value: number | null;
   /** GST HSN/SAC code copied from the product at the time of entry */
   hsn_sac_code: string | null;
+  /** 'percentage' or 'flat' */
+  supplier_discount_type: 'percentage' | 'flat';
+  /** Discount value: percentage (0-100) or flat amount */
+  supplier_discount_value: number;
+  /** Computed: discount amount per unit */
+  supplier_discount_amount: number | null;
+  /** Computed: purchase_price minus discount */
+  discounted_purchase_price: number | null;
+  /** GST rate — 18% default, stored per line item */
+  gst_rate: number;
+  /** Computed: GST amount per unit */
+  gst_amount: number | null;
+  /** Computed: discounted_purchase_price + gst_amount */
+  final_unit_cost: number | null;
+  /** Computed: final_unit_cost × quantity */
+  line_total: number | null;
   created_at: string;
   /** Resolved product info via DB join; null if product was deleted */
   product: { id: string; product_name: string; material_code: string } | null;
@@ -74,8 +90,12 @@ export interface StockEntry {
   is_deleted: boolean;
   created_by: string | null;
   created_at: string;
-  updated_at: string;
-  /** All line items for this delivery */
+  updated_at: string;  /** Sum of all line_totals */
+  grand_total: number;
+  /** Sum of all discount amounts × quantity */
+  total_discount_given: number;
+  /** Sum of all GST amounts × quantity */
+  total_gst_paid: number;  /** All line items for this delivery */
   items: StockEntryItem[];
 }
 
@@ -85,11 +105,17 @@ export interface StockEntryItemInput {
   product_id: string | null;
   material_code: string;
   quantity: number;
-  /** Actual price paid on this invoice — mandatory */
+  /** Actual price paid on this invoice (excl. GST) — mandatory */
   purchase_price: number;
-  /** MRP (selling price) for this batch — mandatory */
+  /** MRP (selling price incl. GST) for this batch — mandatory */
   mrp: number;
   hsn_sac_code?: string | null;
+  /** 'percentage' or 'flat' — defaults to percentage */
+  supplier_discount_type?: 'percentage' | 'flat';
+  /** Discount value — defaults to 0 */
+  supplier_discount_value?: number;
+  /** GST rate — defaults to 18 */
+  gst_rate?: number;
 }
 
 /** Full input shape for creating a stock entry (header + items together). */

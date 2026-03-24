@@ -56,20 +56,18 @@ export const stockEntryItemSchema = z.object({
   material_code: materialCodeSchema,
   // Integer check: ensures no fractional quantities (e.g. 0.5 units is invalid)
   quantity: z.number().int().min(1, 'Quantity must be at least 1'),
-  // Pricing: only purchase_price + MRP
+  // Purchase price: excl. GST, must be > 0
   purchase_price: z.number().min(0, 'Purchase price must be 0 or more'),
+  // MRP: incl. GST, selling reference
   mrp: z.number().min(0, 'MRP must be 0 or more'),
   hsn_sac_code: z.string().max(20).trim().nullish(),
-}).refine(
-  (item) => {
-    // Only enforce when both prices are meaningfully entered (> 0)
-    if (item.purchase_price > 0 && item.mrp > 0) {
-      return item.mrp > item.purchase_price;
-    }
-    return true;
-  },
-  { message: 'MRP must be greater than purchase price — selling at or below cost will result in a loss', path: ['mrp'] },
-);
+  // Discount type: percentage or flat
+  supplier_discount_type: z.enum(['percentage', 'flat']).default('percentage'),
+  // Discount value: 0 or more
+  supplier_discount_value: z.number().min(0, 'Discount cannot be negative').default(0),
+  // GST rate: stored per line item for future flexibility, readonly at 18 for now
+  gst_rate: z.number().default(18),
+});
 
 /**
  * Validates the full stock entry creation payload.
@@ -81,6 +79,10 @@ export const stockEntryItemSchema = z.object({
  * backdating entries (e.g. recording a delivery that arrived yesterday).
  *
  * items array must have at least 1 item — an empty stock entry makes no sense.
+ *
+ * Cross-field discount validation is done at the parent level via superRefine
+ * because zodResolver cannot properly map error paths when .refine() is used
+ * on schemas inside z.array().
  */
 export const createStockEntrySchema = z.object({
   invoice_number: z
@@ -93,6 +95,23 @@ export const createStockEntrySchema = z.object({
   items: z
     .array(stockEntryItemSchema)
     .min(1, 'At least one item is required'),
+}).superRefine((data, ctx) => {
+  data.items.forEach((item, index) => {
+    if (item.supplier_discount_type === 'percentage' && item.supplier_discount_value > 100) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Percentage discount cannot exceed 100%',
+        path: ['items', index, 'supplier_discount_value'],
+      });
+    }
+    if (item.supplier_discount_type === 'flat' && item.purchase_price > 0 && item.supplier_discount_value > item.purchase_price) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Flat discount cannot exceed purchase price',
+        path: ['items', index, 'supplier_discount_value'],
+      });
+    }
+  });
 });
 
 export type CreateStockEntryFormValues = z.infer<typeof createStockEntrySchema>;
