@@ -3,6 +3,24 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-26 03:30:00 +05:30] Stock Deletion Cache Fix + Product List Pagination + Super Admin Delete
+- Summary: Fixed stock counts not updating after stock entry deletion, added page size selector to product list, and restricted delete to super_admin.
+- Work done:
+	- **Stock deletion bug**: Root cause was React Query cache — `useStockEntries` deleteMutation only invalidated `['stock-entries']` but not `['stock-levels']` or `['products']`. The `current_stock_levels` SQL view correctly excludes `is_deleted = true` entries, so the DB was correct — only the UI cache was stale.
+	- Fixed both `createMutation` and `deleteMutation` in `useStockEntries.ts` to invalidate `['stock-entries']`, `['stock-levels']`, and `['products']` caches using `Promise.all`.
+	- **Product list pagination**: Added `setPageSize` callback to `useProducts` hook. Added a page size selector dropdown (20/50/100) to the product list pagination bar. Added page number indicator (Page X of Y). Pagination controls now always show (removed `totalPages > 1` gate).
+	- **Delete button restriction**: Changed product delete button visibility from `can('inventory:delete')` to `isSuperAdmin` (`role === 'super_admin'` from auth store).
+- Files changed:
+	- web/hooks/stock-entries/useStockEntries.ts
+	- web/hooks/products/useProducts.ts
+	- web/app/dashboard/inventory/products/page.tsx
+- Verification:
+	- Zero TypeScript errors
+	- Build passed successfully
+	- Commit a395010 pushed to abijithcb and main
+- Next:
+	- none
+
 ## [2026-03-26 02:40:00 +05:30] Digital Bag — Fix cache invalidation after session close
 - Summary: After closing a session, the dashboard and technician selector still showed it as active due to stale React Query cache.
 - Work done:
