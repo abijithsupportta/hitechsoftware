@@ -3,6 +3,29 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-24 13:00:00 +05:30] Products Table — Compact Dense Layout
+- Summary: Made the products data table compact and information-dense for office staff daily use. Reduced font sizes, padding, badge sizes, and column widths. Merged Flags+Status into one column, removed Flags column.
+- Work done:
+  - Changed table layout to table-fixed with 12 explicit column widths via colgroup
+  - Reduced all cell text from text-sm to text-xs, headers from font-semibold to font-medium
+  - Reduced row padding from px-4 py-3 to px-3 py-2
+  - Added whitespace-nowrap to all th elements to prevent header wrapping
+  - Shortened header labels: Material Code → Mat. Code, Purchase Price → Cost, Avg Cost → WAC, Margin % → Margin
+  - Made stock badges single-line compact: "Out of Stock" → "0", "5 — Low Stock" → "5 low"
+  - Reduced margin badges to text-xs px-2 py-0.5 whitespace-nowrap, consolidated color logic
+  - Merged Flags (refurbished icon) and Status into a single Status column, saving one column
+  - Reduced action buttons from h-8 w-8 to h-6 w-6, icons from 14px to 12px, gap from 2 to 1
+  - Added truncate + max-w-[160px] to product description text
+  - Removed "Delete?" text from confirmation — just Yes/No buttons
+  - Reduced WAC tooltip width and Info icon size
+- Files changed:
+  - web/app/dashboard/inventory/products/page.tsx
+- Verification:
+  - npm run build — passed with zero errors
+  - No business logic changed
+- Next:
+  - none
+
 ## [2026-03-24 12:30:00 +05:30] Seed Inventory Data — 35 Products
 - Summary: Created seed script and populated the database with 7 product categories, 5 product types, and 35 inventory products covering home appliance repair parts.
 - Work done:

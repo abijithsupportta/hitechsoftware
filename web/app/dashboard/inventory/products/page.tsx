@@ -207,42 +207,55 @@ export default function ProductsPage() {
       </div>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-        <table className="min-w-full divide-y divide-slate-200">
+      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+        <table className="w-full table-fixed divide-y divide-slate-200">
+          <colgroup>
+            <col className="w-[20%]" />
+            <col className="w-[10%]" />
+            <col className="w-[10%]" />
+            <col className="w-[10%]" />
+            <col className="w-[8%]" />
+            <col className="w-[8%]" />
+            <col className="w-[8%]" />
+            <col className="w-[7%]" />
+            <col className="w-[9%]" />
+            <col className="w-[8%]" />
+            <col className="w-[6%]" />
+            <col className="w-[6%]" />
+          </colgroup>
           <thead className="bg-slate-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Product Name</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Material Code</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Category</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Type</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Purchase Price</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">MRP</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Product Name</th>
+              <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Mat. Code</th>
+              <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Category</th>
+              <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Type</th>
+              <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Cost</th>
+              <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">MRP</th>
+              <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">
                 <span className="inline-flex items-center gap-1">
-                  Avg Cost
+                  WAC
                   <span className="group relative">
-                    <Info size={12} className="text-slate-400 cursor-help" />
-                    <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-52 rounded-lg bg-slate-800 px-3 py-2 text-xs font-normal normal-case tracking-normal text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                      Weighted average cost calculated from all purchase history for this product.
+                    <Info size={10} className="text-slate-400 cursor-help" />
+                    <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-44 rounded-lg bg-slate-800 px-2.5 py-1.5 text-xs font-normal normal-case tracking-normal text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                      Weighted average cost from purchase history.
                     </span>
                   </span>
                 </span>
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Margin %</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Stock</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">HSN/SAC</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Flags</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Status</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Actions</th>
+              <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Margin</th>
+              <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Stock</th>
+              <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">HSN/SAC</th>
+              <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Status</th>
+              <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wide whitespace-nowrap text-slate-500">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {isLoading
               ? Array.from({ length: 6 }).map((_, i) => (
                   <tr key={`skel-${i}`} className="animate-pulse">
-                    {Array.from({ length: 13 }).map((__, j) => (
-                      <td key={j} className="px-4 py-3">
-                        <div className="h-4 w-24 rounded bg-slate-200" />
+                    {Array.from({ length: 12 }).map((__, j) => (
+                      <td key={j} className="px-3 py-2">
+                        <div className="h-3 w-16 rounded bg-slate-200" />
                       </td>
                     ))}
                   </tr>
@@ -250,7 +263,7 @@ export default function ProductsPage() {
               : error
                 ? (
                     <tr>
-                      <td colSpan={13} className="px-4 py-10 text-center text-sm text-rose-600">
+                      <td colSpan={12} className="px-3 py-8 text-center text-xs text-rose-600">
                         {error}
                       </td>
                     </tr>
@@ -258,43 +271,43 @@ export default function ProductsPage() {
                 : items.length === 0
                   ? (
                       <tr>
-                        <td colSpan={13} className="px-4 py-10 text-center">
+                        <td colSpan={12} className="px-3 py-8 text-center">
                           <div className="flex flex-col items-center gap-2 text-slate-400">
-                            <Package size={32} className="opacity-40" />
-                            <p className="text-sm">No products found.</p>
+                            <Package size={24} className="opacity-40" />
+                            <p className="text-xs">No products found.</p>
                           </div>
                         </td>
                       </tr>
                     )
                   : displayItems.map((item) => (
                       <tr key={item.id} className="hover:bg-slate-50/50">
-                        <td className="px-4 py-3">
-                          <p className="text-sm font-medium text-slate-800">{item.product_name}</p>
+                        <td className="px-3 py-2">
+                          <p className="text-xs font-medium text-slate-800 truncate">{item.product_name}</p>
                           {item.description && (
-                            <p className="mt-0.5 text-xs text-slate-400 line-clamp-1">{item.description}</p>
+                            <p className="text-xs text-gray-400 truncate max-w-[160px]">{item.description}</p>
                           )}
                         </td>
-                        <td className="px-4 py-3">
-                          <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-mono text-slate-700">
+                        <td className="px-3 py-2">
+                          <code className="rounded bg-slate-100 px-1 py-0.5 text-xs font-mono text-slate-700">
                             {item.material_code}
                           </code>
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-600">
+                        <td className="px-3 py-2 text-xs text-slate-600 truncate">
                           {item.category?.name ?? <span className="text-slate-300">—</span>}
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-600">
+                        <td className="px-3 py-2 text-xs text-slate-600 truncate">
                           {item.product_type?.name ?? <span className="text-slate-300">—</span>}
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-600">
+                        <td className="px-3 py-2 text-xs text-slate-600 whitespace-nowrap">
                           {formatCurrency(item.purchase_price) ?? <span className="text-slate-300">—</span>}
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-600">
+                        <td className="px-3 py-2 text-xs text-slate-600 whitespace-nowrap">
                           {formatCurrency(item.mrp) ?? <span className="text-slate-300">—</span>}
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-600">
+                        <td className="px-3 py-2 text-xs text-slate-600 whitespace-nowrap">
                           {formatCurrency(item.weighted_average_cost) ?? <span className="text-slate-300">—</span>}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-2">
                           {(() => {
                             const pp = item.purchase_price;
                             const mrp = item.mrp;
@@ -302,92 +315,75 @@ export default function ProductsPage() {
                               return <span className="text-xs text-slate-300">—</span>;
                             }
                             const margin = ((mrp - pp) / pp) * 100;
-                            if (margin <= 0) {
-                              return (
-                                <span className="inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">
-                                  {margin.toFixed(1)}%
-                                </span>
-                              );
-                            }
-                            if (margin < 10) {
-                              return (
-                                <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-                                  {margin.toFixed(1)}%
-                                </span>
-                              );
-                            }
+                            const color = margin <= 0 ? 'bg-rose-100 text-rose-700' : margin < 10 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700';
                             return (
-                              <span className="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                              <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${color}`}>
                                 {margin.toFixed(1)}%
                               </span>
                             );
                           })()}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-2">
                           {(() => {
                             const sl = stockMap.get(item.id);
                             if (!sl) return <span className="text-xs text-slate-300">—</span>;
                             const qty = sl.current_quantity;
                             if (sl.stock_status === 'out_of_stock') {
                               return (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">
-                                  Out of Stock
+                                <span className="inline-flex whitespace-nowrap rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">
+                                  0
                                 </span>
                               );
                             }
                             if (sl.stock_status === 'low_stock') {
                               return (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-                                  {qty} — Low Stock
+                                <span className="inline-flex whitespace-nowrap rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                                  {qty} low
                                 </span>
                               );
                             }
                             return (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                              <span className="inline-flex whitespace-nowrap rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
                                 {qty}
                               </span>
                             );
                           })()}
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-600">
+                        <td className="px-3 py-2 text-xs text-slate-600">
                           {item.hsn_sac_code ?? <span className="text-slate-300">—</span>}
                         </td>
-                        <td className="px-4 py-3">
-                          {item.is_refurbished && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-                              <RefreshCw size={10} />
-                              {item.refurbished_label ?? 'Refurbished'}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-2">
                           <span
-                            className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                            className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${
                               item.is_active
                                 ? 'bg-green-100 text-green-700'
                                 : 'bg-slate-100 text-slate-500'
                             }`}
                           >
-                            {item.is_active ? 'Active' : 'Inactive'}
+                            {item.is_active ? 'Active' : 'Off'}
                           </span>
+                          {item.is_refurbished && (
+                            <span className="ml-1 inline-flex whitespace-nowrap rounded-full bg-amber-100 px-1.5 py-0.5 text-xs text-amber-700" title={item.refurbished_label ?? 'Refurbished'}>
+                              <RefreshCw size={10} />
+                            </span>
+                          )}
                         </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center justify-end gap-2">
+                        <td className="px-3 py-2">
+                          <div className="flex items-center justify-end gap-1">
                             {deleteConfirmId === item.id ? (
                               <>
-                                <span className="text-xs text-rose-600">Delete?</span>
                                 <button
                                   type="button"
                                   onClick={() => handleDelete(item.id)}
                                   disabled={deleteMutation.isPending}
-                                  className="inline-flex h-7 items-center rounded-md bg-rose-600 px-2.5 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50"
+                                  className="inline-flex h-6 items-center rounded bg-rose-600 px-2 text-xs font-medium text-white hover:bg-rose-700 disabled:opacity-50"
                                 >
                                   Yes
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => setDeleteConfirmId(null)}
-                                  className="inline-flex h-7 items-center rounded-md border border-slate-200 px-2.5 text-xs text-slate-600 hover:bg-slate-50"
+                                  className="inline-flex h-6 items-center rounded border border-slate-200 px-2 text-xs text-slate-600 hover:bg-slate-50"
                                 >
                                   No
                                 </button>
@@ -397,10 +393,10 @@ export default function ProductsPage() {
                                 {can('inventory:edit') && (
                                   <Link
                                     href={ROUTES.DASHBOARD_INVENTORY_PRODUCT_EDIT(item.id)}
-                                    className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-100"
+                                    className="inline-flex h-6 w-6 items-center justify-center rounded border border-slate-200 text-slate-500 hover:bg-slate-100"
                                     title="Edit"
                                   >
-                                    <Pencil size={14} />
+                                    <Pencil size={12} />
                                   </Link>
                                 )}
                                 {can('inventory:delete') && (
@@ -408,9 +404,9 @@ export default function ProductsPage() {
                                     type="button"
                                     onClick={() => setDeleteConfirmId(item.id)}
                                     title="Delete"
-                                    className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-rose-200 text-rose-600 hover:bg-rose-50"
+                                    className="inline-flex h-6 w-6 items-center justify-center rounded border border-rose-200 text-rose-500 hover:bg-rose-50"
                                   >
-                                    <Trash2 size={14} />
+                                    <Trash2 size={12} />
                                   </button>
                                 )}
                               </>
