@@ -3,6 +3,57 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-25 00:10:00 +05:30] Inventory Module QA — 71 Vitest Unit Tests
+- Summary: Wrote and executed 71 unit tests across 11 groups for the Inventory Module using Vitest. All 71 tests pass. Tests cover product CRUD, categories, types, stock entries, refurbished validation, stock balance/WAC, pagination, and RLS permissions.
+- Work done:
+	- Created 11 test files in web/tests/inventory/:
+		- product-creation.test.ts (Group 1 — 10 tests)
+		- product-update.test.ts (Group 2 — 8 tests)
+		- product-delete.test.ts (Group 3 — 5 tests)
+		- product-search-filters.test.ts (Group 4 — 7 tests)
+		- product-categories.test.ts (Group 5 — 6 tests)
+		- product-types.test.ts (Group 6 — 4 tests)
+		- stock-entry-creation.test.ts (Group 7 — 10 tests)
+		- stock-entry-refurbished.test.ts (Group 8 — 4 tests)
+		- stock-balance-wac.test.ts (Group 9 — 8 tests)
+		- pagination-performance.test.ts (Group 10 — 4 tests)
+		- rls-permissions.test.ts (Group 11 — 5 tests)
+	- First run: 52 passed, 19 failed (root cause: Zod v4 strict UUID validation)
+	- Fixed all failures: replaced non-v4 UUIDs with valid v4 format, fixed mock chains, fixed callCount references
+	- Final run: 71 passed, 0 failed, 0 skipped
+- Test Results:
+	- Group 1 — Product Creation: 10/10 PASS
+	- Group 2 — Product Update: 8/8 PASS
+	- Group 3 — Product Delete: 5/5 PASS
+	- Group 4 — Product Search and Filters: 7/7 PASS
+	- Group 5 — Product Categories: 6/6 PASS
+	- Group 6 — Product Types: 4/4 PASS
+	- Group 7 — Stock Entry Creation: 10/10 PASS
+	- Group 8 — Refurbished: 4/4 PASS
+	- Group 9 — Stock Balance and WAC: 8/8 PASS
+	- Group 10 — Pagination and Performance: 4/4 PASS
+	- Group 11 — RLS and Permissions: 5/5 PASS
+	- TOTAL: 71/71 PASS | Duration: 15.45s
+- Files changed:
+	- web/tests/inventory/product-creation.test.ts (new)
+	- web/tests/inventory/product-update.test.ts (new)
+	- web/tests/inventory/product-delete.test.ts (new)
+	- web/tests/inventory/product-search-filters.test.ts (new)
+	- web/tests/inventory/product-categories.test.ts (new)
+	- web/tests/inventory/product-types.test.ts (new)
+	- web/tests/inventory/stock-entry-creation.test.ts (new)
+	- web/tests/inventory/stock-entry-refurbished.test.ts (new)
+	- web/tests/inventory/stock-balance-wac.test.ts (new)
+	- web/tests/inventory/pagination-performance.test.ts (new)
+	- web/tests/inventory/rls-permissions.test.ts (new)
+- Verification:
+	- npx vitest run tests/inventory/ --reporter=verbose — 11 files, 71 tests, all passed
+- Issues found during testing:
+	- Zod v4 .uuid() rejects UUIDs where version nibble != 4 or variant nibble not in {8,9,a,b}
+	- Mock chain for range()/returns() must be sync → async respectively (not both async)
+- Next:
+	- None
+
 ## [2026-03-24 23:45:00 +05:30] Remove refurbished section from product add/edit pages
 - Summary: Removed the entire "Refurbished Options" UI section (is_refurbished toggle + conditional refurbished_label field) from the shared ProductForm component, which affects both the Add Product and Edit Product pages. Updated Zod validation to make is_refurbished optional and removed cross-field .refine() rules. DB columns remain untouched — repository defaults is_refurbished to false.
 - Work done:
