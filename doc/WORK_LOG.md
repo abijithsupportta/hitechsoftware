@@ -3,6 +3,25 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-25 16:00:00 +05:30] Digital Bag — Runtime Bug Fixes
+- Summary: Fixed 6 runtime issues in the Digital Bag module (2 critical, 1 high, 3 medium) found during code review.
+- Work done:
+	- CRITICAL: Fixed close_bag_session SQL function — was not subtracting quantity_consumed when calculating missing items (technicians were charged damage fees for consumed items)
+	- CRITICAL: Added bounds validation in close_bag_session — quantity_returned cannot exceed (quantity_issued - quantity_consumed) and cannot be negative
+	- HIGH: Fixed history page expandable rows — listSessionHistory was using SESSION_SELECT (no items join) instead of SESSION_DETAIL_SELECT, so expanded rows never showed items
+	- MEDIUM: Fixed React Fragment key warning in history page — key was on inner <tr> instead of outer Fragment
+	- MEDIUM: Sanitized search input in searchAvailableProducts — commas, dots, and special chars in search terms caused PostgREST 400 errors
+	- MEDIUM: Added closed_by field to backward-compat closeSession function
+- Files changed:
+	- supabase/migrations/20260325_028_fix_close_bag_session.sql (new)
+	- web/repositories/digital-bag.repository.ts
+	- web/app/dashboard/digital-bag/history/page.tsx
+	- AGENTS.md
+- Verification:
+	- npm run build — 0 errors, all 31 routes generated
+- Next:
+	- none
+
 ## [2026-03-25 14:30:00 +05:30] Digital Bag Module — Complete Rebuild
 - Summary: Full rebuild of the Digital Bag module with new workflow: office staff creates empty sessions per technician daily, adds products via search (stock deducted immediately), closes sessions at end of day with item-by-item checklist, damage fees auto-deducted from payout.
 - Work done:

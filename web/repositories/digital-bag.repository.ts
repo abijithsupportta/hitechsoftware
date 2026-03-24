@@ -117,7 +117,7 @@ export async function listSessionHistory(filters: {
 
   let query = supabase
     .from('digital_bag_sessions')
-    .select(SESSION_SELECT, { count: 'exact' })
+    .select(SESSION_DETAIL_SELECT, { count: 'exact' })
     .eq('status', 'closed')
     .order('session_date', { ascending: false })
     .range(from, to);
@@ -130,9 +130,11 @@ export async function listSessionHistory(filters: {
 }
 
 export async function closeSession(id: string, notes?: string) {
+  const { data: userData } = await supabase.auth.getUser();
   const updateData: Record<string, unknown> = {
     status: 'closed',
     closed_at: new Date().toISOString(),
+    closed_by: userData?.user?.id ?? null,
     updated_at: new Date().toISOString(),
   };
   if (notes !== undefined) updateData.notes = notes;
@@ -178,8 +180,10 @@ export async function searchAvailableProducts(search?: string, limit = 10) {
     .order('material_code');
 
   if (search && search.trim()) {
-    const s = search.trim();
-    query = query.or(`material_code.ilike.%${s}%,product_name.ilike.%${s}%`);
+    const s = search.trim().replace(/[,.()'"]/g, '');
+    if (s) {
+      query = query.or(`material_code.ilike.%${s}%,product_name.ilike.%${s}%`);
+    }
   }
 
   return query.limit(limit);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, Fragment } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Briefcase, Eye, History, ChevronDown, ChevronUp } from 'lucide-react';
 import { usePermission } from '@/hooks/auth/usePermission';
@@ -109,8 +109,8 @@ export default function DigitalBagHistoryPage() {
                     </tr>
                   )
                 : sessions.map((session: DigitalBagSession) => (
-                    <>
-                      <tr key={session.id} className="hover:bg-slate-50/50">
+                    <Fragment key={session.id}>
+                      <tr className="hover:bg-slate-50/50">
                         <td className="px-4 py-3">
                           <button
                             type="button"
@@ -150,7 +150,7 @@ export default function DigitalBagHistoryPage() {
                         </td>
                       </tr>
                       {expandedId === session.id && session.items && (
-                        <tr key={`${session.id}-items`}>
+                        <tr>
                           <td colSpan={10} className="px-6 py-3 bg-slate-50/50">
                             <table className="w-full text-sm">
                               <thead>
@@ -183,7 +183,7 @@ export default function DigitalBagHistoryPage() {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </Fragment>
                   ))}
           </tbody>
         </table>
