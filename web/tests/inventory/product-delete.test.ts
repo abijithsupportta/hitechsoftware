@@ -20,7 +20,8 @@ describe('Group 3 — Product Delete', () => {
   it('3.1 — soft deletes product (is_active=false, is_deleted=true)', async () => {
     let updatedPayload: Record<string, unknown> = {};
     mockSupabaseClient.from.mockImplementation(() => {
-      const chain: Record<string, unknown> = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chain: any = {};
       chain.update = (data: Record<string, unknown>) => {
         updatedPayload = data;
         return chain;
@@ -40,7 +41,8 @@ describe('Group 3 — Product Delete', () => {
   // Test 3.2 — Soft delete product with stock entries still succeeds
   it('3.2 — allows deletion even with stock entry history', async () => {
     mockSupabaseClient.from.mockImplementation(() => {
-      const chain: Record<string, unknown> = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chain: any = {};
       chain.update = () => chain;
       chain.eq = () => chain;
       chain.select = () => chain;
@@ -73,7 +75,8 @@ describe('Group 3 — Product Delete', () => {
     // The list query always filters is_deleted=false, so deleted products
     // should never be returned by getProducts
     mockSupabaseClient.from.mockImplementation(() => {
-      const chain: Record<string, unknown> = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chain: any = {};
       chain.select = () => chain;
       chain.eq = () => chain;
       chain.order = () => chain;

@@ -104,7 +104,8 @@ describe('Group 9 — Stock Balance and WAC', () => {
 
     mockSupabaseClient.from.mockImplementation((table: string) => {
       callCount++;
-      const chain: Record<string, unknown> = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chain: any = {};
       chain.select = () => chain;
       chain.eq = () => chain;
       chain.update = () => chain;

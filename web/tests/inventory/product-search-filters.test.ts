@@ -32,7 +32,8 @@ const mockProducts = [
 
 function setupMockList(data: unknown[], count: number) {
   mockSupabaseClient.from.mockImplementation(() => {
-    const chain: Record<string, unknown> = {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chain: any = {};
     chain.select = () => chain;
     chain.eq = () => chain;
     chain.order = () => chain;

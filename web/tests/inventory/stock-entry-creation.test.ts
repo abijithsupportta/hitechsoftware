@@ -75,7 +75,8 @@ describe('Group 7 — Stock Entry Creation', () => {
   function setupStockEntryMock(response = mockStockEntryResponse, error: unknown = null) {
     let insertCallCount = 0;
     mockSupabaseClient.from.mockImplementation((table: string) => {
-      const chain: Record<string, unknown> = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chain: any = {};
       chain.insert = () => {
         insertCallCount++;
         return chain;

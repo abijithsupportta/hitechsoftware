@@ -28,7 +28,8 @@ describe('Group 5 — Product Categories', () => {
   // Test 5.1 — Create category with valid name
   it('5.1 — creates category with valid name successfully', async () => {
     mockSupabaseClient.from.mockImplementation(() => {
-      const chain: Record<string, unknown> = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chain: any = {};
       chain.insert = () => chain;
       chain.select = () => chain;
       chain.single = async () => ({ data: mockCategory, error: null });
@@ -45,7 +46,8 @@ describe('Group 5 — Product Categories', () => {
   // Test 5.2 — Create category with duplicate name same case
   it('5.2 — returns error for duplicate category name (same case)', async () => {
     mockSupabaseClient.from.mockImplementation(() => {
-      const chain: Record<string, unknown> = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chain: any = {};
       chain.insert = () => chain;
       chain.select = () => chain;
       chain.single = async () => ({
@@ -65,7 +67,8 @@ describe('Group 5 — Product Categories', () => {
   // Test 5.3 — Create category with duplicate name different case
   it('5.3 — returns error for case-insensitive duplicate name', async () => {
     mockSupabaseClient.from.mockImplementation(() => {
-      const chain: Record<string, unknown> = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chain: any = {};
       chain.insert = () => chain;
       chain.select = () => chain;
       chain.single = async () => ({
@@ -87,7 +90,8 @@ describe('Group 5 — Product Categories', () => {
     let callCount = 0;
     mockSupabaseClient.from.mockImplementation((table: string) => {
       callCount++;
-      const chain: Record<string, unknown> = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chain: any = {};
       chain.select = () => chain;
       chain.eq = () => chain;
       chain.limit = async () => {
@@ -106,7 +110,8 @@ describe('Group 5 — Product Categories', () => {
   // Test 5.5 — Delete category that has active products
   it('5.5 — blocks deletion when category has active products', async () => {
     mockSupabaseClient.from.mockImplementation((table: string) => {
-      const chain: Record<string, unknown> = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chain: any = {};
       chain.select = () => chain;
       chain.eq = () => chain;
       chain.limit = async () => {
@@ -128,7 +133,8 @@ describe('Group 5 — Product Categories', () => {
   // Test 5.6 — Toggle category inactive
   it('5.6 — toggling category to inactive updates is_active to false', async () => {
     mockSupabaseClient.from.mockImplementation(() => {
-      const chain: Record<string, unknown> = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chain: any = {};
       chain.update = () => chain;
       chain.eq = () => chain;
       chain.select = () => chain;

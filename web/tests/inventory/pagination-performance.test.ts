@@ -23,7 +23,8 @@ describe('Group 10 — Pagination and Performance', () => {
     }));
 
     mockSupabaseClient.from.mockImplementation(() => {
-      const chain: Record<string, unknown> = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chain: any = {};
       chain.select = () => chain;
       chain.eq = () => chain;
       chain.order = () => chain;
@@ -53,7 +54,8 @@ describe('Group 10 — Pagination and Performance', () => {
     }));
 
     mockSupabaseClient.from.mockImplementation(() => {
-      const chain: Record<string, unknown> = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chain: any = {};
       chain.select = () => chain;
       chain.eq = () => chain;
       chain.order = () => chain;
@@ -80,7 +82,8 @@ describe('Group 10 — Pagination and Performance', () => {
     ];
 
     mockSupabaseClient.from.mockImplementation(() => {
-      const chain: Record<string, unknown> = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chain: any = {};
       chain.select = () => chain;
       chain.eq = () => chain;
       chain.order = () => chain;
@@ -116,7 +119,8 @@ describe('Group 10 — Pagination and Performance', () => {
     }));
 
     mockSupabaseClient.from.mockImplementation(() => {
-      const chain: Record<string, unknown> = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chain: any = {};
       chain.select = () => chain;
       chain.eq = () => chain;
       chain.order = () => chain;

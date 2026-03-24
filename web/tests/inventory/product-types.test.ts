@@ -26,7 +26,8 @@ describe('Group 6 — Product Types', () => {
   // Test 6.1 — Create product type with valid name
   it('6.1 — creates product type with valid name successfully', async () => {
     mockSupabaseClient.from.mockImplementation(() => {
-      const chain: Record<string, unknown> = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chain: any = {};
       chain.insert = () => chain;
       chain.select = () => chain;
       chain.single = async () => ({ data: mockType, error: null });
@@ -43,7 +44,8 @@ describe('Group 6 — Product Types', () => {
   // Test 6.2 — Create product type with duplicate name
   it('6.2 — returns error for duplicate product type name', async () => {
     mockSupabaseClient.from.mockImplementation(() => {
-      const chain: Record<string, unknown> = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chain: any = {};
       chain.insert = () => chain;
       chain.select = () => chain;
       chain.single = async () => ({
@@ -63,7 +65,8 @@ describe('Group 6 — Product Types', () => {
   // Test 6.3 — Delete product type with no products
   it('6.3 — deletes product type with no products successfully', async () => {
     mockSupabaseClient.from.mockImplementation((table: string) => {
-      const chain: Record<string, unknown> = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chain: any = {};
       chain.select = () => chain;
       chain.eq = () => chain;
       chain.limit = async () => ({ data: [], error: null });
@@ -79,7 +82,8 @@ describe('Group 6 — Product Types', () => {
   // Test 6.4 — Delete product type with active products
   it('6.4 — blocks deletion when products are using this type', async () => {
     mockSupabaseClient.from.mockImplementation((table: string) => {
-      const chain: Record<string, unknown> = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chain: any = {};
       chain.select = () => chain;
       chain.eq = () => chain;
       chain.limit = async () => ({ data: [{ id: 'prod-1' }], error: null });

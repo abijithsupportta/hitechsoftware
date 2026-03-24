@@ -50,7 +50,8 @@ describe('Group 1 — Product Creation', () => {
   // Test 1.1 — Create product with all valid fields
   it('1.1 — creates product with all valid fields and returns product with id', async () => {
     mockSupabaseClient.from.mockImplementation(() => {
-      const chain: Record<string, unknown> = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chain: any = {};
       chain.insert = () => chain;
       chain.select = () => chain;
       chain.single = async () => ({ data: mockProductResponse, error: null });
@@ -69,7 +70,8 @@ describe('Group 1 — Product Creation', () => {
   // Test 1.2 — Create product with duplicate material code
   it('1.2 — returns error for duplicate material code', async () => {
     mockSupabaseClient.from.mockImplementation(() => {
-      const chain: Record<string, unknown> = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chain: any = {};
       chain.insert = () => chain;
       chain.select = () => chain;
       chain.single = async () => ({
@@ -90,7 +92,8 @@ describe('Group 1 — Product Creation', () => {
   it('1.3 — stores material code as uppercase automatically', async () => {
     let insertedPayload: Record<string, unknown> = {};
     mockSupabaseClient.from.mockImplementation(() => {
-      const chain: Record<string, unknown> = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chain: any = {};
       chain.insert = (data: Record<string, unknown>) => {
         insertedPayload = data;
         return chain;
@@ -139,7 +142,8 @@ describe('Group 1 — Product Creation', () => {
   // Test 1.7 — Create product with MRP lower than purchase price
   it('1.7 — allows creation when MRP is lower than purchase price (warning, not blocking)', async () => {
     mockSupabaseClient.from.mockImplementation(() => {
-      const chain: Record<string, unknown> = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chain: any = {};
       chain.insert = () => chain;
       chain.select = () => chain;
       chain.single = async () => ({
@@ -176,7 +180,8 @@ describe('Group 1 — Product Creation', () => {
   // Test 1.10 — Create product without category
   it('1.10 — allows creation without category (category_id is optional)', async () => {
     mockSupabaseClient.from.mockImplementation(() => {
-      const chain: Record<string, unknown> = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chain: any = {};
       chain.insert = () => chain;
       chain.select = () => chain;
       chain.single = async () => ({

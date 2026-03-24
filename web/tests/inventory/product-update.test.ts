@@ -46,7 +46,8 @@ describe('Group 2 — Product Update', () => {
     const newUpdatedAt = '2026-03-24T12:00:00.000Z';
     // For name-only update (no MRP change), editProduct only calls updateProduct
     mockSupabaseClient.from.mockImplementation(() => {
-      const chain: Record<string, unknown> = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chain: any = {};
       chain.select = () => chain;
       chain.eq = () => chain;
       chain.update = () => chain;
@@ -71,7 +72,8 @@ describe('Group 2 — Product Update', () => {
     let productCallCount = 0;
 
     mockSupabaseClient.from.mockImplementation((table: string) => {
-      const chain: Record<string, unknown> = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chain: any = {};
       chain.select = () => chain;
       chain.eq = () => chain;
       chain.update = () => {
@@ -104,7 +106,8 @@ describe('Group 2 — Product Update', () => {
   // Test 2.3 — Update material code to one that already exists
   it('2.3 — returns error for duplicate material code on update', async () => {
     mockSupabaseClient.from.mockImplementation(() => {
-      const chain: Record<string, unknown> = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chain: any = {};
       chain.select = () => chain;
       chain.eq = () => chain;
       chain.update = () => chain;
@@ -125,7 +128,8 @@ describe('Group 2 — Product Update', () => {
   // Test 2.4 — Update product with same material code as itself
   it('2.4 — succeeds when updating with same material code', async () => {
     mockSupabaseClient.from.mockImplementation(() => {
-      const chain: Record<string, unknown> = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chain: any = {};
       chain.select = () => chain;
       chain.eq = () => chain;
       chain.update = () => chain;
@@ -152,7 +156,8 @@ describe('Group 2 — Product Update', () => {
   // Test 2.6 — Update product that does not exist
   it('2.6 — returns error when product does not exist', async () => {
     mockSupabaseClient.from.mockImplementation(() => {
-      const chain: Record<string, unknown> = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chain: any = {};
       chain.select = () => chain;
       chain.eq = () => chain;
       chain.update = () => chain;
