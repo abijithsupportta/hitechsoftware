@@ -210,8 +210,8 @@ export default function ProductsPage() {
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
         <table className="w-full table-fixed divide-y divide-slate-200">
           <colgroup>
-            <col className="w-[20%]" />
-            <col className="w-[10%]" />
+            <col className="w-[18%]" />
+            <col className="w-[12%]" />
             <col className="w-[10%]" />
             <col className="w-[10%]" />
             <col className="w-[8%]" />
