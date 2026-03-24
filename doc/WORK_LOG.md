@@ -3,6 +3,32 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-26 04:45:00 +05:30] Subject List Page — Responsiveness and UX Overhaul (12 Fixes)
+- Summary: Complete visual and UX overhaul of the subject list page addressing 12 specific problems.
+- Work done:
+	- P1: Subject number shortened to last 8 chars (`...5-4566`) with copy-to-clipboard button. Full number on hover tooltip.
+	- P2: Removed 4 columns (Source, Coverage, Billing, Type) — reduced from 12 to 8 columns. Details available on detail page.
+	- P3: Customer name and phone combined into single cell — name on top, phone in small gray text below.
+	- P4: Backdated/Overdue/Reschedule badges and source info (e.g. "whirlpool · Brand") moved inside the Subject No. cell.
+	- P5: Responsive table with `overflow-x-auto`, `min-w-[700px]` — scrolls horizontally on small screens.
+	- P6: Actions column made sticky (`sticky right-0 bg-white shadow-left`) — always visible during horizontal scroll.
+	- P7: Status badges compacted to `text-xs px-2 py-0.5 rounded-full whitespace-nowrap`.
+	- P8: Date format changed from DD/MM/YYYY to DD/MM/YY. Tech/Brand badge shown below date.
+	- P9: All row padding reduced to `py-2 px-3` for denser rows.
+	- P10: Filter queue buttons made smaller (`text-sm px-3 py-1` from `text-xs px-3 py-1.5`).
+	- P11: Create Subject button moved from filter row to page header top-right.
+	- P12: Sidebar width reduced from `w-[260px]` to `w-[200px]` when expanded.
+	- Responsive column hiding: Priority hidden below xl (1280px), Technician hidden below lg (1024px).
+- Files changed:
+	- web/app/dashboard/subjects/page.tsx
+	- web/app/dashboard/layout.tsx
+- Verification:
+	- Zero TypeScript errors
+	- Build passed successfully
+	- Commit a0385e5 pushed to abijithcb and main
+- Next:
+	- none
+
 ## [2026-03-26 04:00:00 +05:30] Subject List Page — Compact Redesign with More Information
 - Summary: Redesigned the subject list table to be compact and information-dense, matching the product list page style.
 - Work done:
