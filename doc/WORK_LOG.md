@@ -3,6 +3,19 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-26 05:10:00 +05:30] Show Full Subject Number in Subjects List
+- Summary: Reverted subject number shortening — full number now displayed with word-break for long values.
+- Work done:
+	- Removed `shortenSubjectNumber()` function that truncated to last 8 chars.
+	- Changed `whitespace-nowrap` to `break-all` on the subject number code element so long numbers wrap instead of overflowing.
+	- Kept copy button for convenience.
+- Files changed:
+	- web/app/dashboard/subjects/page.tsx
+- Verification:
+	- Zero TypeScript errors. Build passed.
+- Next:
+	- None.
+
 ## [2026-03-26 04:45:00 +05:30] Subject List Page — Responsiveness and UX Overhaul (12 Fixes)
 - Summary: Complete visual and UX overhaul of the subject list page addressing 12 specific problems.
 - Work done:
