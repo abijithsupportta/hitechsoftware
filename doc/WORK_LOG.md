@@ -3,6 +3,31 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-26 04:00:00 +05:30] Subject List Page — Compact Redesign with More Information
+- Summary: Redesigned the subject list table to be compact and information-dense, matching the product list page style.
+- Work done:
+	- Reduced all fonts from text-sm to text-xs and padding from px-4 py-3 to px-3 py-2 for a denser layout.
+	- Subject number now displayed in full (no truncation) using mono code styling — previously truncated with `formatSubjectPreview()` and hover tooltip.
+	- Customer name shown without 20-char truncation — uses CSS truncate instead.
+	- Added 3 new columns to the table (total 12 columns, up from 9):
+		- **Category** — service category shown as its own column (was previously under Subject No.)
+		- **Billing** — billing status badge (Paid/Due/Partial/Waived/N/A) with colour coding
+		- **Type** — service type badge (Install/Service) with colour coding
+	- Technician column now shows technician code below the name when available.
+	- Source column shows brand/dealer type as a colour-coded badge (Brand=violet, Dealer=cyan).
+	- Used table-fixed with colgroup for precise column width control (like product list page).
+	- Added `getBillingMeta()` helper function for billing status badge styling.
+	- Min table width 1400px to accommodate 12 columns with horizontal scroll on smaller screens.
+	- Reduced header from text-2xl font-bold to text-xl font-semibold for consistency.
+- Files changed:
+	- web/app/dashboard/subjects/page.tsx
+- Verification:
+	- Zero TypeScript errors
+	- Build passed successfully
+	- Commit 528ca95 pushed to abijithcb and main
+- Next:
+	- none
+
 ## [2026-03-26 03:30:00 +05:30] Stock Deletion Cache Fix + Product List Pagination + Super Admin Delete
 - Summary: Fixed stock counts not updating after stock entry deletion, added page size selector to product list, and restricted delete to super_admin.
 - Work done:
