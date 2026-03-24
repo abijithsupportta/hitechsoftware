@@ -57,6 +57,7 @@ import { useProductCategories } from '@/hooks/product-categories/useProductCateg
 import { useProductTypes } from '@/hooks/product-types/useProductTypes';
 import { useStockLevels } from '@/hooks/products/useStockLevels';
 import { usePermission } from '@/hooks/auth/usePermission';
+import { useAuthStore } from '@/stores/auth.store';
 import { ROUTES } from '@/lib/constants/routes';
 import { useState, useMemo } from 'react';
 
@@ -72,6 +73,8 @@ function formatCurrency(value: number | null) {
 
 export default function ProductsPage() {
   const { can } = usePermission();
+  const role = useAuthStore((s) => s.role);
+  const isSuperAdmin = role === 'super_admin';
   const {
     items,
     pagination,
@@ -84,6 +87,7 @@ export default function ProductsPage() {
     setTypeFilter,
     setStatusFilter,
     setPage,
+    setPageSize,
     deleteMutation,
   } = useProducts();
 
@@ -399,7 +403,7 @@ export default function ProductsPage() {
                                     <Pencil size={12} />
                                   </Link>
                                 )}
-                                {can('inventory:delete') && (
+                                {isSuperAdmin && (
                                   <button
                                     type="button"
                                     onClick={() => setDeleteConfirmId(item.id)}
@@ -420,13 +424,31 @@ export default function ProductsPage() {
       </div>
 
       {/* Pagination */}
-      {pagination && pagination.totalPages > 1 && (
+      {pagination && (
         <div className="flex items-center justify-between text-sm text-slate-500">
-          <span>
-            Showing {(pagination.page - 1) * pagination.pageSize + 1}–
-            {Math.min(pagination.page * pagination.pageSize, pagination.total)} of {pagination.total}
-          </span>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-3">
+            <span>
+              Showing {(pagination.page - 1) * pagination.pageSize + 1}–
+              {Math.min(pagination.page * pagination.pageSize, pagination.total)} of {pagination.total}
+            </span>
+            <div className="flex items-center gap-1.5">
+              <label htmlFor="page-size" className="text-xs text-slate-400">Rows:</label>
+              <select
+                id="page-size"
+                value={pagination.pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+                className="rounded-lg border border-slate-200 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none"
+              >
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-400">
+              Page {pagination.page} of {pagination.totalPages}
+            </span>
             <button
               type="button"
               onClick={() => setPage(pagination.page - 1)}

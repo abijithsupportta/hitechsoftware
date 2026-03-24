@@ -106,6 +106,11 @@ export function useProducts() {
     setFilters((prev) => ({ ...prev, page }));
   }, []);
 
+  /** Changes the page size and resets to page 1. */
+  const setPageSize = useCallback((page_size: number) => {
+    setFilters((prev) => ({ ...prev, page_size, page: 1 }));
+  }, []);
+
   // ---- MUTATIONS ----
 
   const createMutation = useMutation({
@@ -159,6 +164,7 @@ export function useProducts() {
     setTypeFilter,
     setStatusFilter,
     setPage,
+    setPageSize,
     createMutation,
     updateMutation,
     deleteMutation,

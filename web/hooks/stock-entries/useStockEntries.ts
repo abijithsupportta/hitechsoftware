@@ -82,7 +82,11 @@ export function useStockEntries() {
     onSuccess: async (result) => {
       if (!result.ok) { toast.error(result.error.message); return; }
       toast.success('Stock entry recorded');
-      await queryClient.invalidateQueries({ queryKey: BASE_KEY });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: BASE_KEY }),
+        queryClient.invalidateQueries({ queryKey: ['stock-levels'] }),
+        queryClient.invalidateQueries({ queryKey: ['products'] }),
+      ]);
     },
   });
 
@@ -92,7 +96,11 @@ export function useStockEntries() {
     onSuccess: async (result) => {
       if (!result.ok) { toast.error(result.error.message); return; }
       toast.success('Stock entry deleted');
-      await queryClient.invalidateQueries({ queryKey: BASE_KEY });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: BASE_KEY }),
+        queryClient.invalidateQueries({ queryKey: ['stock-levels'] }),
+        queryClient.invalidateQueries({ queryKey: ['products'] }),
+      ]);
     },
   });
 
