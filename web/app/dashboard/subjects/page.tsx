@@ -45,11 +45,6 @@ function formatDate(value: string) {
   return `${dd}/${mm}/${yy}`;
 }
 
-function shortenSubjectNumber(value: string) {
-  if (value.length <= 10) return value;
-  return `...${value.slice(-8)}`;
-}
-
 function formatStatus(value: string) {
   return value.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
 }
@@ -677,8 +672,8 @@ export default function SubjectsDashboardPage() {
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-1">
                           <Link href={ROUTES.DASHBOARD_SUBJECTS_DETAIL(subject.id)} onMouseEnter={() => handlePrefetch(subject.id)} onFocus={() => handlePrefetch(subject.id)} onTouchStart={() => handlePrefetch(subject.id)} title={subject.subject_number}>
-                            <code className="rounded bg-slate-100 px-1 py-0.5 text-xs font-mono font-medium text-blue-600 hover:underline cursor-pointer whitespace-nowrap">
-                              {shortenSubjectNumber(subject.subject_number)}
+                            <code className="rounded bg-slate-100 px-1 py-0.5 text-xs font-mono font-medium text-blue-600 hover:underline cursor-pointer break-all">
+                              {subject.subject_number}
                             </code>
                           </Link>
                           <button
