@@ -3,6 +3,23 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-26 02:30:00 +05:30] Digital Bag — Fix session creation after close
+- Summary: Fixed bug where creating a new session for a technician after closing the previous one on the same day would fail with "A session already exists" error.
+- Work done:
+	- Root cause: getTodaySession() in repository had no status filter — matched both open and closed sessions. Also, the DB unique constraint UNIQUE(technician_id, session_date) prevented multiple rows per day regardless of status.
+	- Fixed getTodaySession() to add .eq('status', 'open') filter — only blocks on active sessions.
+	- Created migration 029: dropped the strict unique constraint, replaced with a partial unique index (WHERE status = 'open') so only one open session per technician per day is enforced.
+- Files changed:
+	- web/repositories/digital-bag.repository.ts (added status filter to getTodaySession)
+	- web/modules/digital-bag/digital-bag.service.ts (updated comment for clarity)
+	- supabase/migrations/20260326_029_fix_session_unique_constraint.sql (new)
+	- AGENTS.md (migration number updated to 029)
+- Verification:
+	- 67/67 digital bag tests pass
+	- Build: 0 TypeScript errors, 0 warnings
+- Next:
+	- Apply migration 029 to production Supabase
+
 ## [2026-03-26 02:10:00 +05:30] Digital Bag — QA Testing (67 Unit Tests) and Bug Fixes
 - Summary: Wrote 67 unit tests across 11 groups for the Digital Bag module. Found and fixed 2 production bugs in the repository layer during testing.
 - Work done:

@@ -67,7 +67,7 @@ export async function createNewSession(
 ): Promise<ServiceResult<DigitalBagSession>> {
   if (!technicianId) return { ok: false, error: { message: 'Technician is required' } };
 
-  // Check if session already exists today
+  // Check if an open session already exists today
   const existing = await repoGetTodaySession(technicianId);
   if (existing.data) {
     return { ok: false, error: { message: 'A session already exists for this technician today' } };

@@ -59,6 +59,7 @@ export async function getTodaySession(technicianId: string) {
     .select(SESSION_DETAIL_SELECT)
     .eq('technician_id', technicianId)
     .eq('session_date', today)
+    .eq('status', 'open')
     .maybeSingle();
 }
 
