@@ -27,6 +27,7 @@ export default function StockBalancePage() {
 
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<StockStatusFilter>('all');
 
   if (!can('inventory:view')) {
@@ -37,10 +38,6 @@ export default function StockBalancePage() {
     );
   }
 
-  // We need full product data with category/type for filtering — fetch via products hook would
-  // duplicate, so we join stock levels with available data. The view already returns product_name
-  // and material_code which we can search. Category/type filtering requires product detail, so
-  // for now we filter on what the view provides.
   const allLevels = stockLevels ?? [];
 
   const filteredLevels = useMemo(() => {
@@ -55,12 +52,20 @@ export default function StockBalancePage() {
       );
     }
 
+    if (categoryFilter) {
+      result = result.filter((sl: StockLevel) => sl.category_id === categoryFilter);
+    }
+
+    if (typeFilter) {
+      result = result.filter((sl: StockLevel) => sl.product_type_id === typeFilter);
+    }
+
     if (statusFilter !== 'all') {
       result = result.filter((sl: StockLevel) => sl.stock_status === statusFilter);
     }
 
     return result;
-  }, [allLevels, search, statusFilter]);
+  }, [allLevels, search, categoryFilter, typeFilter, statusFilter]);
 
   // Summary stats
   const totalProducts = allLevels.length;
@@ -128,6 +133,28 @@ export default function StockBalancePage() {
             className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           />
         </div>
+
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+        >
+          <option value="">All Categories</option>
+          {(categories ?? []).map((cat) => (
+            <option key={cat.id} value={cat.id}>{cat.name}</option>
+          ))}
+        </select>
+
+        <select
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value)}
+          className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+        >
+          <option value="">All Types</option>
+          {(productTypes ?? []).map((pt) => (
+            <option key={pt.id} value={pt.id}>{pt.name}</option>
+          ))}
+        </select>
 
         <select
           value={statusFilter}

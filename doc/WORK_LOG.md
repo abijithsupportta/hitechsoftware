@@ -3,6 +3,28 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-24 12:00:00 +05:30] Stock Balance — Category & Product Type Filters
+- Summary: Added category and product type dropdown filters to the stock balance dashboard page. Created migration 024 to add category_id and product_type_id columns to the current_stock_levels database view. Updated AGENTS.md with accurate module descriptions and migration number.
+- Work done:
+  - Created migration 024 (20260324_024_stock_balance_filters.sql) — recreates current_stock_levels view with category_id and product_type_id from inventory_products
+  - Updated StockLevel interface in useStockLevels.ts — added category_id and product_type_id fields
+  - Added category dropdown filter and product type dropdown filter to stock-balance/page.tsx
+  - Wired filters to useMemo filtering logic — filters by category_id and product_type_id
+  - Added typeFilter state variable alongside existing categoryFilter
+  - Removed outdated comment about category/type filtering not being possible
+  - Updated AGENTS.md: Complete list expanded, In Progress set to None, Database Tables updated, migration number bumped to 024
+- Files changed:
+  - supabase/migrations/20260324_024_stock_balance_filters.sql (new)
+  - web/hooks/products/useStockLevels.ts
+  - web/app/dashboard/inventory/stock-balance/page.tsx
+  - AGENTS.md
+- Verification:
+  - npm run build — passed with zero errors
+  - All inventory pages compiled successfully
+- Next:
+  - Apply migration 024 to Supabase database
+  - WhatsApp notifications module (next pending item)
+
 ## [2026-03-23 18:20:00 +05:30] Switch to Vercel — Remove Cloudflare Artifacts
 - Summary: Deployment moved to Vercel (no issues). Removed all Cloudflare-specific packages, scripts, and config files.
 - Work done:

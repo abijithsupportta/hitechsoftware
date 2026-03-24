@@ -27,6 +27,7 @@ import {
   markInProgress as repoMarkInProgress,
 } from '@/repositories/subject.repository';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { sendJobNotification } from '@/lib/whatsapp/whatsapp.service';
 
 // Valid status transitions for job workflow
 // EN_ROUTE was removed — flow goes directly ACCEPTED → ARRIVED
@@ -121,6 +122,30 @@ export async function updateJobStatus(
 
   if (!repoResult.data) {
     return { ok: false, error: { message: 'Status update returned no data' } };
+  }
+
+  // Trigger WhatsApp Notifications
+  if (newStatus === 'ARRIVED') {
+    // Fire-and-forget notification
+    const fullSubject = await getSubjectByIdAdmin(subjectId);
+    if (!fullSubject.error && fullSubject.data) {
+      const data = fullSubject.data as any;
+      const admin = createAdminClient();
+      const { data: techProfile } = await admin
+        .from('profiles')
+        .select('display_name')
+        .eq('id', technicianId)
+        .single();
+
+      sendJobNotification({
+        phone: data.customer_phone,
+        name: data.customer_name,
+        type: 'TECHNICIAN_ARRIVED',
+        subjectNumber: data.subject_number,
+        technicianName: techProfile?.display_name || 'Technician',
+        referenceId: subjectId,
+      }).catch(err => console.error('Failed to send arrival notification:', err));
+    }
   }
 
   return { ok: true, data: repoResult.data };

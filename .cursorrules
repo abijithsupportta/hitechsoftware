@@ -1,0 +1,172 @@
+## Read First
+Always read AGENTS.md before starting any task.
+It contains current build status, migration number,
+and prevents rebuilding things that already exist.
+
+# Hi Tech Software — Cursor Rules
+
+## Project
+Service Management System for Hi Tech Engineering, Kottayam Kerala.
+Client: Hi Tech Engineering
+Developer: Supportta Solutions Private Limited
+Phone: +91 85903 77418
+Stack: Next.js 16.1.6 App Router, Supabase, TypeScript,
+TailwindCSS 4, TanStack Query, Zustand, React Hook Form, Zod,
+React 19.2.3, Turbopack enabled by default, React Compiler enabled.
+Flutter apps: hitech_admin and hitech_technician.
+Monorepo: npm workspaces + Turborepo
+Node: >= 22
+
+## Folder Structure
+- Web app: /web
+- Admin Flutter: /hitech_admin
+- Technician Flutter: /hitech_technician
+- Database migrations: /supabase/migrations
+- Docs: /doc
+- Work log: /doc/WORK_LOG.md
+- Agent prompts: /.cursor/prompts
+
+## Architecture — NEVER VIOLATE THIS
+UI (app/) → Hook (hooks/) → Service (modules/) → Repository (repositories/) → Supabase
+
+- Never call Supabase directly from UI components
+- Never call Supabase directly from hooks
+- Never put business logic in repositories
+- Never put UI logic in services
+- All forms use React Hook Form + Zod validation
+- All server state uses TanStack Query
+- Always use existing ProtectedComponent for role-based UI
+- Pages must stay under 150 lines — extract sections into components
+- Every new module follows this file structure:
+  modules/[name]/[name].types.ts
+  modules/[name]/[name].constants.ts
+  modules/[name]/[name].validation.ts
+  modules/[name]/[name].service.ts
+  repositories/[name].repository.ts
+  hooks/[name]/use[Name].ts
+  components/[name]/
+  app/dashboard/[name]/page.tsx
+
+## Roles
+- super_admin — full access to everything
+- office_staff — subjects, customers, billing, team view
+- stock_manager — inventory, stock, digital bag only
+- technician — own jobs only via mobile app
+
+## Supabase Client Rules — CRITICAL
+- Browser components — lib/supabase/client.ts — respects RLS, has build-time fallbacks
+- API routes and server — lib/supabase/server.ts — cookie-based auth, respects RLS
+- Admin and cron jobs — lib/supabase/admin.ts — service role key, bypasses RLS
+- Middleware — lib/supabase/middleware.ts — auth session refresh
+- Never use browser client in API routes — causes auth failures
+
+## Database Rules
+- Always use get_my_role() in RLS policies — migrations 017 and above
+- Migrations before 017 use current_user_role() — never change old migrations
+- Latest migration number is in AGENTS.md — always verify before creating new one
+- Always use IF NOT EXISTS on all indexes
+- Never drop tables without checking row count first
+- Always use soft delete — set is_active = false — never hard delete
+- All financial records immutable — never update, only reverse with new record
+- Every table needs created_at and updated_at with auto-update trigger
+- Always push to abijithcb branch — NEVER push to main
+
+## Pricing and GST Rules
+- MRP is always inclusive of 18% GST — never exclusive
+- Base price = MRP / 1.18
+- GST amount = MRP minus base price
+- Discount applied per product line on MRP before GST split
+- Discounted MRP = MRP minus discount amount
+- Generated columns in subject_accessories: discount_amount, discounted_mrp, base_price, gst_amount, line_total
+- Flat discount cannot exceed MRP
+- Percentage discount cannot exceed 100
+- WAC updates automatically on every stock entry via trigger
+- WAC resets to new purchase price when stock quantity was zero
+- Selling price can never go below MRP
+- All monetary values rounded to 2 decimal places
+- Never manually calculate GST — always use MRP / 1.18
+
+## Business Rules
+- Technician bag capacity = 50 items max per day per technician
+- Attendance toggle ON required before 10:30 AM
+- Attendance auto OFF at midnight via cron
+- Subject number uniqueness per brand OR per dealer — not global
+- AMC chains — new AMC start date must be after previous ends — cannot overlap
+- Variance in technician bag deducted from payout automatically
+- Payout amount set manually after job completion — cannot pay without amount set
+- Subject status flow: pending → allocated → accepted → arrived → in_progress → completed or incomplete
+- Status values are always lowercase — never uppercase ever
+- In-warranty jobs require 6 photos plus video before completion
+- Out-of-warranty jobs require 3 photos before completion
+- MRP: latest invoice MRP always auto-updates product MRP
+
+## Error Handling — Always Three Layers
+- Repository — catch DB error, throw with context message
+- Service — catch repo error, add business context
+- Hook — catch service error, show Sonner toast notification
+- UI — show error state, never crash, never show raw Supabase errors
+- Error response format: { success: false, error: string, code: string }
+- Success response format: { success: true, data: T }
+- Toast success — green
+- Toast error — red with human readable message
+- Loading — disabled button with spinner — never blank screen
+
+## API Route Standards
+- Authenticate first — check session exists
+- Validate role second — check permission
+- Validate input third — use Zod schema
+- Execute business logic fourth — call service layer
+- Return consistent shape always
+- Every route protected — no public endpoints except login
+
+## Performance Standards
+- All list queries paginated — maximum 20 records per page
+- Search debounced minimum 300ms
+- Reports use materialized views not raw tables
+- Never use SELECT star in production queries
+- Always show loading skeleton — never blank white screen
+- Images lazy loaded always
+- TanStack Query staleTime minimum 5 minutes on stable data
+
+## Security Standards
+- Never expose SUPABASE_SERVICE_ROLE_KEY in client code
+- Never in any NEXT_PUBLIC_ environment variable
+- Validate role on server in every API route
+- Validate input with Zod on server in every API route
+- All file uploads validated for type and size before upload
+
+## Code Style
+- TypeScript strict — no any types ever
+- Add explicit type annotations to all filter and reduce callbacks
+- No console.log in production code
+- No inline styles — TailwindCSS only
+- No hardcoded strings — use constants files
+- No duplicate module folders
+- No old inventory system files — deleted in migration 018
+- All status enums lowercase always
+- Human readable error messages always
+
+## Known Build Issues to Avoid
+- Module-level createClient() calls fail without env vars — client.ts has build-time fallbacks, do not change this pattern
+- TypeScript implicit any on filter/reduce callbacks — always add explicit types
+
+## Testing Before Reporting
+- Always run npm run build
+- Fix all TypeScript errors before reporting
+- Confirm zero errors before marking task complete
+- If build fails — fix it, do not report success
+
+## Work Log
+- Always update doc/WORK_LOG.md after every completed task
+- Log what was built, files changed, migration number used
+
+## Agent Behavior — Non Negotiable
+- Never explain what you are doing step by step
+- Never ask clarifying questions
+- Never write summaries between steps
+- Never create files outside existing folder structure
+- Never rebuild modules listed as complete in AGENTS.md
+- Read AGENTS.md migration number before creating any migration
+- Build everything first then report at the end only
+- If something is ambiguous — make best decision and note it in report
+- Always push to abijithcb branch — never main

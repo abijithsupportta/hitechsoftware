@@ -13,6 +13,8 @@ export interface StockLevel {
   product_id: string;
   material_code: string;
   product_name: string;
+  category_id: string | null;
+  product_type_id: string | null;
   minimum_stock_level: number;
   total_received: number;
   current_quantity: number;

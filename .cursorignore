@@ -1,0 +1,10 @@
+doc/
+*.md
+supabase/migrations/
+web/docs/
+web/.next/
+hitech_admin/build/
+hitech_technician/build/
+node_modules/
+*.sql
+*.log
