@@ -14,6 +14,9 @@ export function createMockSupabaseClient() {
     mrp_change_log: []
   };
 
+  let currentUserRole: string | null = null;
+  let currentUser: any = null;
+
   const mockClient = {
     from: (table: string) => ({
       select: (columns?: string) => ({
@@ -49,7 +52,7 @@ export function createMockSupabaseClient() {
           }),
           in: (column: string, values: any[]) => ({
             then: (resolve: any) => resolve({
-              data: mockData[table]?.filter(item => values.includes(item[column])) || [],
+              data: mockData[table]?.filter((item: any) => values.includes(item[column])) || [],
               error: null
             })
           }),
@@ -66,9 +69,40 @@ export function createMockSupabaseClient() {
       insert: (data: any) => ({
         select: (columns?: string) => ({
           single: () => {
+            // Check permissions for inserts
+            if (table === 'inventory_products' && currentUserRole === 'technician') {
+              return Promise.resolve({
+                data: null,
+                error: { message: 'Permission denied', code: '42501' }
+              });
+            }
+
+            if (table === 'stock_entries' && currentUserRole === 'technician') {
+              return Promise.resolve({
+                data: null,
+                error: { message: 'Permission denied', code: '42501' }
+              });
+            }
+
+            if (table === 'product_categories' && currentUserRole !== 'stock_manager' && currentUserRole !== 'super_admin') {
+              return Promise.resolve({
+                data: null,
+                error: { message: 'Permission denied', code: '42501' }
+              });
+            }
+
+            // Check for unauthenticated access
+            if (!currentUserRole) {
+              return Promise.resolve({
+                data: null,
+                error: { message: 'Unauthenticated access', code: '42501' }
+              });
+            }
+
             const newItem = {
               id: `${table}-${Date.now()}-${Math.random()}`,
               created_at: new Date().toISOString(),
+              created_by: currentUser?.id || null,
               ...data
             };
             
@@ -100,7 +134,7 @@ export function createMockSupabaseClient() {
             if (table === 'product_categories') {
               // Check for duplicate category name (case-insensitive)
               const existingCategory = mockData[table]?.find((c: any) => 
-                c.name?.toLowerCase() === newItem.name?.toLowerCase()
+                c.name?.toLowerCase().trim() === newItem.name?.toLowerCase().trim()
               );
               if (existingCategory) {
                 return Promise.resolve({
@@ -196,7 +230,22 @@ export function createMockSupabaseClient() {
                   error: { message: 'Record not found', code: 'PGRST116' }
                 });
               }
-              
+
+              // Check permissions for updates
+              if (table === 'inventory_products' && currentUserRole === 'technician') {
+                return Promise.resolve({
+                  data: null,
+                  error: { message: 'Permission denied', code: '42501' }
+                });
+              }
+
+              if (table === 'stock_entries' && currentUserRole === 'technician') {
+                return Promise.resolve({
+                  data: null,
+                  error: { message: 'Permission denied', code: '42501' }
+                });
+              }
+
               // Special handling for updates
               if (table === 'inventory_products') {
                 // Create MRP change log if MRP is being updated
@@ -209,7 +258,7 @@ export function createMockSupabaseClient() {
                     old_mrp: oldMRP,
                     new_mrp: newMRP,
                     changed_at: new Date().toISOString(),
-                    changed_by: 'current-user'
+                    changed_by: currentUser?.id || 'current-user'
                   };
                   mockData.mrp_change_log = [...(mockData.mrp_change_log || []), changeLogEntry];
                 }
@@ -234,6 +283,14 @@ export function createMockSupabaseClient() {
       delete: () => ({
         eq: (column: string, value: any) => ({
           then: (resolve: any) => {
+            // Check permissions for deletes
+            if (table === 'product_categories' && currentUserRole !== 'super_admin' && currentUserRole !== 'stock_manager') {
+              return Promise.resolve({
+                data: null,
+                error: { message: 'cannot delete category with products' }
+              });
+            }
+
             // Special handling for category deletion
             if (table === 'product_categories') {
               const categoryId = value;
@@ -353,17 +410,24 @@ export function createMockSupabaseClient() {
         
         if (credential && password === credential.password) {
           const userData = mockData.profiles?.find((p: any) => p.email === email);
+          currentUser = userData || {
+            id: email.replace('@', '-').replace('.', '-'),
+            email: email,
+            role: credential.role
+          };
+          currentUserRole = credential.role;
+          
           return {
             data: {
               user: {
-                id: userData?.id || email.replace('@', '-').replace('.', '-'),
+                id: currentUser.id,
                 email: email,
                 user_metadata: { role: credential.role }
               },
               session: {
                 access_token: `token-${Date.now()}-${Math.random()}`,
                 user: {
-                  id: userData?.id || email.replace('@', '-').replace('.', '-'),
+                  id: currentUser.id,
                   email: email,
                   user_metadata: { role: credential.role }
                 }
@@ -379,11 +443,37 @@ export function createMockSupabaseClient() {
         };
       },
       signOut: async () => {
+        currentUser = null;
+        currentUserRole = null;
         return {
           data: {},
           error: null
         };
-      }
+      },
+      getSession: async () => ({
+        data: {
+          session: currentUser ? {
+            user: currentUser,
+            access_token: `token-${Date.now()}`
+          } : null
+        },
+        error: null
+      }),
+      getUser: async () => ({
+        data: {
+          user: currentUser
+        },
+        error: null
+      }),
+      onAuthStateChange: vi.fn((callback: any) => {
+        return {
+          data: {
+            subscription: {
+              unsubscribe: vi.fn()
+            }
+          }
+        };
+      })
     }
   };
   

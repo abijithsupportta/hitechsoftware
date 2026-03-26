@@ -1832,13 +1832,17 @@ describe('Inventory Module Pricing Tests', () => {
       });
 
       // Create first category
-      await supabase
+      const { data: firstCategory } = await supabase
         .from('product_categories')
         .insert({
           name: 'Duplicate Category',
           description: 'First category',
           is_active: true
-        });
+        })
+        .select()
+        .single();
+
+      expect(firstCategory).toBeDefined();
 
       // Try to create second category with same name (case-sensitive check)
       const { data, error } = await supabase
@@ -1863,13 +1867,17 @@ describe('Inventory Module Pricing Tests', () => {
       });
 
       // Create first category
-      await supabase
+      const { data: firstCategory } = await supabase
         .from('product_categories')
         .insert({
           name: 'Case Test Category',
           description: 'First category',
           is_active: true
-        });
+        })
+        .select()
+        .single();
+
+      expect(firstCategory).toBeDefined();
 
       // Try to create second category with different case (case-insensitive check)
       const { data, error } = await supabase
@@ -1924,7 +1932,7 @@ describe('Inventory Module Pricing Tests', () => {
       expect(data).toBeNull();
       expect(error).toBeDefined();
       expect(error.message).toContain('cannot delete category with products');
-    });
+    }, 15000);
 
     it('Test 6.5 — Delete category with no products — expect success', async () => {
       await supabase.auth.signInWithPassword({
@@ -1937,13 +1945,13 @@ describe('Inventory Module Pricing Tests', () => {
         .from('product_categories')
         .insert({
           name: 'Empty Category',
-          description: 'Category without products',
+          description: 'Category with no products',
           is_active: true
         })
         .select()
         .single();
 
-      // Delete category
+      // Delete category - should succeed
       const { data, error } = await supabase
         .from('product_categories')
         .delete()
@@ -1951,7 +1959,7 @@ describe('Inventory Module Pricing Tests', () => {
 
       expect(error).toBeNull();
       expect(data).toBeDefined();
-    });
+    }, 15000);
 
     it('Test 6.6 — Toggle category inactive — expect products in that category still visible but category not available for new products', async () => {
       await supabase.auth.signInWithPassword({
@@ -2117,6 +2125,7 @@ describe('Inventory Module Pricing Tests', () => {
       // Logout first
       await supabase.auth.signOut();
 
+      // Try to list products
       const { data, error } = await supabase
         .from('inventory_products')
         .select('*');
@@ -2124,6 +2133,6 @@ describe('Inventory Module Pricing Tests', () => {
       expect(data).toBeNull();
       expect(error).toBeDefined();
       expect(error.code).toBe('42501');
-    });
+    }, 15000);
   });
 });

@@ -3,23 +3,16 @@ import { fileURLToPath } from 'node:url';
 
 export default defineConfig({
   test: {
-    include: ['tests/**/*.test.ts'],
-    environment: 'node',
+    include: ['tests/performance/**/*.test.ts'],
+    environment: 'jsdom',
     globals: true,
     passWithNoTests: true,
-    setupFiles: ['./tests/setup.ts'],
+    setupFiles: ['./tests/performance-setup.ts'],
     css: true,
     fileParallelism: false,
     isolate: true,
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'html'],
-      reportsDirectory: './coverage',
-    },
-    // Override environment for performance tests
     testTimeout: 10000,
     hookTimeout: 10000,
-    // Use different setup for performance tests
     sequence: {
       shuffle: false,
       concurrent: false,
@@ -31,4 +24,3 @@ export default defineConfig({
     },
   },
 });
-

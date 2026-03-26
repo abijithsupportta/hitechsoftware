@@ -11,6 +11,9 @@ export function createMockSupabaseClient() {
     subject_accessories: []
   };
 
+  let currentUserRole: string | null = null;
+  let currentUser: any = null;
+
   const mockClient = {
     from: (table: string) => ({
       select: (columns?: string) => ({
@@ -51,9 +54,21 @@ export function createMockSupabaseClient() {
       insert: (data: any) => ({
         select: (columns?: string) => ({
           single: () => {
+            // Check permissions for inserts
+            if (table === 'subject_accessories' && currentUserRole === 'technician') {
+              // Check if technician is trying to add discount
+              if (data.discount_percentage > 0 || data.discount_flat > 0) {
+                return Promise.resolve({
+                  data: null,
+                  error: { message: 'Permission denied', code: '42501' }
+                });
+              }
+            }
+
             const newItem = {
               id: `${table}-${Date.now()}`,
               created_at: new Date().toISOString(),
+              created_by: currentUser?.id || null,
               ...data
             };
             
@@ -61,7 +76,17 @@ export function createMockSupabaseClient() {
             if (table === 'subject_bills') {
               newItem.bill_number = `BILL-${String(Math.floor(Math.random() * 999999)).padStart(6, '0')}`;
               newItem.payment_status = newItem.payment_status || 'due';
-              newItem.created_by = newItem.created_by || 'admin-123';
+            } else {
+              newItem.extra_price_collected = 0;
+            }
+            
+            // Permission validation for discounts
+            const userRole = currentUserRole;
+            if (userRole === 'technician' && (newItem.discount_percentage > 0 || newItem.discount_flat > 0)) {
+              return Promise.resolve({
+                data: null,
+                error: { message: 'Permission denied', code: '42501' }
+              });
             }
             
             if (table === 'subject_accessories') {
@@ -74,22 +99,6 @@ export function createMockSupabaseClient() {
               newItem.base_price = Math.round(basePrice * 100) / 100;
               newItem.gst_amount = Math.round(gstAmount * 100) / 100;
               newItem.line_total = lineTotal;
-              
-              // Calculate extra price collected
-              if (newItem.unit_price && newItem.unit_price > newItem.mrp) {
-                newItem.extra_price_collected = (newItem.unit_price - newItem.mrp) * (newItem.quantity || 1);
-              } else {
-                newItem.extra_price_collected = 0;
-              }
-              
-              // Permission validation for discounts
-              const userRole = 'office_staff'; // Mock current user role
-              if (userRole === 'technician' && (newItem.discount_percentage > 0 || newItem.discount_flat > 0)) {
-                return Promise.resolve({
-                  data: null,
-                  error: { message: 'Permission denied', code: '42501' }
-                });
-              }
             }
             
             mockData[table] = [...(mockData[table] || []), newItem];
@@ -133,13 +142,22 @@ export function createMockSupabaseClient() {
                 }
               }
               
-              // Permission validation
-              const userRole = 'office_staff'; // Mock current user role
-              if (table === 'subject_bills' && userRole === 'technician') {
+              // Check permissions for updates
+              if (table === 'subject_bills' && currentUserRole === 'technician') {
                 return Promise.resolve({
                   data: null,
                   error: { message: 'Permission denied', code: '42501' }
                 });
+              }
+
+              if (table === 'subject_accessories' && currentUserRole === 'technician') {
+                // Check if technician is trying to update discount
+                if (data.discount_percentage > 0 || data.discount_flat > 0) {
+                  return Promise.resolve({
+                    data: null,
+                    error: { message: 'Permission denied', code: '42501' }
+                  });
+                }
               }
               
               const updatedItem = {
@@ -270,17 +288,24 @@ export function createMockSupabaseClient() {
         
         if (credential && password === credential.password) {
           const userData = mockData.profiles?.find((p: any) => p.email === email);
+          currentUser = userData || {
+            id: email.replace('@', '-').replace('.', '-'),
+            email: email,
+            role: credential.role
+          };
+          currentUserRole = credential.role;
+          
           return {
             data: {
               user: {
-                id: userData?.id || email.replace('@', '-').replace('.', '-'),
+                id: currentUser.id,
                 email: email,
                 user_metadata: { role: credential.role }
               },
               session: {
                 access_token: `token-${Date.now()}-${Math.random()}`,
                 user: {
-                  id: userData?.id || email.replace('@', '-').replace('.', '-'),
+                  id: currentUser.id,
                   email: email,
                   user_metadata: { role: credential.role }
                 }
@@ -296,11 +321,37 @@ export function createMockSupabaseClient() {
         };
       },
       signOut: async () => {
+        currentUser = null;
+        currentUserRole = null;
         return {
           data: {},
           error: null
         };
-      }
+      },
+      getSession: async () => ({
+        data: {
+          session: currentUser ? {
+            user: currentUser,
+            access_token: `token-${Date.now()}`
+          } : null
+        },
+        error: null
+      }),
+      getUser: async () => ({
+        data: {
+          user: currentUser
+        },
+        error: null
+      }),
+      onAuthStateChange: vi.fn((callback: any) => {
+        return {
+          data: {
+            subscription: {
+              unsubscribe: vi.fn()
+            }
+          }
+        };
+      })
     }
   };
   

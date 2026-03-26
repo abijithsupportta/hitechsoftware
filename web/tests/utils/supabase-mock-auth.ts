@@ -12,6 +12,9 @@ export function createMockSupabaseClient() {
     subject_bills: []
   };
 
+  let currentUserRole: string | null = null;
+  let currentUser: any = null;
+
   const mockClient = {
     from: (table: string) => ({
       select: (columns?: string) => ({
@@ -52,7 +55,33 @@ export function createMockSupabaseClient() {
             error: null
           })
         }),
-        then: (resolve: any) => ({
+        in: (column: string, values: any[]) => ({
+          then: (resolve: any) => resolve({
+            data: mockData[table]?.filter((item: any) => values.includes(item[column])) || [],
+            error: null
+          })
+        }),
+        order: (column: string, ascending: boolean = true) => ({
+          limit: (limit: number) => ({
+            then: (resolve: any) => {
+              let filtered = mockData[table] || [];
+              if (column) {
+                filtered = filtered.sort((a: any, b: any) => {
+                  if (ascending) {
+                    return a[column] > b[column] ? 1 : -1;
+                  } else {
+                    return a[column] < b[column] ? 1 : -1;
+                  }
+                });
+              }
+              return resolve({
+                data: filtered.slice(0, limit),
+                error: null
+              });
+            }
+          })
+        }),
+        then: (resolve: any) => resolve({
           data: mockData[table] || [],
           error: null
         })
@@ -60,9 +89,25 @@ export function createMockSupabaseClient() {
       insert: (data: any) => ({
         select: (columns?: string) => ({
           single: () => {
+            // Check permissions for inserts
+            if (table === 'inventory_products' && currentUserRole === 'technician') {
+              return Promise.resolve({
+                data: null,
+                error: { message: 'Permission denied', code: '42501' }
+              });
+            }
+
+            if (table === 'stock_entries' && currentUserRole === 'technician') {
+              return Promise.resolve({
+                data: null,
+                error: { message: 'Permission denied', code: '42501' }
+              });
+            }
+
             const newItem = {
               id: `${table}-${Date.now()}`,
               created_at: new Date().toISOString(),
+              created_by: currentUser?.id || null,
               ...data
             };
             
@@ -86,7 +131,22 @@ export function createMockSupabaseClient() {
                   error: { message: 'Record not found', code: 'PGRST116' }
                 });
               }
-              
+
+              // Check permissions for updates
+              if (table === 'inventory_products' && currentUserRole === 'technician') {
+                return Promise.resolve({
+                  data: null,
+                  error: { message: 'Permission denied', code: '42501' }
+                });
+              }
+
+              if (table === 'subject_bills' && currentUserRole === 'technician') {
+                return Promise.resolve({
+                  data: null,
+                  error: { message: 'Permission denied', code: '42501' }
+                });
+              }
+
               const updatedItem = {
                 ...mockData[table][index],
                 ...data,
@@ -106,6 +166,14 @@ export function createMockSupabaseClient() {
       delete: () => ({
         eq: (column: string, value: any) => ({
           then: (resolve: any) => {
+            // Check permissions for deletes
+            if (table === 'product_categories' && currentUserRole !== 'super_admin') {
+              return Promise.resolve({
+                data: null,
+                error: { message: 'Permission denied', code: '42501' }
+              });
+            }
+
             mockData[table] = mockData[table]?.filter(item => item[column] !== value) || [];
             return Promise.resolve({
               data: null,
@@ -118,28 +186,19 @@ export function createMockSupabaseClient() {
     rpc: (functionName: string, params?: any) => {
       // Mock RPC functions
       if (functionName === 'get_my_role') {
-        // Simulate role based on current session
         return Promise.resolve({
-          data: 'office_staff', // Default role for testing
+          data: currentUserRole || 'anonymous',
           error: null
         });
       }
-      
-      if (functionName === 'get_expiring_amcs') {
-        const days = params?.days || 30;
-        return Promise.resolve({
-          data: [],
-          error: null
-        });
-      }
-      
+
       if (functionName === 'refresh_all_materialized_views') {
         return Promise.resolve({
-          data: null,
-          error: { message: 'unauthorized' }
+          data: true,
+          error: null
         });
       }
-      
+
       return Promise.resolve({
         data: null,
         error: { message: 'Function not found' }
@@ -147,30 +206,6 @@ export function createMockSupabaseClient() {
     },
     auth: {
       signInWithPassword: async ({ email, password }: any) => {
-        // Check for empty fields
-        if (!email) {
-          return {
-            data: null,
-            error: { message: 'email is required' }
-          };
-        }
-        
-        if (!password) {
-          return {
-            data: null,
-            error: { message: 'password is required' }
-          };
-        }
-
-        // Check for deactivated user
-        if (email === 'deactivated@hitech.com') {
-          return {
-            data: null,
-            error: { message: 'account deactivated' }
-          };
-        }
-
-        // Valid credentials
         const validCredentials = {
           'admin@hitech.com': { role: 'super_admin', password: 'validpassword' },
           'office@hitech.com': { role: 'office_staff', password: 'validpassword' },
@@ -182,17 +217,24 @@ export function createMockSupabaseClient() {
         
         if (credential && password === credential.password) {
           const userData = mockData.profiles?.find((p: any) => p.email === email);
+          currentUser = userData || {
+            id: email.replace('@', '-').replace('.', '-'),
+            email: email,
+            role: credential.role
+          };
+          currentUserRole = credential.role;
+          
           return {
             data: {
               user: {
-                id: userData?.id || email.replace('@', '-').replace('.', '-'),
+                id: currentUser.id,
                 email: email,
                 user_metadata: { role: credential.role }
               },
               session: {
                 access_token: `token-${Date.now()}-${Math.random()}`,
                 user: {
-                  id: userData?.id || email.replace('@', '-').replace('.', '-'),
+                  id: currentUser.id,
                   email: email,
                   user_metadata: { role: credential.role }
                 }
@@ -208,11 +250,37 @@ export function createMockSupabaseClient() {
         };
       },
       signOut: async () => {
+        currentUser = null;
+        currentUserRole = null;
         return {
           data: {},
           error: null
         };
-      }
+      },
+      getSession: async () => ({
+        data: {
+          session: currentUser ? {
+            user: currentUser,
+            access_token: `token-${Date.now()}`
+          } : null
+        },
+        error: null
+      }),
+      getUser: async () => ({
+        data: {
+          user: currentUser
+        },
+        error: null
+      }),
+      onAuthStateChange: vi.fn((callback: any) => {
+        return {
+          data: {
+            subscription: {
+              unsubscribe: vi.fn()
+            }
+          }
+        };
+      })
     }
   };
   
