@@ -6,7 +6,10 @@ import { useAuth } from '@/hooks/auth/useAuth';
 import { useLeaderboard } from '@/hooks/commission/useCommission';
 import type { LeaderboardPeriod, LeaderboardEntry } from '@/modules/commission/commission.types';
 
-function formatMoney(value: number): string {
+function formatMoney(value: number | null | undefined): string {
+  if (value === null || value === undefined || isNaN(value)) {
+    return '0.00';
+  }
   return value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
@@ -80,31 +83,31 @@ function LeaderboardCard({ entry }: { entry: LeaderboardEntry }) {
           <div>
             <p className="font-semibold text-slate-900">{entry.technician_name}</p>
             <p className="text-xs text-slate-500">
-              {entry.services_completed} service{entry.services_completed !== 1 ? 's' : ''} completed
-              {entry.amc_sold_count > 0 && ` • ${entry.amc_sold_count} AMC${entry.amc_sold_count !== 1 ? 's' : ''} sold`}
+              {entry.services_completed || 0} service{(entry.services_completed || 0) !== 1 ? 's' : ''} completed
+              {(entry.amc_sold_count || 0) > 0 && ` • ${entry.amc_sold_count} AMC${(entry.amc_sold_count || 0) !== 1 ? 's' : ''} sold`}
             </p>
           </div>
           <div className="text-right">
             <p className="text-xs font-medium uppercase tracking-wide text-purple-500">AMC Revenue</p>
-            <p className="text-xs font-semibold text-purple-700">₹{formatMoney(entry.amc_revenue)}</p>
+            <p className="text-xs font-semibold text-purple-700">₹{formatMoney(entry.amc_revenue || 0)}</p>
           </div>
         </div>
         <div className="grid grid-cols-4 gap-4 text-right mt-3">
           <div>
             <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Bill</p>
-            <p className="text-xs font-semibold text-slate-700">₹{formatMoney(entry.total_bill_generated)}</p>
+            <p className="text-xs font-semibold text-slate-700">₹{formatMoney(entry.total_bill_generated || 0)}</p>
           </div>
           <div>
             <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Parts</p>
-            <p className="text-xs font-semibold text-slate-700">₹{formatMoney(entry.parts_sold_value)}</p>
+            <p className="text-xs font-semibold text-slate-700">₹{formatMoney(entry.parts_sold_value || 0)}</p>
           </div>
           <div>
             <p className="text-[10px] font-medium uppercase tracking-wide text-purple-500">AMC</p>
-            <p className="text-xs font-semibold text-purple-700">₹{formatMoney(entry.amc_commission)}</p>
+            <p className="text-xs font-semibold text-purple-700">₹{formatMoney(entry.amc_commission || 0)}</p>
           </div>
           <div>
             <p className="text-[10px] font-medium uppercase tracking-wide text-emerald-500">Earnings</p>
-            <p className="text-sm font-bold text-emerald-700">₹{formatMoney(entry.net_earnings)}</p>
+            <p className="text-sm font-bold text-emerald-700">₹{formatMoney(entry.net_earnings || 0)}</p>
           </div>
         </div>
       </div>
