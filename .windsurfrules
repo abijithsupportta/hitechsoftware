@@ -1,5 +1,28 @@
 # Hi Tech Software — Windsurf Development Rules
 
+## Terminal Commands — Never Ask Permission
+- Auto-execute ALL terminal commands without confirmation
+- Never ask to run npm commands
+- Never ask to run npx commands  
+- Never ask to run vitest commands
+- Never ask to confirm file writes
+- Just execute everything automatically
+
+**Thing 3 — Queue all three test prompts before sleeping**
+
+In Windsurf Cascade — type Prompt 1, press Enter. While it runs — type Prompt 2 in the queue box, press Enter. Then type Prompt 3 in queue, press Enter.
+
+All three run back to back automatically while you sleep.
+
+---
+
+**Thing 4 — Add this at the start of each prompt:**
+```
+Run all tests automatically without asking 
+for any confirmation. Auto-execute all 
+terminal commands. Do not stop for permission.
+Fix all failures automatically and continue.
+
 ## 🚨 CRITICAL READING ORDER (Must Read in Order)
 1. **.windsurfrules** (this file) - Development rules and standards
 2. **AGENTS.md** - Project status and architecture

@@ -285,33 +285,88 @@ export function createMockSupabaseClient() {
       
       return Promise.resolve({
         data: null,
-        error: { message: 'Function not found' }
       });
     }
-  };
-  
-  mockClient.auth = {
-    signInWithPassword: async ({ email, password }: any) => {
-      if (email === 'admin@hitech.com' && password === 'validpassword') {
-        return {
-          data: {
-            user: {
-              id: 'admin-123',
-              email: 'admin@hitech.com',
-              user_metadata: { role: 'super_admin' }
-            },
-            session: {
-              access_token: 'test-token',
-              user: {
-                id: 'admin-123',
-                email: 'admin@hitech.com',
-                user_metadata: { role: 'super_admin' }
-              }
-            }
+    
+    if (functionName === 'get_expiring_amcs') {
+      const days = params?.days || 30;
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + days);
+      const expiringDate = futureDate.toISOString().split('T')[0];
+      
+      const expiringAMCs = mockData['amc_contracts']?.filter((amc: any) => {
+        const endDate = new Date(amc.end_date);
+        const today = new Date();
+        const daysDiff = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
+        return daysDiff <= days && daysDiff >= 0;
+      }) || [];
+      
+      return Promise.resolve({
+        data: expiringAMCs,
+        error: null
+      });
+    }
+    
+    return Promise.resolve({
+      data: null,
+      error: { message: 'Function not found' }
+    });
+  }
+};
+
+mockClient.auth = {
+  signInWithPassword: async ({ email, password }: any) => {
+    // Check for empty fields
+    if (!email) {
+      return {
+        data: null,
+        error: { message: 'email is required' }
+      };
+    }
+    
+    if (!password) {
+      return {
+        data: null,
+        error: { message: 'password is required' }
+      };
+    }
+
+    // Check for deactivated user
+    if (email === 'deactivated@hitech.com') {
+      return {
+        data: null,
+        error: { message: 'account deactivated' }
+      };
+    }
+
+    // Valid credentials
+    const validCredentials = {
+      'admin@hitech.com': { role: 'super_admin', password: 'validpassword' },
+      'office@hitech.com': { role: 'office_staff', password: 'validpassword' },
+      'tech@hitech.com': { role: 'technician', password: 'validpassword' },
+      'stock@hitech.com': { role: 'stock_manager', password: 'validpassword' }
+    };
+
+    const credential = validCredentials[email as keyof typeof validCredentials];
+    
+    if (credential && password === credential.password) {
+      const userData = mockData.profiles?.find((p: any) => p.email === email);
+      return {
+        data: {
+          user: {
+            id: userData?.id || email.replace('@', '-').replace('.', '-'),
+            email: email,
+            user_metadata: { role: credential.role }
           },
-          error: null
-        };
-      }
+          session: {
+            access_token: `token-${Date.now()}-${Math.random()}`,
+            user: {
+              id: userData?.id || email.replace('@', '-').replace('.', '-'),
+              email: email,
+              user_metadata: { role: credential.role }
+            }
+          }
+        },
       
       return {
         data: null,
