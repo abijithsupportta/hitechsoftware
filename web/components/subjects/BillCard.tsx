@@ -27,6 +27,9 @@ interface Props {
   highlightCustomerPayment?: boolean;
   canEditBill?: boolean;
   onEditBill?: () => void;
+  canFinishJob?: boolean;
+  onFinishJob?: () => void;
+  isFinishingJob?: boolean;
 }
 
 const PAYMENT_MODE_OPTIONS: Array<{ value: 'cash' | 'upi' | 'card' | 'cheque'; label: string }> = [
@@ -56,6 +59,9 @@ export function BillCard({
   highlightCustomerPayment = false,
   canEditBill = false,
   onEditBill,
+  canFinishJob,
+  onFinishJob,
+  isFinishingJob,
 }: Props) {
   const showCustomerPaymentActions = canUpdatePayment && bill.bill_type === 'customer_receipt';
   const [selectedPaymentMode, setSelectedPaymentMode] = useState<'cash' | 'upi' | 'card' | 'cheque'>(bill.payment_mode ?? 'cash');
@@ -147,6 +153,17 @@ export function BillCard({
             className="rounded-lg border border-violet-300 bg-violet-50 px-3 py-1.5 text-xs font-semibold text-violet-700 hover:bg-violet-100"
           >
             Edit Bill
+          </button>
+        )}
+
+        {canFinishJob && onFinishJob && (
+          <button
+            type="button"
+            disabled={isFinishingJob}
+            onClick={onFinishJob}
+            className="rounded-lg border border-green-300 bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-100 disabled:opacity-60"
+          >
+            {isFinishingJob ? 'Finishing...' : 'Finish Job'}
           </button>
         )}
 

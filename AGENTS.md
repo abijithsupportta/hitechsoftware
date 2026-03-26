@@ -1,5 +1,11 @@
 # Hi Tech Software — Agent Guide
 
+- If write_to_file fails — check directory exists 
+  first using terminal, create with mkdir if needed,
+  then retry the file write
+- Never ask the user to choose between options
+- Always self-diagnose and self-fix errors
+
 ## Project Overview
 Service Management System for Hi Tech Engineering, Kottayam Kerala.
 Client: Hi Tech Engineering
@@ -55,6 +61,18 @@ Handles warranty, AMC, digital bag, payouts, and reporting.
 - Scale architecture — indexes, materialized views, role helper functions
 - Auth hardening — middleware, session expiry, hydration safety
 - Deployment on Vercel
+- Technician Commission and Performance tracking system
+  - technician_commission_config table
+  - technician_earnings_summary table with generated net_earnings column
+  - extra_price_collected auto-calculation trigger on subject_accessories
+  - sync_technician_earnings function
+  - technician_leaderboard materialized view (daily/weekly/monthly)
+  - Commission section in subject detail page
+  - Leaderboard page with gold/silver/bronze ranking
+  - Payout details page with monthly chart
+  - Technician earnings tab with summary cards and table
+  - API routes for commission CRUD
+  - Billing integration — auto-syncs earnings on bill generation
 
 ### In Progress
 - None
@@ -66,8 +84,8 @@ Handles warranty, AMC, digital bag, payouts, and reporting.
 4. Flutter admin app — hitech_admin/ already scaffolded
 
 ## Database — Critical Numbers
-Latest migration number: 029
-Next migration to create: 030
+Latest migration number: 030
+Next migration to create: 031
 Always verify by checking supabase/migrations/ folder for highest number.
 Update this number here after every new migration is created.
 
@@ -78,6 +96,7 @@ digital_bag_sessions, digital_bag_items, digital_bag_consumptions,
 subject_accessories, subject_photos, subject_contracts,
 attendance_logs, mrp_change_log, technician_service_payouts,
 subject_bills, subject_history, auth_logs,
+technician_commission_config, technician_earnings_summary,
 current_stock_levels (view)
 
 ## Materialized Views
@@ -87,6 +106,8 @@ brand_financial_summary — brand invoices and dues
 dealer_financial_summary — dealer invoices and dues
 refresh_all_materialized_views() — called by hourly cron
 refresh_financial_summaries() — call after every bill payment update
+technician_leaderboard — daily/weekly/monthly technician rankings
+refresh_leaderboard() — refreshes technician_leaderboard view
 
 ## RLS Policy Rule
 Migrations 017 and above — use get_my_role() function
@@ -116,6 +137,7 @@ Never change old migrations — only add new ones
 | Photos | photo.repository.ts | — | via subjects detail |
 | Contracts/AMC | contract.repository.ts, amc.repository.ts | hooks/contracts/ | via subjects detail |
 | Accessories | accessory.repository.ts | — | via subjects detail |
+| Commission | commission.repository.ts | hooks/commission/ | via subjects detail, /dashboard/leaderboard, /dashboard/payouts/[id] |
 
 ## API Routes
 - /api/subjects/[id]/workflow — job status transitions
@@ -130,6 +152,7 @@ Never change old migrations — only add new ones
 - /api/bills/[id]/download — PDF bill download
 - /api/attendance/toggle — attendance toggle
 - /api/dashboard/technician/completed-summary — technician dashboard
+- /api/commission/[subjectId] — commission GET/POST for a subject
 
 ## Supabase Client — Which to Use Where
 | Context | File | Notes |

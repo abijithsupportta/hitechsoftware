@@ -2,44 +2,16 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { Check, Pencil, Trash2, X } from 'lucide-react';
 import { ProtectedComponent } from '@/components/ui/ProtectedComponent';
-import { useBrands } from '@/hooks/brands/useBrands';
+import { useBrands, useBrandDueSummary } from '@/hooks/brands/useBrands';
 import { usePermission } from '@/hooks/auth/usePermission';
-import { createClient } from '@/lib/supabase/client';
 import { ROUTES } from '@/lib/constants/routes';
 
 export default function ServiceBrandsPage() {
   const { can } = usePermission();
   const { data, isLoading, error, createMutation, renameMutation, deleteMutation } = useBrands();
-  const supabase = createClient();
-  const dueSummaryQuery = useQuery({
-    queryKey: ['brand-due-summary'],
-    queryFn: async () => {
-      const result = await supabase
-        .from('subject_bills')
-        .select('brand_id,grand_total')
-        .eq('payment_status', 'due')
-        .not('brand_id', 'is', null);
-
-      if (result.error) {
-        throw result.error;
-      }
-
-      const map = new Map<string, { dueCount: number; dueAmount: number }>();
-
-      for (const row of result.data ?? []) {
-        const typed = row as { brand_id: string; grand_total: number };
-        const existing = map.get(typed.brand_id) ?? { dueCount: 0, dueAmount: 0 };
-        existing.dueCount += 1;
-        existing.dueAmount += Number(typed.grand_total || 0);
-        map.set(typed.brand_id, existing);
-      }
-
-      return map;
-    },
-  });
+  const dueSummaryQuery = useBrandDueSummary();
   const [name, setName] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');

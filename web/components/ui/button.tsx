@@ -1,7 +1,7 @@
 import React from 'react';
 
 type ButtonProps = {
-  variant?: 'primary' | 'outline' | 'destructive' | 'secondary';
+  variant?: 'primary' | 'outline' | 'destructive' | 'secondary' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
 } & React.ButtonHTMLAttributes<HTMLButtonElement>;
 
@@ -27,6 +27,7 @@ export function Button({
     outline: 'border border-gray-300 text-gray-700 hover:bg-gray-50',
     destructive: 'bg-red-600 hover:bg-red-700 text-white',
     secondary: 'bg-gray-200 hover:bg-gray-300 text-gray-800',
+    ghost: 'text-gray-700 hover:bg-gray-100',
   };
   
   return (

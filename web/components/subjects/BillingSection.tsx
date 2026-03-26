@@ -21,6 +21,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { AlertCircle, Upload, Video, X } from 'lucide-react';
+import { toast } from 'sonner';
 import type { PaymentMode, SubjectDetail, SubjectPhoto } from '@/modules/subjects/subject.types';
 import { SUBJECT_QUERY_KEYS } from '@/modules/subjects/subject.constants';
 import { PAYMENT_MODES } from '@/modules/subjects/subject.constants';
@@ -32,6 +33,7 @@ import {
   useSubjectBill,
   useUpdateBillPaymentStatus,
 } from '@/hooks/subjects/useBilling';
+import { useMarkComplete } from '@/hooks/subjects/useWorkflow';
 import { BillCard } from '@/components/subjects/BillCard';
 import { BillEditPanel } from '@/components/subjects/BillEditPanel';
 import { isLikelyVideoFile, isLikelyImageFile, compressImageForUpload } from '@/lib/utils/image-compression';
@@ -51,6 +53,14 @@ export function BillingSection({ subject, userRole, userId }: Props) {
   const updatePaymentMutation = useUpdateBillPaymentStatus(subject.id);
   const editBillMutation = useEditBill(subject.id);
   const downloadBill = useDownloadBill();
+  const markCompleteMutation = useMarkComplete(subject.id, {
+    onSuccess: () => {
+      toast.success('Job marked as complete');
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
 
   const [visitCharge, setVisitCharge] = useState(subject.visit_charge ?? 0);
   const [serviceCharge, setServiceCharge] = useState(subject.service_charge ?? 0);
@@ -87,6 +97,9 @@ export function BillingSection({ subject, userRole, userId }: Props) {
   const canUpdatePayment = userRole === 'office_staff' || userRole === 'super_admin';
   const canEditBill = userRole === 'super_admin' && Boolean(subject.bill_generated);
   const canManageMedia = isAssignedTechnician || userRole === 'office_staff' || userRole === 'super_admin';
+  // Show finish button if bill exists but job isn't completed (for warranty jobs or special cases)
+  const canFinishJob = Boolean(subject.bill_generated) && subject.status !== 'COMPLETED' && 
+    (isAssignedTechnician || userRole === 'office_staff' || userRole === 'super_admin');
   // Allow privileged roles to add/view media even after job is COMPLETED
   // so records can be corrected or supplemented by office staff.
   const canMaintainCompletedMedia = subject.status === 'COMPLETED' && canManageMedia;
@@ -214,21 +227,18 @@ export function BillingSection({ subject, userRole, userId }: Props) {
         <>
           <BillCard
             bill={billQuery.data}
-            highlightCustomerPayment={isCustomerChargeable}
             canUpdatePayment={canUpdatePayment}
-            onUpdatePaymentStatus={(status, paymentMode) => {
-              const billId = billQuery.data?.id;
-              if (!billId) return;
-              updatePaymentMutation.mutate({ billId, paymentStatus: status, paymentMode });
-            }}
+            onUpdatePaymentStatus={(status, mode) =>
+              updatePaymentMutation.mutate({ billId: billQuery.data!.id, paymentStatus: status, paymentMode: mode })
+            }
             isUpdatingPayment={updatePaymentMutation.isPending}
-            onDownload={() => {
-              const billId = billQuery.data?.id;
-              if (!billId) return;
-              downloadBill(billId);
-            }}
+            onDownload={() => downloadBill(billQuery.data!.id)}
+            highlightCustomerPayment={isCustomerChargeable}
             canEditBill={canEditBill}
             onEditBill={() => setIsEditingBill(true)}
+            canFinishJob={canFinishJob}
+            onFinishJob={() => markCompleteMutation.mutate({})}
+            isFinishingJob={markCompleteMutation.isPending}
           />
           {isEditingBill && billQuery.data && (
             <BillEditPanel

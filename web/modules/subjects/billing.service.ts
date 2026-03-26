@@ -270,9 +270,28 @@ export async function addAccessory(
     return { ok: false, error: { message: 'MRP must be at least 0' } };
   }
 
-  // Discount validation
+  // Get user role to check discount permissions
+  const profile = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', technicianId)
+    .maybeSingle<{ role: string }>();
+
+  if (profile.error || !profile.data) {
+    return { ok: false, error: { message: 'User profile not found' } };
+  }
+
+  const userRole = profile.data.role;
+
+  // Discount validation with role-based permissions
   const discountType = input.discount_type ?? 'percentage';
   const discountValue = input.discount_value ?? 0;
+  
+  // Technicians cannot add any discount
+  if (userRole === 'technician' && discountValue > 0) {
+    return { ok: false, error: { message: 'Technicians are not allowed to add discounts' } };
+  }
+  
   if (discountValue < 0) {
     return { ok: false, error: { message: 'Discount value must be at least 0' } };
   }

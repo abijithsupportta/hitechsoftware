@@ -26,6 +26,7 @@ import {
   ChevronRight,
   LayoutGrid,
   Briefcase,
+  Trophy,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { ROUTES } from '@/lib/constants/routes';
@@ -47,6 +48,7 @@ const NAV_ITEMS = [
   { icon: Briefcase, label: 'Digital Bag', href: ROUTES.DASHBOARD_DIGITAL_BAG, isAvailable: true, allowedRoles: ['super_admin', 'office_staff'] as UserRole[] },
   { icon: Briefcase, label: 'My Bag', href: ROUTES.DASHBOARD_MY_BAG, isAvailable: true, allowedRoles: ['technician'] as UserRole[] },
   { icon: DollarSign, label: 'Payouts', href: ROUTES.DASHBOARD_PAYOUTS, isAvailable: true, allowedRoles: ['super_admin', 'office_staff', 'technician'] as UserRole[] },
+  { icon: Trophy, label: 'Leaderboard', href: ROUTES.DASHBOARD_LEADERBOARD, isAvailable: true },
   { icon: DollarSign, label: 'Billing', href: '#', isAvailable: false, allowedRoles: ['super_admin', 'office_staff', 'stock_manager'] as UserRole[] },
   { icon: BarChart3, label: 'Reports', href: '#', isAvailable: false, allowedRoles: ['super_admin', 'office_staff', 'stock_manager'] as UserRole[] },
   { icon: Settings, label: 'Settings', href: '#', isAvailable: false },
@@ -84,11 +86,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const isReady = isHydrated && !isLoading;
   const isUnauthenticated = isReady && !user;
   const isUnauthorized = isReady && !!user && (!userRole || !ALLOWED_DASHBOARD_ROLES.includes(userRole));
+  const [redirecting, setRedirecting] = useState(false);
 
   useEffect(() => {
+    if (redirecting) return;
+
     if (isUnauthenticated) {
+      setRedirecting(true);
       router.replace(ROUTES.LOGIN);
     } else if (isUnauthorized) {
+      setRedirecting(true);
       console.warn('[DashboardLayout] Unauthorized role access attempt:', {
         userId: user?.id,
         userRole,
@@ -96,7 +103,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       });
       router.replace(`${ROUTES.LOGIN}?error=unauthorized`);
     }
-  }, [isUnauthenticated, isUnauthorized, router, userRole, user?.id]);
+  }, [isUnauthenticated, isUnauthorized, redirecting, router, userRole, user?.id]);
+
+  // Safety valve: if redirect is stuck for 3s, force a hard navigation
+  useEffect(() => {
+    if (!redirecting) return;
+    const timer = setTimeout(() => {
+      window.location.href = ROUTES.LOGIN;
+    }, 3_000);
+    return () => clearTimeout(timer);
+  }, [redirecting]);
 
   const handleLogout = async () => {
     const result = await signOut();
@@ -110,12 +126,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     return <AppLoadingScreen />;
   }
 
-  // Guard 2 — Authentication: show loading while useEffect fires the redirect
+  // Guard 2 — Authentication: show loading while redirect fires
   if (!user) {
     return <AppLoadingScreen />;
   }
 
-  // Guard 3 — Role: show loading while useEffect fires the redirect
+  // Guard 3 — Role: show loading while redirect fires
   if (!userRole || !ALLOWED_DASHBOARD_ROLES.includes(userRole)) {
     return <AppLoadingScreen />;
   }

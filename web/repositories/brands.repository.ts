@@ -39,3 +39,17 @@ export async function hasSubjectsByBrand(id: string) {
   const result = await supabase.from('subjects').select('id').eq('brand_id', id).limit(1);
   return { data: (result.data ?? []).length > 0, error: result.error };
 }
+
+export interface BrandDueBillRow {
+  brand_id: string;
+  grand_total: number;
+}
+
+export async function listBrandDueBills() {
+  return supabase
+    .from('subject_bills')
+    .select('brand_id,grand_total')
+    .eq('payment_status', 'due')
+    .not('brand_id', 'is', null)
+    .returns<BrandDueBillRow[]>();
+}

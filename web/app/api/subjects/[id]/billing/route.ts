@@ -644,6 +644,15 @@ export async function POST(
     }
 
     console.log(`[${timestamp}] ✓✓✓ Bill generated and subject completed successfully: ${bill_number}`);
+
+    // Sync technician earnings after bill generation
+    try {
+      await admin.rpc('sync_technician_earnings', { subject_uuid: subjectId });
+      console.log(`[${timestamp}] ✓ Technician earnings synced for subject: ${subjectId}`);
+    } catch (syncErr) {
+      console.error(`[${timestamp}] ⚠ Earnings sync failed (non-blocking):`, syncErr);
+    }
+
     return NextResponse.json({
       ok: true,
       data: {
