@@ -25,24 +25,81 @@ Definition of done:
 
 ## Current Implementation Status (Source of Truth)
 
-This document previously contained a planned `/api/v1` contract. The currently implemented backend routes in this repository are under Next.js route handlers at `web/app/api/**`.
+This document contains the current implemented backend routes under Next.js route handlers at `web/app/api/**`.
 
-As of now, implemented routes are:
-- `POST /api/team/members`
-- `DELETE /api/team/members/{id}`
-- `GET /api/team/members/completed-counts`
-- `GET /api/team/members/{id}/performance`
-- `POST /api/subjects/{id}/respond`
-- `POST /api/subjects/{id}/billing`
-- `DELETE /api/subjects/{id}/billing`
-- `PATCH /api/subjects/{id}/billing`
-- `GET /api/bills/{id}/download`
-- `POST /api/attendance/toggle`
-- `GET /api/dashboard/technician/completed-summary`
+**Last Updated**: 2026-03-27
 
-Important notes:
-- Most read/list/create/update operations in the web app are currently executed directly via Supabase client/repository services (not through REST route handlers).
-- Any `/api/v1/...` sections below should be treated as target/planned architecture unless explicitly marked implemented.
+### Fully Implemented API Routes
+
+#### Team Management
+- `POST /api/team/members` - Create team member
+- `DELETE /api/team/members/{id}` - Delete team member  
+- `GET /api/team/members/completed-counts` - Get completed counts
+- `GET /api/team/members/{id}/performance` - Get member performance
+
+#### Subjects & Workflow
+- `POST /api/subjects/{id}/respond` - Accept/reject assignment
+- `POST /api/subjects/{id}/workflow` - Update subject status
+- `GET /api/subjects/{id}/billing` - Get subject billing
+- `POST /api/subjects/{id}/billing` - Add accessories/generate bill
+- `PATCH /api/subjects/{id}/billing` - Update payment status
+- `DELETE /api/subjects/{id}/billing` - Remove accessory
+
+#### Media & Documents
+- `POST /api/subjects/{id}/photos/upload` - Upload photos
+- `GET /api/subjects/{id}/photos` - Get subject photos
+- `DELETE /api/subjects/{id}/photos` - Delete photo
+- `GET /api/bills/{id}/download` - Download bill PDF
+
+#### Attendance
+- `POST /api/attendance/toggle` - Toggle attendance
+
+#### Dashboard & Analytics
+- `GET /api/dashboard/technician/completed-summary` - Get completed summary
+
+#### AMC Module
+- `GET /api/amc` - List AMC contracts
+- `GET /api/amc/{id}` - Get AMC details
+- `POST /api/amc` - Create AMC contract
+- `POST /api/amc/{id}/renew` - Renew AMC contract
+- `POST /api/amc/{id}/commission` - Set AMC commission
+
+#### Commission Module
+- `GET /api/commission/{subjectId}` - Get subject commission
+- `POST /api/commission/{subjectId}` - Set subject commission
+
+#### Digital Bag Module
+- `GET /api/digital-bag/summary` - Get bag summary
+- `POST /api/digital-bag/consume` - Consume bag item
+- `POST /api/digital-bag/return` - Return bag items
+
+#### Products & Inventory
+- `GET /api/products` - Get products list
+
+#### System & Health
+- `GET /api/health` - Health check
+- `POST /api/cron/amc-notifications` - AMC notifications cron
+
+### Important Implementation Notes
+
+#### Authentication
+- All routes use Supabase session/cookie auth
+- Auth validation via `auth.getUser()` in server-side routes
+- Role-based access control enforced per endpoint
+
+#### Response Format
+- Success: `{ success: true, data: {}, message: "", timestamp: "" }`
+- Error: `{ success: false, error: { code: "", message: "" }, timestamp: "" }`
+
+#### Flutter Integration
+- Comprehensive API documentation available in `FLUTTER_API_DOCUMENTATION.md`
+- Includes complete integration guide with code examples
+- Offline support strategy and error handling patterns
+
+#### Database Schema
+- Latest migration: 034 (AMC Cleanup)
+- All tables use Row Level Security (RLS)
+- Generated columns used for calculated fields
 
 ## Auth & Permission Modules (MNC Standard)
 
@@ -984,4 +1041,31 @@ For `hitech_technician`:
 
 ## 17. Changelog
 
-- `v1.0.0` (2026-03-11): Initial API contract for web + Flutter clients
+### v1.2.0 (2026-03-27)
+- **Added**: Complete AMC module endpoints (create, renew, commission)
+- **Added**: Commission module endpoints for earnings tracking
+- **Added**: Digital bag module endpoints (consume, return, summary)
+- **Added**: Products endpoint for inventory lookup
+- **Added**: Comprehensive Flutter API documentation (`FLUTTER_API_DOCUMENTATION.md`)
+- **Updated**: All API routes with Next.js 16 compatibility
+- **Updated**: Response format standardization across all endpoints
+- **Fixed**: Parameter handling for dynamic routes
+- **Fixed**: Authentication patterns for server-side routes
+
+### v1.1.0 (2026-03-20)
+- **Added**: Subject workflow management endpoints
+- **Added**: Photo upload and management endpoints
+- **Added**: Bill generation and PDF download
+- **Added**: Attendance toggle and dashboard endpoints
+- **Updated**: Team management with performance metrics
+
+### v1.0.0 (2026-03-11)
+- **Initial**: Basic team management endpoints
+- **Initial**: Subject response and billing endpoints
+- **Initial**: Authentication and authorization patterns
+
+### Migration Status
+- **Database**: Migration 034 (AMC Cleanup) deployed
+- **Schema**: All tables using Row Level Security (RLS)
+- **Features**: Complete AMC, Commission, and Digital Bag modules implemented
+- **Flutter**: Full integration guide and code examples available

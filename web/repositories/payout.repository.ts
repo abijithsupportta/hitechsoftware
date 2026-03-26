@@ -16,7 +16,7 @@ const PAYOUT_SELECT = `
   base_amount, deductions, variance_deduction, final_amount,
   status, notes, approved_by, paid_at, created_at, updated_at,
   technician:profiles!technician_service_payouts_technician_id_fkey(id, display_name, email),
-  subject:subjects!technician_service_payouts_subject_id_fkey(id, ticket_number),
+  subject:subjects!technician_service_payouts_subject_id_fkey(id, subject_number),
   approver:profiles!technician_service_payouts_approved_by_fkey(id, display_name)
 `.trim();
 
@@ -41,7 +41,7 @@ export async function listPayouts(filters: PayoutRepoFilters = {}) {
 
   if (technician_id) query = query.eq('technician_id', technician_id);
   if (status) query = query.eq('status', status);
-  if (search) query = query.ilike('subject.ticket_number', `%${search}%`);
+  if (search) query = query.ilike('subject.subject_number', `%${search}%`);
 
   return query;
 }

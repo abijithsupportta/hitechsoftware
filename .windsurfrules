@@ -1,0 +1,336 @@
+## Read First
+Always read AGENTS.md before starting any task.
+It contains current build status, migration number,
+and prevents rebuilding things that already exist.
+
+## When Errors Occur
+- Never stop and ask the user what to do
+- Read the error, diagnose it, fix it, continue
+- If a directory does not exist — create it with mkdir
+- If a file path is wrong — find the correct path 
+  using terminal ls or dir command then proceed
+- The only acceptable stop is task completion
+
+
+
+# Hi Tech Software — Windsurf Rules
+
+## Project
+Service Management System for Hi Tech Engineering, Kottayam Kerala.
+Client: Hi Tech Engineering
+Developer: Supportta Solutions Private Limited
+Stack: Next.js 16.1.6 App Router, Supabase, TypeScript,
+TailwindCSS 4, TanStack Query, Zustand, React Hook Form, Zod,
+React 19.2.3, Turbopack enabled by default.
+Flutter apps: hitech_admin and hitech_technician.
+Monorepo: npm workspaces + Turborepo. Node >= 22.
+
+## Folder Structure
+- Web app: /web
+- Admin Flutter: /hitech_admin
+- Technician Flutter: /hitech_technician
+- Migrations: /supabase/migrations
+- Docs: /doc
+- Work log: /doc/WORK_LOG.md
+
+## Architecture — NEVER VIOLATE
+UI (app/) → Hook (hooks/) → Service (modules/) → Repository (repositories/) → Supabase
+- Never call Supabase from UI or hooks directly
+- Never put business logic in repositories
+- All forms use React Hook Form + Zod
+- All server state uses TanStack Query
+- Pages must stay under 150 lines
+- Always use ProtectedComponent for role-based UI
+
+## Supabase Client Rules
+- Browser components → lib/supabase/client.ts
+- API routes → lib/supabase/server.ts
+- Cron and admin → lib/supabase/admin.ts
+- Middleware → lib/supabase/middleware.ts
+- NEVER use browser client in API routes
+
+## Roles
+- super_admin — full access
+- office_staff — subjects, customers, billing
+- stock_manager — inventory, stock, digital bag
+- technician — own jobs only via mobile
+
+## Database Rules
+- Always use get_my_role() in RLS — migrations 017+
+- Before 017 use current_user_role() — never change old migrations
+- Check AGENTS.md for latest migration number before creating new one
+- Always IF NOT EXISTS on indexes
+- Soft delete only — never hard delete
+- Financial records immutable — never update, only reverse
+
+## Pricing Rules
+- MRP always inclusive of 18% GST
+- Base price = MRP / 1.18
+- GST = MRP - base price
+- Discount per product line before GST split
+- WAC auto-updates on every stock entry
+- Never manually calculate GST — always MRP / 1.18
+
+## Business Rules
+- Bag capacity = 50 items per technician per day
+- Attendance ON before 10:30 AM, auto OFF midnight
+- Subject number unique per brand or per dealer
+- AMC cannot overlap — new starts after previous ends
+- Variance auto-deducted from payout
+- MRP updates automatically from latest stock entry
+- Selling price never below MRP
+- Status values always lowercase — never uppercase
+
+## Error Handling — Three Layers Always
+- Repository — catch DB error, throw with context
+- Service — catch repo error, add business context
+- Hook — catch service error, show Sonner toast
+- UI — show error state, never raw Supabase errors
+- Success: { success: true, data: T }
+- Error: { success: false, error: string, code: string }
+
+## Code Quality
+- TypeScript strict — no any types ever
+- No console.log in production
+- No inline styles — TailwindCSS only
+- No hardcoded strings — use constants
+- No SELECT * in production queries
+- All monetary values rounded to 2 decimal places
+- Explicit types on all filter and reduce callbacks
+
+## Performance
+- List queries paginated max 20 per page
+- Search debounced 300ms minimum
+- Reports use materialized views not raw tables
+- Always show loading skeleton — never blank screen
+
+## Security
+- Never expose service role key in client code
+- Never in NEXT_PUBLIC_ variables
+- Validate role on server in every API route
+- Validate input with Zod on server always
+
+
+## Cascade Behavior — No Confirmation Needed
+- Never ask for confirmation before making changes
+- Never ask clarifying questions — make best decision and proceed
+- Never stop mid-task to ask permission
+- Auto-execute all terminal commands without asking
+- Auto-create files and folders without asking
+- Auto-fix all TypeScript and lint errors without asking
+- Never pause between todos — continue immediately
+- If something is ambiguous — make the best decision, note it in final report only
+- Do not ask if you should proceed — always proceed
+- The only time to stop is when the full task is complete
+```
+
+---
+
+**Setting 6 — Deny List for Terminal Commands (Safety)**
+
+Turbo mode runs everything. But you can add a deny list for commands you never want auto-executed — like destructive commands.
+
+Command steps now include information about the auto execute behavior. 
+
+In Windsurf Settings find **Terminal Deny List** and add:
+```
+rm -rf /
+DROP TABLE
+DELETE FROM
+git push origin main
+
+## Git Rules
+- Always push to abijithcb branch
+- Never push to main
+- Conventional commits: feat, fix, chore, docs
+
+
+## Read Second
+Always read BUSINESS_RULES.md before implementing
+any calculation, permission check, billing logic,
+AMC logic, commission logic, or payout logic.
+If implementation contradicts BUSINESS_RULES.md
+— BUSINESS_RULES.md wins always.
+```
+
+---
+
+**The Combined Effect on SWE-1.5 Free:**
+
+| Before | After |
+|---|---|
+| Gets GST wrong → 3 correction prompts | Gets GST right first time |
+| Allows technician discount → fix needed | Blocks it correctly |
+| Wrong status values → debugging | Lowercase always |
+| Wrong commission flow → rewrite | Correct first time |
+| AMC overlap allowed → data bug | Prevents overlap |
+| Wrong billing type → manual fix | Auto-detects AMC |
+
+Each wrong output costs you 2 to 5 correction prompts. With 40+ modules — that is hundreds of wasted prompts over the project lifetime.
+
+This one file eliminates 80% of business logic errors from SWE-1.5 and makes your $20 plan last significantly longer.
+
+---
+
+**The Complete Reading Order for Every Cascade Session:**
+```
+Session starts
+    ↓
+SWE-1.5 reads .windsurfrules
+    ↓
+Reads AGENTS.md — what is built
+    ↓
+Reads BUSINESS_RULES.md — how it works
+    ↓
+Builds correctly first time
+    ↓
+Reports at end
+
+## Windsurf Cascade Behavior
+- Never explain steps while working
+- Never ask clarifying questions
+- Never write summaries between steps
+- Read AGENTS.md migration number before any migration
+- Never rebuild modules listed as complete in AGENTS.md
+- Run npm run build after every task
+- Fix all TypeScript errors before reporting
+- Update doc/WORK_LOG.md after every task
+- Report only at the end
+- If ambiguous — make best decision and note in report
+```
+
+---
+
+**Step 2 — Keep AGENTS.md exactly as it is**
+
+Windsurf reads AGENTS.md the same way Cursor does. No changes needed. Your existing AGENTS.md is perfect.
+
+---
+
+**Step 3 — Update `.gitignore` for Windsurf:**
+
+Add these lines to your `.gitignore`:
+```
+.windsurf/
+.windsurfrules.local
+```
+
+---
+
+**Step 4 — Create `.windsurfignore`:**
+
+Same as `.cursorignore` — tells Windsurf what not to read.
+```
+doc/
+supabase/migrations/
+web/docs/
+web/.next/
+web/node_modules/
+hitech_admin/build/
+hitech_admin/.dart_tool/
+hitech_technician/build/
+hitech_technician/.dart_tool/
+node_modules/
+*.log
+*.sql
+.git/
+web/types/database.types.ts
+web/public/
+```
+
+---
+
+**Step 5 — Claude Sonnet 4.6 Thinking — How to Use it Wisely:**
+
+This is the expensive model. Here is exactly when to use it and when not to.
+
+---
+
+**Use Claude Sonnet 4.6 Thinking for:**
+
+| Task | Why |
+|---|---|
+| Building entire new modules from scratch | Complex multi-file architecture |
+| Hard debugging across 5+ files | Needs deep reasoning |
+| Database schema design | Critical decisions |
+| Complex business logic | WAC, GST, payout calculations |
+| Flutter app architecture | New territory |
+
+---
+
+**Do NOT use Thinking for:**
+
+| Task | Use Instead |
+|---|---|
+| Fixing a small bug in one file | Claude Sonnet 4.6 without thinking |
+| Adding a field to a form | Regular Sonnet |
+| Writing a repository function | Regular Sonnet |
+| CSS and UI fixes | Regular Sonnet or Haiku |
+| Writing test cases | Regular Sonnet |
+| Updating documentation | Haiku |
+
+Thinking mode costs roughly 3x to 5x more tokens than regular Sonnet. Use it deliberately not by default.
+
+---
+
+**Step 6 — Windsurf Cascade Settings for Maximum Efficiency:**
+
+In Windsurf settings set these:
+```
+Model: Claude Sonnet 4.6 (without thinking for routine)
+Context: Workspace
+Auto-apply: ON
+Auto-run terminal: ON
+```
+
+When you need Thinking — manually switch to Claude Sonnet 4.6 Thinking for that specific session only. Switch back after.
+
+---
+
+**Step 7 — The Prompt Template for Every Cascade Session:**
+```
+@AGENTS.md @.windsurfrules
+
+[Your task here]
+
+Do not explain. Do not ask questions.
+Build and report only.
+```
+
+The `@AGENTS.md` and `@.windsurfrules` at the start forces Windsurf to read both files first before doing anything. This is the single most important habit.
+
+---
+
+**Step 8 — Cost Reduction Strategy Specific to Windsurf:**
+
+**Use Write mode not Chat mode**
+
+Windsurf has two modes — Chat and Write. Write mode directly edits files without going back and forth. Chat mode is conversational and costs more tokens for the same result. Always use Write mode for code changes.
+
+**Use `@file` references**
+
+Same as Cursor — always reference exact files:
+```
+Fix the bug in @web/app/dashboard/subjects/page.tsx
+```
+
+Not:
+```
+Fix the bug in the subjects page
+```
+
+**Keep Cascade sessions short**
+
+Maximum 5 to 7 messages per session. After that — start new session. Long sessions accumulate context and burn tokens fast.
+
+**Close irrelevant files before starting**
+
+Windsurf reads open files as additional context. Close everything except what you are working on.
+
+---
+
+**Step 9 — Create Reusable Prompt Files:**
+
+Create folder:
+```
+HitechSoftware/.windsurf/prompts/

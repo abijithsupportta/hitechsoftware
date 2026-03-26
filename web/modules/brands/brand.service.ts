@@ -1,5 +1,5 @@
 import type { ServiceResult } from '@/types/common.types';
-import { createBrand, deleteBrand, hasSubjectsByBrand, listBrands, updateBrand } from '@/repositories/brands.repository';
+import { createBrand, deleteBrand, hasSubjectsByBrand, listBrands, listBrandDueBills, updateBrand } from '@/repositories/brands.repository';
 import type { Brand, CreateBrandInput, UpdateBrandInput } from '@/modules/brands/brand.types';
 import { createBrandSchema } from '@/modules/brands/brand.validation';
 
@@ -69,4 +69,26 @@ export async function removeBrand(id: string): Promise<ServiceResult<{ id: strin
   }
 
   return { ok: true, data: result.data };
+}
+
+export interface BrandDueSummary {
+  dueCount: number;
+  dueAmount: number;
+}
+
+export async function getBrandDueSummary(): Promise<ServiceResult<Map<string, BrandDueSummary>>> {
+  const result = await listBrandDueBills();
+  if (result.error) {
+    return { ok: false, error: { message: result.error.message, code: result.error.code } };
+  }
+
+  const map = new Map<string, BrandDueSummary>();
+  for (const row of result.data ?? []) {
+    const existing = map.get(row.brand_id) ?? { dueCount: 0, dueAmount: 0 };
+    existing.dueCount += 1;
+    existing.dueAmount += Number(row.grand_total || 0);
+    map.set(row.brand_id, existing);
+  }
+
+  return { ok: true, data: map };
 }

@@ -12,6 +12,22 @@ import { deleteCustomer } from '@/modules/customers/customer.service';
 import { CustomerStatusBadge } from '@/components/customers/CustomerStatusBadge';
 import { useCustomer } from '@/hooks/customers/useCustomers';
 import { usePermission } from '@/hooks/auth/usePermission';
+import { useCustomerAMCs } from '@/hooks/amc/useAMC';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { 
+  FileText, 
+  Calendar, 
+  AlertTriangle, 
+  CheckCircle, 
+  XCircle,
+  Plus,
+  ArrowRight,
+  RefreshCw
+} from 'lucide-react';
+import { AMC_STATUS_OPTIONS, getAMCExpiryColor } from '@/modules/amc/amc.constants';
+import { ROUTES } from '@/lib/constants/routes';
 
 export default function CustomerDetailPage() {
   const { can } = usePermission();
@@ -21,6 +37,7 @@ export default function CustomerDetailPage() {
   const customerId = params?.id;
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { customer, isLoading, error } = useCustomer(customerId);
+  const { data: customerAMCs, isLoading: amcsLoading } = useCustomerAMCs(customerId);
   const deleteCustomerMutation = useMutation({
     mutationFn: (id: string) => deleteCustomer(id),
     onSuccess: (result) => {
@@ -121,6 +138,130 @@ export default function CustomerDetailPage() {
           )}
         </div>
       </div>
+
+      {/* AMC Contracts Tab */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center">
+              <FileText className="h-5 w-5 mr-2" />
+              AMC Contracts
+            </div>
+            <Link href={ROUTES.DASHBOARD_AMC_NEW}>
+              <Button size="sm">
+                <Plus className="h-4 w-4 mr-2" />
+                Create AMC
+              </Button>
+            </Link>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {amcsLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-16 bg-gray-100 rounded animate-pulse" />
+              ))}
+            </div>
+          ) : customerAMCs && customerAMCs.length > 0 ? (
+            <div className="space-y-4">
+              {customerAMCs.map((amc) => {
+                const end = new Date(amc.end_date);
+                const now = new Date();
+                const daysUntil = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                const statusOption = AMC_STATUS_OPTIONS.find(opt => opt.value === amc.status);
+                
+                return (
+                  <div key={amc.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <h3 className="font-semibold text-gray-900">{amc.contract_number}</h3>
+                          <Badge variant="secondary">
+                            {statusOption?.label || amc.status}
+                          </Badge>
+                          {amc.status === 'active' && (
+                            <div className={`text-sm font-medium ${
+                              daysUntil <= 7 ? 'text-red-600' : 
+                              daysUntil <= 30 ? 'text-orange-600' : 'text-green-600'
+                            }`}>
+                              {daysUntil} days left
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                          <div>
+                            <span className="text-gray-500">Appliance:</span>
+                            <p className="font-medium">{amc.appliance_brand} {amc.appliance_category_name}</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-500">Duration:</span>
+                            <p className="font-medium">{amc.duration_type.replace('_', ' ').toUpperCase()}</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-500">Price:</span>
+                            <p className="font-medium">₹{amc.price_paid.toLocaleString('en-IN')}</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-500">Start:</span>
+                            <p className="font-medium">{new Date(amc.start_date).toLocaleDateString('en-IN')}</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-500">End:</span>
+                            <p className="font-medium">{new Date(amc.end_date).toLocaleDateString('en-IN')}</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-500">Payment:</span>
+                            <p className="font-medium">{amc.payment_mode.toUpperCase()}</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2 ml-4">
+                        <Link href={ROUTES.DASHBOARD_AMC_DETAIL(amc.id)}>
+                          <Button variant="outline" size="sm">
+                            View
+                            <ArrowRight className="h-4 w-4 ml-1" />
+                          </Button>
+                        </Link>
+                        {amc.status === 'active' && (
+                          <Link href={ROUTES.DASHBOARD_AMC_RENEW(amc.id)}>
+                            <Button variant="outline" size="sm">
+                              <RefreshCw className="h-4 w-4 mr-1" />
+                              Renew
+                            </Button>
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              
+              <div className="pt-4 border-t">
+                <Link href={`${ROUTES.DASHBOARD_AMC}?customer_id=${customerId}`}>
+                  <Button variant="outline" className="w-full">
+                    View All AMCs for {customer.customer_name}
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No AMC Contracts</h3>
+              <p className="text-gray-600 mb-4">This customer doesn't have any AMC contracts yet.</p>
+              <Link href={ROUTES.DASHBOARD_AMC_NEW}>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create First AMC
+                </Button>
+              </Link>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <DeleteConfirmModal
         isOpen={showDeleteModal}

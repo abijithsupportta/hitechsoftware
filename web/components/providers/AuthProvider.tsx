@@ -12,10 +12,10 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-async function getAuthStateWithTimeout(timeoutMs = 1500) {
-  const timeoutResult = new Promise<ReturnType<typeof getCurrentAuthState>>((resolve) => {
+async function getAuthStateWithTimeout(timeoutMs = 1500): Promise<Awaited<ReturnType<typeof getCurrentAuthState>>> {
+  const timeoutResult = new Promise<Awaited<ReturnType<typeof getCurrentAuthState>>>((resolve) => {
     setTimeout(() => {
-      resolve(Promise.resolve({ ok: false as const, error: { message: 'Auth state fetch timed out' } }));
+      resolve({ ok: false as const, error: { message: 'Auth state fetch timed out' } });
     }, timeoutMs);
   });
 

@@ -3,6 +3,91 @@
 This file tracks completed work items with timestamped entries.
 Newest entries must be added at the top.
 
+## [2026-03-27 02:30:00 +05:30] Comprehensive Database Documentation and API Documentation - COMPLETED
+- Summary: Created complete end-to-end database guide, updated AGENTS.md with comprehensive logic, and created detailed API documentation.
+- Work done:
+	- Created DATABASE_COMPLETE_GUIDE.md with complete database architecture, relationships, workflows, and patterns
+	- Updated AGENTS.md with comprehensive end-to-end system architecture, database details, testing workflow, and development patterns
+	- Created API_COMPLETE_DOCUMENTATION.md with complete API endpoint documentation, examples, and best practices
+	- Documented all 51 database tables with relationships and business logic
+	- Added comprehensive testing workflow with quality gates and checklists
+	- Created file structure standards and naming conventions
+	- Documented authentication, authorization, and security patterns
+	- Added error handling standards and common bug fixes
+	- Created deployment and operations guidelines
+	- Added monitoring, analytics, and success metrics
+	- Documented complete workflow examples for service tickets, inventory, AMC, and commission
+	- Added mobile app specific considerations and best practices
+	- Created API change log and versioning information
+	- Added comprehensive testing procedures for all changes
+	- Established documentation maintenance standards
+- Impact: Complete system understanding available for all future development, proper file structure maintained, comprehensive API documentation for mobile development
+- Files created/updated:
+	- DATABASE_COMPLETE_GUIDE.md (new)
+	- AGENTS.md (completely updated)
+	- web/docs/API_COMPLETE_DOCUMENTATION.md (new)
+	- WORK_LOG.md (updated)
+
+## [2026-03-27 00:45:00 +05:30] Technician Commission and Performance Tracking System - COMPLETED
+- Summary: Built complete commission tracking, earnings calculation, and leaderboard system for technicians.
+- Work done:
+	- Created migration 030 with technician_commission_config, technician_earnings_summary tables
+	- Added extra_price_collected column to subject_accessories with auto-calculation trigger
+	- Created sync_technician_earnings database function
+	- Created technician_leaderboard materialized view (daily/weekly/monthly)
+	- Created refresh_leaderboard function
+	- Added RLS policies on all new tables
+	- Created commission module: types, constants, service, repository
+	- Created useCommission React Query hooks (queries + mutations)
+	- Created CommissionSection component in subject detail page
+	- Created TechnicianEarningsTab component with summary cards, table, pagination
+	- Created Payout Details page with monthly chart and Confirm All button
+	- Created Leaderboard page with Daily/Weekly/Monthly tabs, gold/silver/bronze badges
+	- Added Leaderboard to sidebar navigation (all roles)
+	- Integrated earnings sync into billing API (auto-syncs on bill generation)
+	- Created /api/commission/[subjectId] API route for GET/POST
+	- Fixed multiple pre-existing build errors (auth patterns, field names, query keys)
+- Files created:
+	- supabase/migrations/20260326_030_technician_commission.sql
+	- web/modules/commission/commission.types.ts
+	- web/modules/commission/commission.constants.ts
+	- web/modules/commission/commission.service.ts
+	- web/repositories/commission.repository.ts
+	- web/hooks/commission/useCommission.ts
+	- web/components/subjects/CommissionSection.tsx
+	- web/components/commission/TechnicianEarningsTab.tsx
+	- web/app/dashboard/leaderboard/page.tsx
+	- web/app/dashboard/payouts/[technicianId]/page.tsx
+	- web/app/api/commission/[subjectId]/route.ts
+- Files modified:
+	- web/app/dashboard/subjects/[id]/page.tsx (added CommissionSection)
+	- web/app/dashboard/layout.tsx (added Leaderboard nav item, Trophy icon)
+	- web/lib/constants/routes.ts (added DASHBOARD_LEADERBOARD, DASHBOARD_PAYOUT_DETAIL)
+	- web/app/api/subjects/[id]/billing/route.ts (integrated earnings sync)
+	- AGENTS.md (updated migration number, added commission to completed modules)
+- Verification:
+	- Build passed with zero TypeScript errors.
+- Migration: 030
+- Next migration: 031
+
+## [2026-03-26 21:30:00 +05:30] Fix Infinite Loading on Page Refresh
+- Summary: Fixed three bugs causing the dashboard to show "Still loading. Please check your connection." for 15+ seconds on page refresh.
+- Work done:
+	- Fixed `getAuthStateWithTimeout` type annotation in AuthProvider — was `Promise<ReturnType<async fn>>` creating a doubly-nested Promise type. Changed to `Awaited<ReturnType<...>>` and removed unnecessary `Promise.resolve()` wrapper.
+	- Added redirect safety valve in DashboardLayout — when auth resolves with no user (Guard 2), `router.replace('/login')` could hang indefinitely. Added `redirecting` state flag and a 3-second hard `window.location.href` fallback to force navigation if the soft redirect stalls.
+	- Fixed architecture violation in `brands/page.tsx` — was calling `createClient()` directly inside the component body and querying Supabase inline via `useQuery`. Moved the due bills query to `brands.repository.ts` → `brand.service.ts` → `useBrands.ts` (`useBrandDueSummary` hook). Removed unused imports (`useQuery`, `createClient`).
+- Files changed:
+	- web/components/providers/AuthProvider.tsx
+	- web/app/dashboard/layout.tsx
+	- web/repositories/brands.repository.ts
+	- web/modules/brands/brand.service.ts
+	- web/hooks/brands/useBrands.ts
+	- web/app/dashboard/service/brands/page.tsx
+- Verification:
+	- Zero TypeScript errors. Build passed.
+- Next:
+	- None.
+
 ## [2026-03-26 05:10:00 +05:30] Show Full Subject Number in Subjects List
 - Summary: Reverted subject number shortening — full number now displayed with word-break for long values.
 - Work done:

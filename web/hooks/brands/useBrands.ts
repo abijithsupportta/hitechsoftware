@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { addBrand, getBrands, renameBrand, removeBrand, setBrandActive } from '@/modules/brands/brand.service';
+import { addBrand, getBrands, getBrandDueSummary, renameBrand, removeBrand, setBrandActive } from '@/modules/brands/brand.service';
 
 const KEY = ['brands'] as const;
 
@@ -68,5 +68,19 @@ export function useBrands() {
     renameMutation,
     toggleMutation,
     deleteMutation,
+  };
+}
+
+const DUE_SUMMARY_KEY = ['brand-due-summary'] as const;
+
+export function useBrandDueSummary() {
+  const query = useQuery({
+    queryKey: DUE_SUMMARY_KEY,
+    queryFn: getBrandDueSummary,
+  });
+
+  return {
+    data: query.data?.ok ? query.data.data : new Map(),
+    isLoading: query.isLoading,
   };
 }

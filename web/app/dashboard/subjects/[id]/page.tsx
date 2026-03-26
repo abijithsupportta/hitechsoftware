@@ -41,6 +41,7 @@ import { JobWorkflowSection } from '@/components/subjects/job-workflow-section';
 import { AccessoriesSection } from '@/components/subjects/AccessoriesSection';
 import { BagConsumptionSection } from '@/components/subjects/BagConsumptionSection';
 import { BillingSection } from '@/components/subjects/BillingSection';
+import { CommissionSection } from '@/components/subjects/CommissionSection';
 import { useContractsBySubject } from '@/hooks/contracts/useContracts';
 import { useSubjectDetail } from '@/hooks/subjects/useSubjects';
 import { useAuth } from '@/hooks/auth/useAuth';
@@ -311,6 +312,7 @@ export default function SubjectDetailPage() {
         <AccessoriesSection subject={subject} userRole={userRole} userId={user?.id ?? null} />
         <BagConsumptionSection subject={subject} userRole={userRole} userId={user?.id ?? null} />
         <BillingSection subject={subject} userRole={userRole} userId={user?.id ?? null} />
+        <CommissionSection subject={subject} userRole={userRole} userId={user?.id ?? null} />
         <ActivityTimeline timeline={subject.timeline} />
       </div>
 

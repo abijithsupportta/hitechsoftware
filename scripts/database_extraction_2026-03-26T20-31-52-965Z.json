@@ -1,0 +1,166 @@
+{
+  "timestamp": "2026-03-26T20:31:51.076Z",
+  "project": "otmnfcuuqlbeowphxagf",
+  "tables": {
+    "profiles": {
+      "error": "Invalid API key",
+      "count": 0,
+      "data": []
+    },
+    "technicians": {
+      "error": "Invalid API key",
+      "count": 0,
+      "data": []
+    },
+    "customers": {
+      "error": "Invalid API key",
+      "count": 0,
+      "data": []
+    },
+    "customer_addresses": {
+      "error": "Invalid API key",
+      "count": 0,
+      "data": []
+    },
+    "brands": {
+      "error": "Invalid API key",
+      "count": 0,
+      "data": []
+    },
+    "dealers": {
+      "error": "Invalid API key",
+      "count": 0,
+      "data": []
+    },
+    "service_categories": {
+      "error": "Invalid API key",
+      "count": 0,
+      "data": []
+    },
+    "subjects": {
+      "error": "Invalid API key",
+      "count": 0,
+      "data": []
+    },
+    "subject_history": {
+      "error": "Invalid API key",
+      "count": 0,
+      "data": []
+    },
+    "subject_status_history": {
+      "error": "Invalid API key",
+      "count": 0,
+      "data": []
+    },
+    "amc_contracts": {
+      "error": "Invalid API key",
+      "count": 0,
+      "data": []
+    },
+    "subject_contracts": {
+      "error": "Invalid API key",
+      "count": 0,
+      "data": []
+    },
+    "attendance_logs": {
+      "error": "Invalid API key",
+      "count": 0,
+      "data": []
+    },
+    "product_categories": {
+      "error": "Invalid API key",
+      "count": 0,
+      "data": []
+    },
+    "product_types": {
+      "error": "Invalid API key",
+      "count": 0,
+      "data": []
+    },
+    "inventory_products": {
+      "error": "Invalid API key",
+      "count": 0,
+      "data": []
+    },
+    "stock_entries": {
+      "error": "Invalid API key",
+      "count": 0,
+      "data": []
+    },
+    "stock_entry_items": {
+      "error": "Invalid API key",
+      "count": 0,
+      "data": []
+    },
+    "mrp_change_log": {
+      "error": "Invalid API key",
+      "count": 0,
+      "data": []
+    },
+    "digital_bag_sessions": {
+      "error": "Invalid API key",
+      "count": 0,
+      "data": []
+    },
+    "digital_bag_items": {
+      "error": "Invalid API key",
+      "count": 0,
+      "data": []
+    },
+    "digital_bag_consumptions": {
+      "error": "Invalid API key",
+      "count": 0,
+      "data": []
+    },
+    "subject_bills": {
+      "error": "Invalid API key",
+      "count": 0,
+      "data": []
+    },
+    "subject_accessories": {
+      "error": "Invalid API key",
+      "count": 0,
+      "data": []
+    },
+    "subject_photos": {
+      "error": "Invalid API key",
+      "count": 0,
+      "data": []
+    },
+    "technician_commission_config": {
+      "error": "Invalid API key",
+      "count": 0,
+      "data": []
+    },
+    "technician_earnings_summary": {
+      "error": "Invalid API key",
+      "count": 0,
+      "data": []
+    },
+    "technician_service_payouts": {
+      "error": "Invalid API key",
+      "count": 0,
+      "data": []
+    },
+    "notifications": {
+      "error": "Invalid API key",
+      "count": 0,
+      "data": []
+    },
+    "auth_logs": {
+      "error": "Invalid API key",
+      "count": 0,
+      "data": []
+    },
+    "brand_dealer_payments": {
+      "error": "Invalid API key",
+      "count": 0,
+      "data": []
+    }
+  },
+  "summary": {
+    "totalTables": 0,
+    "totalRows": 0,
+    "errors": 31
+  }
+}

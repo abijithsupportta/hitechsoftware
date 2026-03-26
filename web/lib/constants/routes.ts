@@ -32,4 +32,11 @@ export const ROUTES = {
   DASHBOARD_DIGITAL_BAG_HISTORY: '/dashboard/digital-bag/history',
   DASHBOARD_PAYOUTS: '/dashboard/payouts',
   DASHBOARD_MY_BAG: '/dashboard/my-bag',
+  DASHBOARD_LEADERBOARD: '/dashboard/leaderboard',
+  DASHBOARD_PAYOUT_DETAIL: (technicianId: string) => `/dashboard/payouts/${technicianId}`,
+  // AMC routes
+  DASHBOARD_AMC: '/dashboard/amc',
+  DASHBOARD_AMC_NEW: '/dashboard/amc/new',
+  DASHBOARD_AMC_DETAIL: (id: string) => `/dashboard/amc/${id}`,
+  DASHBOARD_AMC_RENEW: (id: string) => `/dashboard/amc/${id}/renew`,
 } as const;
