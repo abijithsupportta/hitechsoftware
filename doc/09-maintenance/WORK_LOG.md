@@ -21,7 +21,38 @@
 
 ## 📅 RECENT ENTRIES (Last 30 Days)
 
-### [2026-03-27 04:15:00 +05:30] Inventory Module Pricing Testing - COMPLETED `#testing`
+### [2026-03-27 04:20:00 +05:30] Testing Issues and Mistakes Documentation - COMPLETED `#documentation`
+- **Summary**: Comprehensive documentation of all issues, mistakes, and challenges encountered during testing sessions
+- **Work Done**:
+  - Created detailed issues and mistakes report documenting all problems encountered
+  - Analyzed root causes of mock implementation limitations
+  - Documented technical mistakes and their solutions
+  - Provided improvement recommendations and lessons learned
+  - Created checklist for future testing to avoid repeating mistakes
+
+### **Key Issues Documented:**
+- Mock implementation limitations (multiple .eq() conditions, role-based permissions, business logic)
+- Permission system simulation failures (RBAC not properly implemented)
+- Business logic validation gaps (GST calculations, WAC calculations, category relationships)
+- Technical mistakes (oversimplified mock clients, test data setup issues, async operation handling)
+
+### **Lessons Learned:**
+- Mock implementations must be comprehensive for complex business systems
+- Permission testing requires special attention and proper simulation
+- Business logic validation is critical for financial and inventory systems
+- Proper documentation and lessons learned are essential for future improvement
+
+### **Files Created/Updated**:
+- `doc/09-maintenance/TESTING_ISSUES_AND_MISTAKES.md` (comprehensive issues documentation)
+
+### **Impact**: 
+- Complete documentation of all testing challenges and solutions
+- Reference guide for future testing efforts
+- Root cause analysis of common testing problems
+- Improvement recommendations and best practices checklist
+- Prevention of repeating same mistakes in future testing
+
+### **Build Status**: ✅ DOCUMENTATION COMPLETE
 - **Summary**: Comprehensive QA testing of Inventory module pricing features with 49 test cases across 7 groups
 - **Work Done**:
   - Created comprehensive inventory pricing test suite covering all major functionality
