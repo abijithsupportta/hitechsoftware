@@ -59,11 +59,12 @@ Customer Data → Subject Record → Digital Bag → Job Workflow → Bill Gener
 
 ## 📚 DOCUMENTATION INDEX
 
-### **🚀 Quick Access**
-- **[Development Guide](doc/02-development-guides/AGENTS.md)** - Development guidelines and current status
-- **[Business Rules](doc/07-business-rules/BUSINESS_RULES.md)** - Business logic and validation rules
-- **[Database Guide](doc/03-database/DATABASE_COMPLETE_GUIDE.md)** - Complete database documentation
-- **[API Documentation](doc/04-api-documentation/FRONTEND_DEVELOPER_REFERENCE.md)** - API endpoints and contracts
+### **�‍💻 For Developers**
+1. **[Development Guide](AGENTS.md)** - Start here
+2. **[Business Rules](BUSINESS_RULES.md)** - Understand business logic
+3. **[Database Guide](doc/03-database/DATABASE_COMPLETE_GUIDE.md)** - Database understanding
+4. **[API Documentation](doc/04-api-documentation/FRONTEND_DEVELOPER_REFERENCE.md)** - API reference
+5. **[Coding Standards](doc/02-development-guides/CODING_STANDARDS.md)** - Code standards
 
 ### **📋 Complete Documentation Structure**
 ```

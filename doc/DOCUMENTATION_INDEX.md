@@ -3,9 +3,9 @@
 ## 📚 **COMPLETE DOCUMENTATION LIBRARY**
 
 ### **🚀 Quick Navigation**
-- **[📖 README.md](../README_ENHANCED.md)** - Main project overview
-- **[🛠️ Development Guide](02-development-guides/AGENTS.md)** - Development guidelines
-- **[📋 Business Rules](07-business-rules/BUSINESS_RULES.md)** - Business logic
+- **[📖 README.md](../README.md)** - Main project overview
+- **[🛠️ Development Guide](../AGENTS.md)** - Development guidelines
+- **[📋 Business Rules](../BUSINESS_RULES.md)** - Business logic
 - **[🗄️ Database Guide](03-database/DATABASE_COMPLETE_GUIDE.md)** - Database documentation
 - **[🔌 API Documentation](04-api-documentation/FRONTEND_DEVELOPER_REFERENCE.md)** - API reference
 
@@ -24,10 +24,16 @@
 ### **📂 02-Development Guides**
 ```
 📁 02-development-guides/
-├── 📄 AGENTS.md                 # Development guidelines ⭐
 ├── 📄 CODING_STANDARDS.md       # Coding standards and conventions
 ├── 📄 ARCHITECTURE_PATTERNS.md  # Architecture patterns
 └── 📄 TESTING_GUIDELINES.md     # Testing procedures
+```
+
+**📍 Key Files in Root:**
+```
+📄 AGENTS.md                 # Development guidelines ⭐ (ROOT)
+📄 BUSINESS_RULES.md          # Business rules ⭐ (ROOT)
+📄 .windsurfrules            # Windsurf rules ⭐ (ROOT)
 ```
 
 ### **📂 03-Database**
@@ -74,10 +80,14 @@
 ### **📂 07-Business Rules**
 ```
 📁 07-business-rules/
-├── 📄 BUSINESS_RULES.md          # Business rules ⭐
 ├── 📄 PRICING_RULES.md           # Pricing and GST rules
 ├── 📄 WORKFLOW_RULES.md          # Workflow rules
 └── 📄 VALIDATION_RULES.md       # Data validation
+```
+
+**📍 Key Files in Root:**
+```
+📄 BUSINESS_RULES.md          # Business rules ⭐ (ROOT)
 ```
 
 ### **📂 08-Reports & Analysis**
@@ -114,8 +124,8 @@
 ## 🎯 **QUICK ACCESS BY ROLE**
 
 ### **👨‍💻 For Developers**
-1. **[Development Guide](02-development-guides/AGENTS.md)** - Start here
-2. **[Business Rules](07-business-rules/BUSINESS_RULES.md)** - Understand business logic
+1. **[Development Guide](../AGENTS.md)** - Start here
+2. **[Business Rules](../BUSINESS_RULES.md)** - Understand business logic
 3. **[Database Guide](03-database/DATABASE_COMPLETE_GUIDE.md)** - Database understanding
 4. **[API Documentation](04-api-documentation/FRONTEND_DEVELOPER_REFERENCE.md)** - API reference
 5. **[Coding Standards](02-development-guides/CODING_STANDARDS.md)** - Code standards
@@ -127,7 +137,7 @@
 4. **[Backup & Recovery](06-deployment-operations/BACKUP_RECOVERY.md)** - Data protection
 
 ### **👥 For Business Users**
-1. **[Business Rules](07-business-rules/BUSINESS_RULES.md)** - Business processes
+1. **[Business Rules](../BUSINESS_RULES.md)** - Business processes
 2. **[User Training](10-training-onboarding/USER_TRAINING.md)** - User guides
 3. **[System Administration](10-training-onboarding/SYSTEM_ADMINISTRATION.md)** - Admin tasks
 

@@ -1,4 +1,4 @@
-@doc/02-development-guides/AGENTS.md
+@AGENTS.md
 Build complete new module following architecture in
 .windsurfrules and AGENTS.md.
 Follow module template exactly.

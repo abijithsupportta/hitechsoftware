@@ -2,8 +2,8 @@
 
 ## 🚨 CRITICAL READING ORDER (Must Read in Order)
 1. **.windsurfrules** (this file) - Development rules and standards
-2. **doc/02-development-guides/AGENTS.md** - Project status and architecture
-3. **doc/07-business-rules/BUSINESS_RULES.md** - Business logic rules
+2. **AGENTS.md** - Project status and architecture
+3. **BUSINESS_RULES.md** - Business logic rules
 
 ---
 
@@ -210,7 +210,7 @@ UI (app/) → Hook (hooks/) → Service (modules/) → Repository (repositories/
 - **Success**: `{ success: true, data: T }`
 - **Error**: `{ success: false, error: string, code: string }`
 
-### **Development Workflow**
+### **Workflow Rules**
 - **Read AGENTS.md before starting any task**
 - **Check migration number before creating new migrations**
 - **Never rebuild completed modules**
@@ -258,7 +258,7 @@ git push origin main
 
 ### **Standard Session Start**
 ```
-@doc/02-development-guides/AGENTS.md @.windsurfrules
+@AGENTS.md @.windsurfrules
 
 [Your task here]
 
@@ -268,7 +268,7 @@ Build and report only.
 
 ### **For Complex Tasks**
 ```
-@doc/02-development-guides/AGENTS.md @.windsurfrules @doc/07-business-rules/BUSINESS_RULES.md
+@AGENTS.md @.windsurfrules @BUSINESS_RULES.md
 
 [Complex task description]
 
