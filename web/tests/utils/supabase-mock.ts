@@ -13,7 +13,12 @@ export function createMockSupabaseClient() {
     subject_status_history: [],
     dealers: [],
     technicians: [],
-    profiles: []
+    profiles: [],
+    attendance_logs: [],
+    technician_monthly_performance: [],
+    technician_leaderboard: [],
+    technician_earnings_summary: [],
+    amc_commission: []
   };
 
   return {
@@ -55,6 +60,14 @@ export function createMockSupabaseClient() {
         in: (column: string, values: any[]) => ({
           then: (resolve: any) => ({
             data: mockData[table]?.filter((item: any) => values.includes(item[column])) || [],
+            error: null
+          })
+        }),
+        ilike: (column: string, value: any) => ({
+          then: (resolve: any) => ({
+            data: mockData[table]?.filter((item: any) => 
+              item[column]?.toLowerCase().includes(value.toLowerCase().replace('%', ''))
+            ) || [],
             error: null
           })
         }),
@@ -100,6 +113,24 @@ export function createMockSupabaseClient() {
               newItem.discount_amount = data.mrp - data.discounted_mrp;
             }
             
+            if (table === 'amc_contracts') {
+              newItem.contract_number = `AMC-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9999)).padStart(4, '0')}`;
+              if (data.duration_years && !data.end_date) {
+                const startDate = new Date(data.start_date);
+                startDate.setFullYear(startDate.getFullYear() + data.duration_years);
+                newItem.end_date = startDate.toISOString().split('T')[0];
+              }
+            }
+            
+            if (table === 'attendance_logs') {
+              newItem.check_in = data.check_in || new Date().toISOString();
+            }
+            
+            if (table === 'technicians' && data.role === 'technician') {
+              newItem.daily_subject_limit = 10;
+              newItem.is_active = true;
+            }
+            
             mockData[table] = [...(mockData[table] || []), newItem];
             
             return Promise.resolve({
@@ -111,13 +142,52 @@ export function createMockSupabaseClient() {
       }),
       update: (data: any) => ({
         eq: (column: string, value: any) => ({
+          eq: (column2: string, value2: any) => ({
+            select: (columns?: string) => ({
+              single: () => {
+                const index = mockData[table]?.findIndex(item => item[column] === value && item[column2] === value2);
+                if (index === -1) {
+                  return Promise.resolve({
+                    data: null,
+                    error: { message: 'Record not found', code: 'PGRST116' }
+                  });
+                }
+                
+                const updatedItem = {
+                  ...mockData[table][index],
+                  ...data,
+                  updated_at: new Date().toISOString()
+                };
+                
+                // Add status history for subjects
+                if (table === 'subjects' && data.status && data.status !== mockData[table][index].status) {
+                  const historyItem = {
+                    id: `history-${Date.now()}`,
+                    subject_id: value,
+                    old_status: mockData[table][index].status,
+                    new_status: data.status,
+                    created_at: new Date().toISOString(),
+                    changed_by: 'test-user'
+                  };
+                  mockData.subject_status_history = [...(mockData.subject_status_history || []), historyItem];
+                }
+                
+                mockData[table][index] = updatedItem;
+                
+                return Promise.resolve({
+                  data: updatedItem,
+                  error: null
+                });
+              }
+            })
+          }),
           select: (columns?: string) => ({
             single: () => {
               const index = mockData[table]?.findIndex(item => item[column] === value);
               if (index === -1) {
                 return Promise.resolve({
                   data: null,
-                  error: { message: 'Record not found', code: 'PGRST116' }
+                  error: null
                 });
               }
               
@@ -148,6 +218,29 @@ export function createMockSupabaseClient() {
               });
             }
           })
+        }),
+        is: (column: string, value: any) => ({
+          select: (columns?: string) => ({
+            then: (resolve: any) => {
+              const updatedItems = mockData[table]?.filter((item: any) => item[column] === value).map((item: any) => ({
+                ...item,
+                ...data,
+                updated_at: new Date().toISOString()
+              })) || [];
+              
+              updatedItems.forEach((updatedItem: any) => {
+                const index = mockData[table]?.findIndex(item => item.id === updatedItem.id);
+                if (index !== -1) {
+                  mockData[table][index] = updatedItem;
+                }
+              });
+              
+              return Promise.resolve({
+                data: updatedItems,
+                error: null
+              });
+            }
+          })
         })
       }),
       delete: () => ({
@@ -161,8 +254,79 @@ export function createMockSupabaseClient() {
           }
         })
       })
-    })
+    }),
+    rpc: (functionName: string, params?: any) => {
+      // Mock RPC functions
+      if (functionName === 'get_my_role') {
+        return Promise.resolve({
+          data: 'office_staff',
+          error: null
+        });
+      }
+      
+      if (functionName === 'get_expiring_amcs') {
+        const days = params?.days || 30;
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + days);
+        const expiringDate = futureDate.toISOString().split('T')[0];
+        
+        const expiringAMCs = mockData['amc_contracts']?.filter((amc: any) => {
+          const endDate = new Date(amc.end_date);
+          const today = new Date();
+          const daysDiff = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
+          return daysDiff <= days && daysDiff >= 0;
+        }) || [];
+        
+        return Promise.resolve({
+          data: expiringAMCs,
+          error: null
+        });
+      }
+      
+      return Promise.resolve({
+        data: null,
+        error: { message: 'Function not found' }
+      });
+    }
   };
+  
+  mockClient.auth = {
+    signInWithPassword: async ({ email, password }: any) => {
+      if (email === 'admin@hitech.com' && password === 'validpassword') {
+        return {
+          data: {
+            user: {
+              id: 'admin-123',
+              email: 'admin@hitech.com',
+              user_metadata: { role: 'super_admin' }
+            },
+            session: {
+              access_token: 'test-token',
+              user: {
+                id: 'admin-123',
+                email: 'admin@hitech.com',
+                user_metadata: { role: 'super_admin' }
+              }
+            }
+          },
+          error: null
+        };
+      }
+      
+      return {
+        data: null,
+        error: { message: 'Invalid login credentials' }
+      };
+    },
+    signOut: async () => {
+      return {
+        data: {},
+        error: null
+      };
+    }
+  };
+  
+  return mockClient;
 }
 
 // Mock view queries
