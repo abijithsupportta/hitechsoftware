@@ -15,9 +15,9 @@ const PAYOUT_SELECT = `
   id, technician_id, subject_id,
   base_amount, deductions, variance_deduction, final_amount,
   status, notes, approved_by, paid_at, created_at, updated_at,
-  technician:profiles(id, display_name, email),
-  subject:subjects(id, subject_number),
-  approver:profiles(id, display_name)
+  technician:profiles!technician_service_payouts_technician_id_fkey(id, display_name, email),
+  subject:subjects!technician_service_payouts_subject_id_fkey(id, subject_number),
+  approver:profiles!technician_service_payouts_approved_by_fkey(id, display_name)
 `.trim();
 
 export interface PayoutRepoFilters {
