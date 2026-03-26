@@ -276,6 +276,12 @@ Do not explain. Do not ask questions.
 Build and report only.
 ```
 
+### **Quick Reference Prompts**
+Use the reusable prompts in `.windsurf/prompts/`:
+- `@.windsurf/prompts/fix-bug.md` - Bug fixing workflow
+- `@.windsurf/prompts/new-module.md` - New module development
+- `@.windsurf/prompts/test-module.md` - Testing workflow
+
 ---
 
 ## 📊 CURRENT PROJECT STATUS
