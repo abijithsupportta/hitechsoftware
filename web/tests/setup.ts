@@ -6,6 +6,66 @@ import { setupServer } from 'msw/node';
 import { HttpResponse, http } from 'msw';
 import { Headers, Request, Response, fetch } from 'undici';
 
+// Mock DOM container for React Testing Library
+const createMockContainer = () => ({
+  innerHTML: '',
+  textContent: '',
+  style: {},
+  classList: {
+    add: vi.fn(),
+    remove: vi.fn(),
+    contains: vi.fn(),
+    toggle: vi.fn(),
+  },
+  addEventListener: vi.fn(),
+  removeEventListener: vi.fn(),
+  appendChild: vi.fn(),
+  removeChild: vi.fn(),
+  setAttribute: vi.fn(),
+  getAttribute: vi.fn(() => null),
+  hasAttribute: vi.fn(() => false),
+  querySelector: vi.fn(() => null),
+  querySelectorAll: vi.fn(() => []),
+  getElementsByTagName: vi.fn(() => []),
+  getElementsByClassName: vi.fn(() => []),
+  closest: vi.fn(() => null),
+  matches: vi.fn(() => false),
+  parentNode: null,
+  parentElement: null,
+  nextSibling: null,
+  previousSibling: null,
+  firstChild: null,
+  lastChild: null,
+  children: [],
+  childNodes: [],
+  nodeType: 1,
+  nodeName: 'DIV',
+  nodeValue: null,
+  ownerDocument: global.document,
+});
+
+// Setup DOM container before each test
+beforeEach(() => {
+  // Create a mock container for React Testing Library
+  const container = createMockContainer();
+  (global.document.createElement as any) = vi.fn((tagName: string) => {
+    const element = createMockContainer();
+    (element as any).tagName = tagName.toUpperCase();
+    return element;
+  });
+  
+  // Mock createRoot for React 18
+  const mockCreateRoot = vi.fn(() => ({
+    render: vi.fn(),
+    unmount: vi.fn(),
+  }));
+  
+  // Mock React DOM createRoot
+  vi.mock('react-dom/client', () => ({
+    createRoot: mockCreateRoot,
+  }));
+});
+
 // Mock localStorage
 const localStorageMock = (() => {
   let store: Record<string, string> = {};
@@ -33,18 +93,74 @@ const localStorageMock = (() => {
 
 // Mock window object
 Object.defineProperty(global, 'window', {
-  value: {},
+  value: {
+    localStorage: localStorageMock,
+    document: global.document,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    requestAnimationFrame: vi.fn((cb: any) => setTimeout(cb, 16)),
+    cancelAnimationFrame: vi.fn(),
+    location: {
+      href: 'http://localhost:3000',
+      pathname: '/',
+      search: '',
+      hash: ''
+    },
+    history: {
+      pushState: vi.fn(),
+      replaceState: vi.fn(),
+      back: vi.fn(),
+      forward: vi.fn()
+    },
+    navigator: {
+      userAgent: 'Mozilla/5.0 (Test Environment)'
+    }
+  },
   writable: true
 });
 
-// Mock document object
+// Mock document object with complete DOM API
 Object.defineProperty(global, 'document', {
   value: {
-    createElement: vi.fn(() => ({
+    createElement: vi.fn((tagName: string) => ({
+      tagName: tagName.toUpperCase(),
       innerHTML: '',
+      textContent: '',
       style: {},
+      classList: {
+        add: vi.fn(),
+        remove: vi.fn(),
+        contains: vi.fn(),
+        toggle: vi.fn(),
+      },
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
+      appendChild: vi.fn(),
+      removeChild: vi.fn(),
+      setAttribute: vi.fn(),
+      getAttribute: vi.fn(() => null),
+      hasAttribute: vi.fn(() => false),
+      querySelector: vi.fn(() => null),
+      querySelectorAll: vi.fn(() => []),
+      getElementsByTagName: vi.fn(() => []),
+      getElementsByClassName: vi.fn(() => []),
+      closest: vi.fn(() => null),
+      matches: vi.fn(() => false),
+      parentNode: null,
+      parentElement: null,
+      nextSibling: null,
+      previousSibling: null,
+      firstChild: null,
+      lastChild: null,
+      children: [],
+      childNodes: [],
+    })),
+    getElementById: vi.fn(() => null),
+    querySelector: vi.fn(() => null),
+    querySelectorAll: vi.fn(() => []),
+    getElementsByTagName: vi.fn(() => []),
+    getElementsByClassName: vi.fn(() => []),
+    body: {
       appendChild: vi.fn(),
       removeChild: vi.fn(),
       querySelector: vi.fn(() => null),
@@ -54,16 +170,47 @@ Object.defineProperty(global, 'document', {
         remove: vi.fn(),
         contains: vi.fn(),
       },
-      setAttribute: vi.fn(),
-      getAttribute: vi.fn(() => null),
-    })),
-    getElementById: vi.fn(() => null),
-    querySelector: vi.fn(() => null),
-    querySelectorAll: vi.fn(() => []),
-    body: {
+      style: {},
+    },
+    head: {
       appendChild: vi.fn(),
       removeChild: vi.fn(),
     },
+    createTextNode: vi.fn(() => ({
+      nodeValue: '',
+      textContent: '',
+    })),
+    createDocumentFragment: vi.fn(() => ({
+      appendChild: vi.fn(),
+      removeChild: vi.fn(),
+      querySelector: vi.fn(() => null),
+      querySelectorAll: vi.fn(() => []),
+    })),
+    activeElement: null,
+    readyState: 'complete',
+  },
+  writable: true
+});
+
+// Mock React Testing Library container
+Object.defineProperty(global, 'document', {
+  value: {
+    ...global.document,
+    body: {
+      ...global.document.body,
+      appendChild: vi.fn(),
+      removeChild: vi.fn(),
+      querySelector: vi.fn(() => null),
+      querySelectorAll: vi.fn(() => []),
+      innerHTML: '',
+      textContent: '',
+      style: {},
+      classList: {
+        add: vi.fn(),
+        remove: vi.fn(),
+        contains: vi.fn(),
+      },
+    }
   },
   writable: true
 });
