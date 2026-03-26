@@ -9,9 +9,17 @@ export function createMockSupabaseClient() {
     amc_contracts: [],
     subject_bills: [],
     subject_accessories: [],
-    subject_photos: [],
-    subject_status_history: [],
-    dealers: [],
+    inventory_products: [],
+    stock_entries: [],
+    stock_entry_items: [],
+    current_stock_levels: [],
+    product_categories: [],
+    product_types: [],
+    suppliers: [],
+    mrp_change_log: [],
+    digital_bag_sessions: [],
+    digital_bag_items: [],
+    digital_bag_consumptions: [],
     technicians: [],
     profiles: [],
     attendance_logs: [],
@@ -21,7 +29,7 @@ export function createMockSupabaseClient() {
     amc_commission: []
   };
 
-  return {
+  const mockClient: any = {
     from: (table: string) => ({
       select: (columns?: string) => ({
         eq: (column: string, value: any) => ({
@@ -419,4 +427,7 @@ export const mockViews = {
       })
     })
   })
-};
+  };
+
+  return mockClient;
+}

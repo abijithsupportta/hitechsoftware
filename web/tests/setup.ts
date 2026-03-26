@@ -6,6 +6,73 @@ import { setupServer } from 'msw/node';
 import { HttpResponse, http } from 'msw';
 import { Headers, Request, Response, fetch } from 'undici';
 
+// Mock localStorage
+const localStorageMock = (() => {
+  let store: Record<string, string> = {};
+
+  return {
+    getItem: (key: string) => store[key] || null,
+    setItem: (key: string, value: string) => {
+      store[key] = value;
+    },
+    removeItem: (key: string) => {
+      delete store[key];
+    },
+    clear: () => {
+      store = {};
+    },
+    get length() {
+      return Object.keys(store).length;
+    },
+    key: (index: number) => {
+      const keys = Object.keys(store);
+      return keys[index] || null;
+    }
+  };
+})();
+
+// Mock window object
+Object.defineProperty(global, 'window', {
+  value: {},
+  writable: true
+});
+
+// Mock document object
+Object.defineProperty(global, 'document', {
+  value: {
+    createElement: vi.fn(() => ({
+      innerHTML: '',
+      style: {},
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      appendChild: vi.fn(),
+      removeChild: vi.fn(),
+      querySelector: vi.fn(() => null),
+      querySelectorAll: vi.fn(() => []),
+      classList: {
+        add: vi.fn(),
+        remove: vi.fn(),
+        contains: vi.fn(),
+      },
+      setAttribute: vi.fn(),
+      getAttribute: vi.fn(() => null),
+    })),
+    getElementById: vi.fn(() => null),
+    querySelector: vi.fn(() => null),
+    querySelectorAll: vi.fn(() => []),
+    body: {
+      appendChild: vi.fn(),
+      removeChild: vi.fn(),
+    },
+  },
+  writable: true
+});
+
+Object.defineProperty(window, 'localStorage', {
+  value: localStorageMock,
+  writable: true
+});
+
 type RouterMock = {
   push: ReturnType<typeof vi.fn>;
   replace: ReturnType<typeof vi.fn>;
