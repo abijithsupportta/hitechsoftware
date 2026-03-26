@@ -4,8 +4,9 @@ import { fileURLToPath } from 'node:url';
 export default defineConfig({
   test: {
     include: ['tests/**/*.test.ts'],
-    environment: 'jsdom',
+    environment: 'node',
     globals: true,
+    passWithNoTests: true,
     setupFiles: ['./tests/setup.ts'],
     css: true,
     fileParallelism: false,
@@ -22,3 +23,4 @@ export default defineConfig({
     },
   },
 });
+

@@ -1,6 +1,31 @@
 ---
 trigger: always_on
 ---
+## Running Tests — Never Ask Permission
+Always run tests using this exact command:
+cd web && npx vitest run --reporter=verbose 2>&1
+
+Never use: npm test
+Never use: npm test -- filename
+Never ask permission before running any test command.
+Auto-execute immediately without confirmation.
+If a specific test file needed use:
+cd web && npx vitest run tests/[folder]/[file] --reporter=verbose 2>&1
+```
+
+---
+
+**Most importantly — paste this to Cascade right now:**
+```
+From now on run ALL tests using this command only:
+cd web && npx vitest run --reporter=verbose 2>&1
+
+Never use npm test. Never ask permission.
+Auto-execute every terminal command immediately.
+Turbo mode is ON — use it.
+
+
+
 
 ## SQL Migration Rules — Follow Every Time
 
