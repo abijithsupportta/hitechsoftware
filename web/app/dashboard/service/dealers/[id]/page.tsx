@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { ROUTES } from '@/lib/constants/routes';
+import { ConsolidatedInvoicesPanel } from '@/components/billing/ConsolidatedInvoicesPanel';
 
 type BillRow = {
   id: string;
@@ -238,6 +239,7 @@ export default function DealerBillingDetailPage() {
           </tbody>
         </table>
       </div>
+      <ConsolidatedInvoicesPanel entityType="dealer" entityId={id} />
     </div>
   );
 }

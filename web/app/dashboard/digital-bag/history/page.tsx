@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, Fragment } from 'react';
+import { useState, Fragment } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Briefcase, Eye, History, ChevronDown, ChevronUp } from 'lucide-react';
 import { usePermission } from '@/hooks/auth/usePermission';
@@ -19,13 +19,13 @@ export default function DigitalBagHistoryPage() {
   const { sessions, pagination, isLoading, error } = useSessionHistory(filters);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  const setPage = (page: number) => {
+    setFilters((prev) => ({ ...prev, page }));
+  };
+
   if (!can('digital-bag:view')) {
     return <div className="p-6 text-sm text-rose-600">You do not have access to the Digital Bag module.</div>;
   }
-
-  const setPage = useCallback((page: number) => {
-    setFilters((prev) => ({ ...prev, page }));
-  }, []);
 
   return (
     <div className="space-y-5 p-6">

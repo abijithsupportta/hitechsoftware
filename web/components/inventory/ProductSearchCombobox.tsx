@@ -15,25 +15,18 @@ export function ProductSearchCombobox({ value, onChange }: ProductSearchCombobox
 
   const [inputValue, setInputValue] = useState('');
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Sync selected product when value prop changes (e.g. external reset)
-  useEffect(() => {
-    if (!value) {
-      setSelectedProduct(null);
-      setInputValue('');
-    } else if (value && !selectedProduct) {
-      // If a value is set externally but we don't have the product, try to find it
-      const found = products.find((p) => p.id === value);
-      if (found) {
-        setSelectedProduct(found);
-        setInputValue(`${found.material_code} — ${found.product_name}`);
-      }
-    }
-  }, [value, products, selectedProduct]);
+  const selectedProduct = useMemo(() => {
+    if (!value) return null;
+    return products.find((p) => p.id === value) ?? null;
+  }, [value, products]);
+
+  const displayValue = selectedProduct
+    ? `${selectedProduct.material_code} — ${selectedProduct.product_name}`
+    : inputValue;
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -49,7 +42,6 @@ export function ProductSearchCombobox({ value, onChange }: ProductSearchCombobox
   const handleInputChange = useCallback(
     (text: string) => {
       setInputValue(text);
-      setSelectedProduct(null);
       onChange(null);
 
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -77,8 +69,7 @@ export function ProductSearchCombobox({ value, onChange }: ProductSearchCombobox
 
   const handleSelect = useCallback(
     (product: Product) => {
-      setSelectedProduct(product);
-      setInputValue(`${product.material_code} — ${product.product_name}`);
+      setInputValue('');
       setIsOpen(false);
       onChange(product);
     },
@@ -86,7 +77,6 @@ export function ProductSearchCombobox({ value, onChange }: ProductSearchCombobox
   );
 
   const handleClear = useCallback(() => {
-    setSelectedProduct(null);
     setInputValue('');
     setSearch('');
     setIsOpen(false);
@@ -121,7 +111,7 @@ export function ProductSearchCombobox({ value, onChange }: ProductSearchCombobox
         <input
           ref={inputRef}
           type="text"
-          value={inputValue}
+          value={displayValue}
           onChange={(e) => handleInputChange(e.target.value)}
           onFocus={() => {
             if (inputValue.length >= 2 && !selectedProduct) {

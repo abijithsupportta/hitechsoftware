@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -49,9 +49,10 @@ const NAV_ITEMS = [
   { icon: Briefcase, label: 'My Bag', href: ROUTES.DASHBOARD_MY_BAG, isAvailable: true, allowedRoles: ['technician'] as UserRole[] },
   { icon: DollarSign, label: 'Payouts', href: ROUTES.DASHBOARD_PAYOUTS, isAvailable: true, allowedRoles: ['super_admin', 'office_staff', 'technician'] as UserRole[] },
   { icon: Trophy, label: 'Leaderboard', href: ROUTES.DASHBOARD_LEADERBOARD, isAvailable: true },
-  { icon: DollarSign, label: 'Billing', href: '#', isAvailable: false, allowedRoles: ['super_admin', 'office_staff', 'stock_manager'] as UserRole[] },
-  { icon: BarChart3, label: 'Reports', href: '#', isAvailable: false, allowedRoles: ['super_admin', 'office_staff', 'stock_manager'] as UserRole[] },
-  { icon: Settings, label: 'Settings', href: '#', isAvailable: false },
+  { icon: DollarSign, label: 'Due Payments', href: ROUTES.DASHBOARD_DUE_PAYMENTS, isAvailable: true, allowedRoles: ['super_admin', 'office_staff', 'stock_manager'] as UserRole[] },
+  { icon: Tags, label: 'Coupons', href: ROUTES.DASHBOARD_COUPONS, isAvailable: true, allowedRoles: ['super_admin', 'office_staff', 'stock_manager'] as UserRole[] },
+  { icon: BarChart3, label: 'Reports', href: ROUTES.DASHBOARD_REPORTS, isAvailable: true, allowedRoles: ['super_admin', 'office_staff', 'stock_manager'] as UserRole[] },
+  { icon: Settings, label: 'Settings', href: ROUTES.DASHBOARD_SETTINGS, isAvailable: true, allowedRoles: ['super_admin', 'office_staff'] as UserRole[] },
 ];
 
 const SERVICE_MODULE_ITEMS = [
@@ -77,25 +78,23 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter();
   const { user, signOut, isLoading, isHydrated, userRole } = useAuth();
 
-  const ALLOWED_DASHBOARD_ROLES: string[] = [
+  const ALLOWED_DASHBOARD_ROLES: string[] = useMemo(() => ([
     ROLES.SUPER_ADMIN,
     ROLES.OFFICE_STAFF,
     ROLES.TECHNICIAN,
     ROLES.STOCK_MANAGER
-  ];
+  ]), []);
   const isReady = isHydrated && !isLoading;
   const isUnauthenticated = isReady && !user;
   const isUnauthorized = isReady && !!user && (!userRole || !ALLOWED_DASHBOARD_ROLES.includes(userRole));
-  const [redirecting, setRedirecting] = useState(false);
 
   useEffect(() => {
-    if (redirecting) return;
-
     if (isUnauthenticated) {
-      setRedirecting(true);
       router.replace(ROUTES.LOGIN);
-    } else if (isUnauthorized) {
-      setRedirecting(true);
+      return;
+    }
+
+    if (isUnauthorized) {
       console.warn('[DashboardLayout] Unauthorized role access attempt:', {
         userId: user?.id,
         userRole,
@@ -103,16 +102,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       });
       router.replace(`${ROUTES.LOGIN}?error=unauthorized`);
     }
-  }, [isUnauthenticated, isUnauthorized, redirecting, router, userRole, user?.id]);
-
-  // Safety valve: if redirect is stuck for 3s, force a hard navigation
-  useEffect(() => {
-    if (!redirecting) return;
-    const timer = setTimeout(() => {
-      window.location.href = ROUTES.LOGIN;
-    }, 3_000);
-    return () => clearTimeout(timer);
-  }, [redirecting]);
+  }, [isUnauthenticated, isUnauthorized, router, userRole, user?.id, ALLOWED_DASHBOARD_ROLES]);
 
   const handleLogout = async () => {
     const result = await signOut();
@@ -231,10 +221,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   ? isServiceModuleActive
                   : item.href === ROUTES.DASHBOARD_INVENTORY
                     ? isInventoryModuleActive
-                    : item.href !== '#' &&
-                      (item.href === ROUTES.DASHBOARD
+                    : item.href === ROUTES.DASHBOARD
                         ? pathname === ROUTES.DASHBOARD
-                        : pathname === item.href || pathname.startsWith(`${item.href}/`));
+                        : pathname === item.href || pathname.startsWith(`${item.href}/`);
 
               return (
                 <div key={item.label} className="space-y-1">

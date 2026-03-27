@@ -24,11 +24,13 @@
     "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "^2.99.1",
     "@tanstack/react-query": "^5.90.21",
+    "date-fns": "^4.1.0",
     "lucide-react": "^0.577.0",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-hook-form": "^7.71.2",
+    "recharts": "^3.8.1",
     "sonner": "^2.0.7",
     "zod": "^4.3.6",
     "zustand": "^5.0.11"

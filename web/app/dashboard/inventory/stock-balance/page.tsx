@@ -30,14 +30,6 @@ export default function StockBalancePage() {
   const [typeFilter, setTypeFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<StockStatusFilter>('all');
 
-  if (!can('inventory:view')) {
-    return (
-      <div className="p-6 text-sm text-rose-600">
-        You do not have access to the inventory module.
-      </div>
-    );
-  }
-
   const allLevels = stockLevels ?? [];
 
   const filteredLevels = useMemo(() => {
@@ -71,6 +63,14 @@ export default function StockBalancePage() {
   const totalProducts = allLevels.length;
   const lowStockCount = allLevels.filter((sl: StockLevel) => sl.stock_status === 'low_stock').length;
   const outOfStockCount = allLevels.filter((sl: StockLevel) => sl.stock_status === 'out_of_stock').length;
+
+  if (!can('inventory:view')) {
+    return (
+      <div className="p-6 text-sm text-rose-600">
+        You do not have access to the inventory module.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5 p-6">

@@ -270,7 +270,7 @@ export async function POST(
   // ────────────────────────────────────────────────────────────────────────────
   // Steps 2–3: Authenticate user and verify technician role
   // ────────────────────────────────────────────────────────────────────────────
-  const auth = await requireAuth(request, { roles: ['technician'] });
+  const auth = await requireAuth(request, { roles: ['technician', 'office_staff', 'super_admin'] });
   if (!auth.ok) {
     console.log(`[${timestamp}] ✗ Auth failed`);
     return auth.response;
@@ -349,7 +349,7 @@ export async function POST(
 
   const subject = subjectResult.data;
 
-  if (subject.assigned_technician_id !== userId) {
+  if (body.action !== 'generate_bill' && subject.assigned_technician_id !== userId) {
     const error: ErrorResponse = {
       step: '5. Verify Assignment',
       code: 'NOT_ASSIGNED_TO_SUBJECT',
@@ -542,8 +542,91 @@ export async function POST(
     // customer bills require payment collection from the end user on-site.
     const isBrandDealerBill = warrantyState === 'amc' || warrantyState === 'in_warranty';
 
-    const hasPaymentMode = Boolean(billInput.payment_mode);
-    const customerPaymentStatus = hasPaymentMode ? 'paid' : 'due';
+    const couponCodeFromRequest = typeof (billInput as { coupon_code?: unknown }).coupon_code === 'string'
+      ? ((billInput as { coupon_code?: string }).coupon_code ?? '').trim().toUpperCase()
+      : '';
+    const customerPaymentStatus: 'due' = 'due';
+    let couponDiscountAmount = 0;
+    let couponId: string | null = null;
+    let couponCode: string | null = null;
+
+    if (couponCodeFromRequest) {
+      const couponResult = await admin
+        .from('coupons')
+        .select('id,coupon_code,discount_amount,status,used_on_subject_id')
+        .eq('coupon_code', couponCodeFromRequest)
+        .maybeSingle<{
+          id: string;
+          coupon_code: string;
+          discount_amount: number;
+          status: 'active' | 'used' | 'expired';
+          used_on_subject_id: string | null;
+        }>();
+
+      if (couponResult.error || !couponResult.data) {
+        return NextResponse.json({
+          ok: false,
+          error: {
+            step: '6. Validate Coupon',
+            code: 'COUPON_INVALID',
+            message: couponResult.error?.message ?? 'Coupon not found',
+            userMessage: 'Invalid coupon code',
+          },
+        }, { status: 400 });
+      }
+
+      if (couponResult.data.status !== 'active') {
+        return NextResponse.json({
+          ok: false,
+          error: {
+            step: '6. Validate Coupon',
+            code: 'COUPON_NOT_ACTIVE',
+            message: `Coupon status is ${couponResult.data.status}`,
+            userMessage: 'This coupon is already used or expired',
+          },
+        }, { status: 400 });
+      }
+
+      if (couponResult.data.used_on_subject_id && couponResult.data.used_on_subject_id !== subjectId) {
+        return NextResponse.json({
+          ok: false,
+          error: {
+            step: '6. Validate Coupon',
+            code: 'COUPON_LOCKED',
+            message: 'Coupon locked to another subject',
+            userMessage: 'This coupon is already applied on another subject',
+          },
+        }, { status: 400 });
+      }
+
+      if (!couponResult.data.used_on_subject_id) {
+        const couponLockResult = await admin
+          .from('coupons')
+          .update({
+            used_on_subject_id: subjectId,
+            used_by_technician_id: userId,
+            used_at: new Date().toISOString(),
+          })
+          .eq('id', couponResult.data.id)
+          .eq('status', 'active');
+
+        if (couponLockResult.error) {
+          return NextResponse.json({
+            ok: false,
+            error: {
+              step: '6. Lock Coupon',
+              code: 'COUPON_LOCK_FAILED',
+              message: couponLockResult.error.message,
+              userMessage: 'Unable to apply coupon right now. Please retry.',
+            },
+          }, { status: 400 });
+        }
+      }
+
+      couponId = couponResult.data.id;
+      couponCode = couponResult.data.coupon_code;
+      couponDiscountAmount = toNumber(couponResult.data.discount_amount);
+    }
 
     // Generate bill number
     const billNumberResult = await admin.rpc('generate_bill_number');
@@ -578,9 +661,13 @@ export async function POST(
         grand_total,
         payment_mode: isBrandDealerBill ? null : (billInput.payment_mode ?? null),
         payment_status: isBrandDealerBill ? 'due' : customerPaymentStatus,
-        payment_collected_at: isBrandDealerBill
-          ? null
-          : (hasPaymentMode ? new Date().toISOString() : null),
+        payment_collected: false,
+        payment_collected_at: null,
+        payment_collected_by: null,
+        collection_notes: null,
+        coupon_id: couponId,
+        coupon_code: couponCode,
+        coupon_discount_amount: couponDiscountAmount,
         generated_by: userId,
       })
       .select('id,bill_number,grand_total,bill_type')
@@ -608,10 +695,8 @@ export async function POST(
         is_warranty_service: warrantyState === 'in_warranty',
         service_charge_type: isBrandDealerBill ? 'brand_dealer' : 'customer',
         payment_mode: isBrandDealerBill ? null : (billInput.payment_mode ?? null),
-        payment_collected: isBrandDealerBill ? false : hasPaymentMode,
-        payment_collected_at: isBrandDealerBill
-          ? null
-          : (hasPaymentMode ? new Date().toISOString() : null),
+        payment_collected: false,
+        payment_collected_at: null,
         billing_status: isBrandDealerBill ? 'due' : customerPaymentStatus,
         bill_generated: true,
         bill_generated_at: new Date().toISOString(),
@@ -641,6 +726,13 @@ export async function POST(
       };
       console.log(`[${timestamp}] ✗ Failed:`, error.code);
       return NextResponse.json({ ok: false, error }, { status: 400 });
+    }
+
+    if (couponId) {
+      await admin
+        .from('coupons')
+        .update({ status: 'used', updated_at: new Date().toISOString() })
+        .eq('id', couponId);
     }
 
     console.log(`[${timestamp}] ✓✓✓ Bill generated and subject completed successfully: ${bill_number}`);
@@ -888,7 +980,7 @@ export async function PATCH(
     return NextResponse.json({ ok: false, error }, { status: 400 });
   }
 
-  let body: { action?: string; billId?: string; paymentStatus?: 'paid' | 'due' | 'waived'; paymentMode?: 'cash' | 'upi' | 'card' | 'cheque' };
+  let body: { action?: string; billId?: string; paymentStatus?: 'paid' | 'due' | 'waived'; paymentMode?: 'cash' | 'upi' | 'card' | 'cheque'; collectionNotes?: string };
   try {
     body = await request.json();
   } catch (err) {
@@ -936,7 +1028,9 @@ export async function PATCH(
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
   }
 
-  if (!['office_staff', 'super_admin'].includes(auth.role)) {
+  const canStaffUpdate = ['office_staff', 'super_admin'].includes(auth.role);
+  const canAssignedTechnicianUpdate = auth.role === 'technician' && auth.subject.assigned_technician_id === auth.userId;
+  if (!canStaffUpdate && !canAssignedTechnicianUpdate) {
     const error: ErrorResponse = {
       step: '3. Verify Role',
       code: 'INVALID_ROLE',
@@ -949,6 +1043,10 @@ export async function PATCH(
   const nowIso = new Date().toISOString();
   const paymentCollectedAt = body.paymentStatus === 'paid' ? nowIso : null;
   const normalizedPaymentMode = body.paymentStatus === 'paid' ? body.paymentMode ?? null : null;
+  const paymentCollectedBy = body.paymentStatus === 'paid' ? auth.userId : null;
+  const normalizedCollectionNotes = body.paymentStatus === 'paid' && typeof body.collectionNotes === 'string'
+    ? body.collectionNotes.trim()
+    : null;
 
   const billUpdate = await auth.admin
     .from('subject_bills')
@@ -956,6 +1054,9 @@ export async function PATCH(
       payment_status: body.paymentStatus,
       payment_mode: normalizedPaymentMode,
       payment_collected_at: paymentCollectedAt,
+      payment_collected_by: paymentCollectedBy,
+      payment_collected: body.paymentStatus === 'paid',
+      collection_notes: normalizedCollectionNotes,
     })
     .eq('id', body.billId)
     .eq('subject_id', subjectId)

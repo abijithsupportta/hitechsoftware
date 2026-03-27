@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest';
-import { createMockSupabaseClient } from '../utils/supabase-mock-inventory';
+import { createMockSupabaseClient, resetMockData } from '../utils/supabase-mock-inventory';
 
 describe('Exhaustive Inventory Module QA Testing - Hi Tech Software', () => {
   let supabase: any;
@@ -13,8 +13,8 @@ describe('Exhaustive Inventory Module QA Testing - Hi Tech Software', () => {
   });
 
   beforeEach(async () => {
-    // Reset mock data before each test
-    supabase = createMockSupabaseClient();
+    // Reset mock data before each test group but preserve within group
+    resetMockData();
     await supabase.auth.signInWithPassword({
       email: 'stock@hitech.com',
       password: 'validpassword'
@@ -23,6 +23,14 @@ describe('Exhaustive Inventory Module QA Testing - Hi Tech Software', () => {
 
   // ==================== GROUP 1 — Product Creation Validation ====================
   describe('GROUP 1 — Product Creation Validation (15 tests)', () => {
+    // Only reset once at the beginning of the group
+    beforeAll(async () => {
+      resetMockData();
+      await supabase.auth.signInWithPassword({
+        email: 'stock@hitech.com',
+        password: 'validpassword'
+      });
+    });
     
     it('Test 1.1 — Create product with all required fields — expect success and id returned', async () => {
       const { data, error } = await supabase
@@ -84,8 +92,15 @@ describe('Exhaustive Inventory Module QA Testing - Hi Tech Software', () => {
     });
 
     it('Test 1.4 — Create product with duplicate material_code same case — expect error', async () => {
+      // First, let's verify the current state
+      const { data: currentProducts } = await supabase
+        .from('inventory_products')
+        .select('*');
+      
+      console.log('Current products before duplicate test:', currentProducts?.length);
+      
       // Create first product
-      await supabase
+      const { data: firstProduct } = await supabase
         .from('inventory_products')
         .insert({
           name: 'Test Product 1',
@@ -94,7 +109,12 @@ describe('Exhaustive Inventory Module QA Testing - Hi Tech Software', () => {
           type_id: 'type-123',
           mrp: 1000,
           purchase_price: 800
-        });
+        })
+        .select()
+        .single();
+
+      expect(firstProduct).toBeDefined();
+      expect(firstProduct.material_code).toBe('DUP-001');
 
       // Try to create duplicate
       const { data, error } = await supabase
@@ -117,7 +137,7 @@ describe('Exhaustive Inventory Module QA Testing - Hi Tech Software', () => {
 
     it('Test 1.5 — Create product with duplicate material_code different case — expect error case insensitive', async () => {
       // Create first product
-      await supabase
+      const { data: firstProduct } = await supabase
         .from('inventory_products')
         .insert({
           name: 'Test Product 1',
@@ -126,7 +146,12 @@ describe('Exhaustive Inventory Module QA Testing - Hi Tech Software', () => {
           type_id: 'type-123',
           mrp: 1000,
           purchase_price: 800
-        });
+        })
+        .select()
+        .single();
+
+      expect(firstProduct).toBeDefined();
+      expect(firstProduct.material_code).toBe('DUP-002');
 
       // Try to create duplicate with different case
       const { data, error } = await supabase
@@ -199,9 +224,9 @@ describe('Exhaustive Inventory Module QA Testing - Hi Tech Software', () => {
         .select()
         .single();
 
-      expect(data).toBeDefined();
-      expect(data.material_code).toBe('TEST 008');
-      // In our mock, spaces are allowed but in real DB this would fail validation
+      expect(data).toBeNull();
+      expect(error).toBeDefined();
+      expect(error.code).toBe('400'); // Validation error
     });
 
     it('Test 1.9 — Create product with material_code containing special characters except dash and underscore — expect validation error', async () => {
@@ -218,9 +243,9 @@ describe('Exhaustive Inventory Module QA Testing - Hi Tech Software', () => {
         .select()
         .single();
 
-      expect(data).toBeDefined();
-      expect(data.material_code).toBe('TEST@009');
-      // In our mock, special chars are allowed but in real DB this would fail validation
+      expect(data).toBeNull();
+      expect(error).toBeDefined();
+      expect(error.code).toBe('400'); // Validation error
     });
 
     it('Test 1.10 — Create product with material_code containing dash — expect success valid format', async () => {
@@ -275,9 +300,9 @@ describe('Exhaustive Inventory Module QA Testing - Hi Tech Software', () => {
         .select()
         .single();
 
-      expect(data).toBeDefined();
-      expect(data.mrp).toBe(0);
-      // In our mock, zero MRP is allowed but in real DB this would fail validation
+      expect(data).toBeNull();
+      expect(error).toBeDefined();
+      expect(error.code).toBe('400'); // Validation error
     });
 
     it('Test 1.13 — Create product with negative MRP — expect validation error', async () => {
@@ -294,9 +319,9 @@ describe('Exhaustive Inventory Module QA Testing - Hi Tech Software', () => {
         .select()
         .single();
 
-      expect(data).toBeDefined();
-      expect(data.mrp).toBe(-100);
-      // In our mock, negative MRP is allowed but in real DB this would fail validation
+      expect(data).toBeNull();
+      expect(error).toBeDefined();
+      expect(error.code).toBe('400'); // Validation error
     });
 
     it('Test 1.14 — Create product with negative purchase_price — expect validation error', async () => {
@@ -313,9 +338,9 @@ describe('Exhaustive Inventory Module QA Testing - Hi Tech Software', () => {
         .select()
         .single();
 
-      expect(data).toBeDefined();
-      expect(data.purchase_price).toBe(-500);
-      // In our mock, negative purchase price is allowed but in real DB this would fail validation
+      expect(data).toBeNull();
+      expect(error).toBeDefined();
+      expect(error.code).toBe('400'); // Validation error
     });
 
     it('Test 1.15 — Create product with MRP less than purchase_price — expect warning shown but creation allowed', async () => {

@@ -22,7 +22,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { AlertCircle, Upload, Video, X } from 'lucide-react';
 import { toast } from 'sonner';
-import type { PaymentMode, SubjectDetail, SubjectPhoto } from '@/modules/subjects/subject.types';
+import type { GenerateBillInput, PaymentMode, SubjectDetail, SubjectPhoto } from '@/modules/subjects/subject.types';
 import { SUBJECT_QUERY_KEYS } from '@/modules/subjects/subject.constants';
 import { PAYMENT_MODES } from '@/modules/subjects/subject.constants';
 import {
@@ -38,6 +38,7 @@ import { BillCard } from '@/components/subjects/BillCard';
 import { BillEditPanel } from '@/components/subjects/BillEditPanel';
 import { isLikelyVideoFile, isLikelyImageFile, compressImageForUpload } from '@/lib/utils/image-compression';
 import { formatMoney } from '@/lib/utils/format';
+import { useApplyCoupon } from '@/hooks/coupons/useCoupons';
 
 interface Props {
   subject: SubjectDetail;
@@ -68,6 +69,9 @@ export function BillingSection({ subject, userRole, userId }: Props) {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [imagePreviewErrors, setImagePreviewErrors] = useState<Record<string, string>>({});
   const [isEditingBill, setIsEditingBill] = useState(false);
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCouponDiscount, setAppliedCouponDiscount] = useState(0);
+  const applyCouponMutation = useApplyCoupon();
 
   // ── Warranty state ───────────────────────────────────────────────────────
   // Derived at render time (not from DB) because bill generation compares 
@@ -94,7 +98,7 @@ export function BillingSection({ subject, userRole, userId }: Props) {
   // ── Permission flags ────────────────────────────────────────────────────
   const isAssignedTechnician = userRole === 'technician' && userId === subject.assigned_technician_id;
   const canGenerate = isAssignedTechnician && subject.status === 'IN_PROGRESS' && !subject.bill_generated;
-  const canUpdatePayment = userRole === 'office_staff' || userRole === 'super_admin';
+  const canUpdatePayment = userRole === 'office_staff' || userRole === 'super_admin' || isAssignedTechnician;
   const canEditBill = userRole === 'super_admin' && Boolean(subject.bill_generated);
   const canManageMedia = isAssignedTechnician || userRole === 'office_staff' || userRole === 'super_admin';
   // Show finish button if bill exists but job isn't completed (for warranty jobs or special cases)
@@ -203,6 +207,7 @@ export function BillingSection({ subject, userRole, userId }: Props) {
   const totalBaseAmount = useMemo(() => accessoriesBaseTotal + visitChargeBase + serviceChargeBase, [accessoriesBaseTotal, visitChargeBase, serviceChargeBase]);
   const totalGstAmount = useMemo(() => accessoriesGstTotal + visitChargeGst + serviceChargeGst, [accessoriesGstTotal, visitChargeGst, serviceChargeGst]);
   const grandTotal = useMemo(() => Number(visitCharge || 0) + Number(serviceCharge || 0) + Number(accessoriesTotal || 0), [visitCharge, serviceCharge, accessoriesTotal]);
+  const finalGrandTotal = useMemo(() => Math.max(0, grandTotal - appliedCouponDiscount), [grandTotal, appliedCouponDiscount]);
 
   return (
     <div className={`rounded-xl border p-5 ${isCustomerChargeable ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-white'}`}>
@@ -437,6 +442,43 @@ export function BillingSection({ subject, userRole, userId }: Props) {
           )}
 
           {!canMaintainCompletedMedia && (
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <input
+                type="text"
+                value={couponCode}
+                onChange={(event) => setCouponCode(event.target.value.toUpperCase())}
+                placeholder="Coupon code"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+              />
+              <button
+                type="button"
+                disabled={applyCouponMutation.isPending || couponCode.trim().length === 0}
+                onClick={() => {
+                  applyCouponMutation.mutate(
+                    { code: couponCode, subject_id: subject.id },
+                    {
+                      onSuccess: (data) => {
+                        setAppliedCouponDiscount(Number(data.discount_amount));
+                        toast.success(`Coupon applied: INR ${Number(data.discount_amount).toFixed(2)} off`);
+                      },
+                      onError: (error) => {
+                        toast.error(error.message);
+                        setAppliedCouponDiscount(0);
+                      },
+                    },
+                  );
+                }}
+                className="rounded-lg border border-blue-300 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 disabled:opacity-60"
+              >
+                {applyCouponMutation.isPending ? 'Applying...' : 'Apply Coupon'}
+              </button>
+              <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
+                Coupon Discount: INR {formatMoney(appliedCouponDiscount)}
+              </div>
+            </div>
+          )}
+
+          {!canMaintainCompletedMedia && (
           <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm">
             <div className="flex items-center justify-between text-slate-700">
               <span>Accessories Total</span>
@@ -459,6 +501,10 @@ export function BillingSection({ subject, userRole, userId }: Props) {
             <div className="mt-1 flex items-center justify-between font-semibold text-slate-900">
               <span>Grand Total</span>
               <span>INR {formatMoney(grandTotal)}</span>
+            </div>
+            <div className="mt-1 flex items-center justify-between font-semibold text-emerald-700">
+              <span>Final Payable</span>
+              <span>INR {formatMoney(finalGrandTotal)}</span>
             </div>
           </div>
           )}
@@ -483,6 +529,7 @@ export function BillingSection({ subject, userRole, userId }: Props) {
                 service_charge: serviceCharge,
                 apply_gst: true,
                 payment_mode: isOutOfWarranty && paymentMode ? paymentMode : undefined,
+                coupon_code: couponCode.trim() ? couponCode.trim().toUpperCase() : undefined,
                 accessories: accessories.map((item) => ({
                   item_name: item.item_name,
                   quantity: item.quantity,
@@ -490,7 +537,7 @@ export function BillingSection({ subject, userRole, userId }: Props) {
                   discount_type: item.discount_type,
                   discount_value: item.discount_value,
                 })),
-              });
+              } as GenerateBillInput & { coupon_code?: string });
             }}
             className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
           >

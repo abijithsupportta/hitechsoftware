@@ -25,10 +25,6 @@ export default function MyBagPage() {
     },
   });
 
-  if (userRole !== 'technician') {
-    return <div className="p-6 text-sm text-rose-600">This page is only available for technicians.</div>;
-  }
-
   const result = query.data;
   const session = result?.ok ? result.data : null;
   const isLoading = query.isLoading;
@@ -46,6 +42,10 @@ export default function MyBagPage() {
   }, [items, debouncedSearchQuery]);
 
   const totalHeld = items.reduce((sum, i) => sum + (i.quantity_issued - i.quantity_returned - i.quantity_consumed), 0);
+
+  if (userRole !== 'technician') {
+    return <div className="p-6 text-sm text-rose-600">This page is only available for technicians.</div>;
+  }
 
   const handleConsumeItem = (bagItemId: string, quantity: number) => {
     // For now, we'll need to get the current subject ID from somewhere

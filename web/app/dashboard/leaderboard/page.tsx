@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Trophy, Medal, Award, Star } from 'lucide-react';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { useLeaderboard } from '@/hooks/commission/useCommission';
@@ -123,10 +123,10 @@ export default function LeaderboardPage() {
   const entries = leaderboardQuery.data ?? [];
   const periodDesc = getPeriodDescription(period);
 
-  const myEntry = useMemo(() => {
+  const myEntry = (() => {
     if (!user?.id || userRole !== 'technician') return null;
     return entries.find((e) => e.technician_id === user.id) ?? null;
-  }, [entries, user?.id, userRole]);
+  })();
 
   return (
     <div className="p-6 space-y-6">

@@ -33,7 +33,22 @@ export const ROUTES = {
   DASHBOARD_PAYOUTS: '/dashboard/payouts',
   DASHBOARD_MY_BAG: '/dashboard/my-bag',
   DASHBOARD_LEADERBOARD: '/dashboard/leaderboard',
+  DASHBOARD_DUE_PAYMENTS: '/dashboard/due-payments',
+  DASHBOARD_COUPONS: '/dashboard/coupons',
   DASHBOARD_PAYOUT_DETAIL: (technicianId: string) => `/dashboard/payouts/${technicianId}`,
+  // Reports routes
+  DASHBOARD_REPORTS: '/dashboard/reports',
+  DASHBOARD_REPORTS_REVENUE: '/dashboard/reports/revenue',
+  DASHBOARD_REPORTS_TECHNICIANS: '/dashboard/reports/technicians',
+  DASHBOARD_REPORTS_SERVICES: '/dashboard/reports/services',
+  DASHBOARD_REPORTS_INVENTORY: '/dashboard/reports/inventory',
+  DASHBOARD_REPORTS_CUSTOMERS: '/dashboard/reports/customers',
+  DASHBOARD_REPORTS_FINANCIAL: '/dashboard/reports/financial',
+  // Settings routes
+  DASHBOARD_SETTINGS: '/dashboard/settings',
+  DASHBOARD_SETTINGS_PROFILE: '/dashboard/settings/profile',
+  DASHBOARD_SETTINGS_COMPANY: '/dashboard/settings/company',
+  DASHBOARD_SETTINGS_SYSTEM: '/dashboard/settings/system',
   // AMC routes
   DASHBOARD_AMC: '/dashboard/amc',
   DASHBOARD_AMC_NEW: '/dashboard/amc/new',

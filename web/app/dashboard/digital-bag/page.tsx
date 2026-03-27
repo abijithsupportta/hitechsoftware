@@ -21,10 +21,6 @@ export default function DigitalBagDashboardPage() {
 
   const [selectedTechnician, setSelectedTechnician] = useState('');
 
-  if (!can('digital-bag:view')) {
-    return <div className="p-6 text-sm text-rose-600">You do not have access to the Digital Bag module.</div>;
-  }
-
   const now = new Date();
   const isPastSixPM = now.getHours() >= 18;
   const openSessions = sessions.filter((s: DigitalBagSession) => s.status === 'open');
@@ -49,6 +45,10 @@ export default function DigitalBagDashboardPage() {
       },
     });
   };
+
+  if (!can('digital-bag:view')) {
+    return <div className="p-6 text-sm text-rose-600">You do not have access to the Digital Bag module.</div>;
+  }
 
   return (
     <div className="space-y-5 p-6">

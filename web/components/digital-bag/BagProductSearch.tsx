@@ -31,13 +31,6 @@ export default function BagProductSearch({ sessionId, existingProductIds, onItem
     return () => clearTimeout(timer);
   }, [search]);
 
-  // Show dropdown when we have results
-  useEffect(() => {
-    if (products.length > 0 && search.length >= 1 && !selectedProduct) {
-      setShowDropdown(true);
-    }
-  }, [products, search, selectedProduct]);
-
   // Close dropdown on outside click
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -94,9 +87,12 @@ export default function BagProductSearch({ sessionId, existingProductIds, onItem
             placeholder="Search products by name or code..."
             value={search}
             onChange={(e) => {
-              setSearch(e.target.value);
+              const nextValue = e.target.value;
+              setSearch(nextValue);
               if (selectedProduct) setSelectedProduct(null);
+              setShowDropdown(nextValue.length >= 1);
             }}
+            onFocus={() => setShowDropdown(search.length >= 1 && !selectedProduct)}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
