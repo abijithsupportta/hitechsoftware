@@ -183,22 +183,20 @@ export function createMockSupabaseClient() {
             if (table === 'inventory_products') {
               if (!data.name || !data.material_code || !data.category_id || !data.type_id) {
                 return Promise.resolve({
-                  data: {
-                    id: `inventory_products-${Date.now()}-${Math.random()}`,
-                    created_at: new Date().toISOString(),
-                    created_by: currentUser?.id || 'unknown',
-                    ...data
-                  },
-                  error: null
+                  data: null,
+                  error: { message: 'Required fields missing', code: '400' }
                 });
               }
               
-              // Check for duplicate material code
-              const existing = mockData[table]?.find(item => item.material_code === data.material_code);
+              // Auto-convert material_code to uppercase
+              data.material_code = data.material_code.toUpperCase();
+              
+              // Check for duplicate material code (case insensitive)
+              const existing = mockData[table]?.find(item => item.material_code?.toUpperCase() === data.material_code?.toUpperCase());
               if (existing) {
                 return Promise.resolve({
                   data: null,
-                  error: { message: 'material code already exists', code: '400' }
+                  error: { message: 'material code already exists', code: '23505' }
                 });
               }
             }
