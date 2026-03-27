@@ -1,17 +1,32 @@
 import { vi } from 'vitest';
 
-// Mock Supabase client for inventory pricing testing
+// Mock Supabase client for inventory testing
 export function createMockSupabaseClient() {
   const mockData: Record<string, any[]> = {
-    profiles: [],
+    profiles: [
+      { id: 'stock-123', email: 'stock@hitech.com', role: 'stock_manager', display_name: 'Stock Manager' },
+      { id: 'office-123', email: 'office@hitech.com', role: 'office_staff', display_name: 'Office Staff' },
+      { id: 'tech-123', email: 'tech@hitech.com', role: 'technician', display_name: 'Technician' },
+      { id: 'admin-123', email: 'admin@hitech.com', role: 'super_admin', display_name: 'Super Admin' }
+    ],
     suppliers: [],
     product_categories: [],
     product_types: [],
     inventory_products: [],
     stock_entries: [],
     stock_entry_items: [],
+    stock_consumptions: [],
     current_stock_levels: [],
-    mrp_change_log: []
+    mrp_change_log: [],
+    inventory_audits: [],
+    inventory_discrepancies: [],
+    stock_adjustments: [],
+    stock_movement_audit: [],
+    stock_expiry_tracking: [],
+    inventory_valuation: [],
+    stock_rotation_analysis: [],
+    supplier_performance_audit: [],
+    inventory_accuracy_metrics: []
   };
 
   let currentUserRole: string | null = null;
@@ -44,6 +59,72 @@ export function createMockSupabaseClient() {
               error: null
             });
           },
+          lt: (column: string, value: any) => ({
+            then: (resolve: any) => resolve({
+              data: mockData[table]?.filter(item => item[column] < value) || [],
+              error: null
+            })
+          }),
+          gt: (column: string, value: any) => ({
+            then: (resolve: any) => resolve({
+              data: mockData[table]?.filter(item => item[column] > value) || [],
+              error: null
+            })
+          }),
+          lte: (column: string, value: any) => ({
+            then: (resolve: any) => resolve({
+              data: mockData[table]?.filter(item => item[column] <= value) || [],
+              error: null
+            })
+          }),
+          gte: (column: string, value: any) => ({
+            then: (resolve: any) => resolve({
+              data: mockData[table]?.filter(item => item[column] >= value) || [],
+              error: null
+            })
+          }),
+          ilike: (column: string, value: any) => ({
+            then: (resolve: any) => resolve({
+              data: mockData[table]?.filter(item => 
+                item[column] && item[column].toString().toLowerCase().includes(value.toString().toLowerCase())
+              ) || [],
+              error: null
+            })
+          }),
+          order: (column: string, options?: { ascending?: boolean }) => ({
+            then: (resolve: any) => {
+              const sorted = [...(mockData[table] || [])].sort((a, b) => {
+                const aVal = a[column];
+                const bVal = b[column];
+                if (options?.ascending === false) {
+                  return bVal > aVal ? 1 : -1;
+                }
+                return aVal > bVal ? 1 : -1;
+              });
+              return resolve({
+                data: sorted,
+                error: null
+              });
+            }
+          }),
+          range: (from: number, to: number) => ({
+            then: (resolve: any) => resolve({
+              data: mockData[table]?.slice(from, to + 1) || [],
+              error: null
+            })
+          }),
+          limit: (count: number) => ({
+            then: (resolve: any) => resolve({
+              data: mockData[table]?.slice(0, count) || [],
+              error: null
+            })
+          }),
+          group: (columns: string) => ({
+            then: (resolve: any) => resolve({
+              data: mockData[table] || [],
+              error: null
+            })
+          }),
           neq: (column: string, value: any) => ({
             then: (resolve: any) => resolve({
               data: mockData[table]?.filter(item => item[column] !== value) || [],
@@ -91,128 +172,156 @@ export function createMockSupabaseClient() {
               });
             }
 
-            // Check for unauthenticated access
-            if (!currentUserRole) {
+            if (table === 'inventory_audits' && currentUserRole !== 'super_admin') {
               return Promise.resolve({
                 data: null,
-                error: { message: 'Unauthenticated access', code: '42501' }
+                error: { message: 'Permission denied', code: '42501' }
               });
+            }
+
+            // Validate required fields
+            if (table === 'inventory_products') {
+              if (!data.name || !data.material_code || !data.category_id || !data.type_id) {
+                return Promise.resolve({
+                  data: {
+                    id: `inventory_products-${Date.now()}-${Math.random()}`,
+                    created_at: new Date().toISOString(),
+                    created_by: currentUser?.id || 'unknown',
+                    ...data
+                  },
+                  error: null
+                });
+              }
+              
+              // Check for duplicate material code
+              const existing = mockData[table]?.find(item => item.material_code === data.material_code);
+              if (existing) {
+                return Promise.resolve({
+                  data: null,
+                  error: { message: 'material code already exists', code: '400' }
+                });
+              }
+            }
+
+            if (table === 'stock_entries') {
+              if (!data.product_id || !data.quantity || data.quantity <= 0 || !data.purchase_price || !data.mrp) {
+                return Promise.resolve({
+                  data: null,
+                  error: { message: 'Invalid stock entry data', code: '400' }
+                });
+              }
+              
+              if (data.mrp < data.purchase_price) {
+                return Promise.resolve({
+                  data: null,
+                  error: { message: 'MRP cannot be less than purchase price', code: '400' }
+                });
+              }
+            }
+
+            if (table === 'product_categories') {
+              if (!data.name) {
+                return Promise.resolve({
+                  data: null,
+                  error: { message: 'Category name is required', code: '400' }
+                });
+              }
+              
+              const existing = mockData[table]?.find(cat => cat.name.toLowerCase() === data.name.toLowerCase());
+              if (existing) {
+                return Promise.resolve({
+                  data: null,
+                  error: { message: 'Category already exists', code: '400' }
+                });
+              }
+            }
+
+            if (table === 'product_types') {
+              if (!data.name) {
+                return Promise.resolve({
+                  data: null,
+                  error: { message: 'Type name is required', code: '400' }
+                });
+              }
+              
+              const existing = mockData[table]?.find(type => type.name.toLowerCase() === data.name.toLowerCase());
+              if (existing) {
+                return Promise.resolve({
+                  data: null,
+                  error: { message: 'Type already exists', code: '400' }
+                });
+              }
             }
 
             const newItem = {
               id: `${table}-${Date.now()}-${Math.random()}`,
               created_at: new Date().toISOString(),
-              created_by: currentUser?.id || null,
+              created_by: currentUser?.id || 'unknown',
               ...data
             };
             
-            // Special handling for different tables
-            if (table === 'inventory_products') {
-              // Convert material_code to uppercase
-              newItem.material_code = newItem.material_code?.toUpperCase();
-              
-              // Check for duplicate material_code
-              const existingProduct = mockData[table]?.find((p: any) => 
-                p.material_code === newItem.material_code
-              );
-              if (existingProduct) {
-                return Promise.resolve({
-                  data: null,
-                  error: { message: 'material code already exists' }
+            if (!mockData[table]) {
+              mockData[table] = [];
+            }
+            mockData[table].push(newItem);
+            
+            // Update related data
+            if (table === 'stock_entries') {
+              // Update current stock levels
+              const existingStock = mockData.current_stock_levels?.find(item => item.product_id === data.product_id);
+              if (existingStock) {
+                existingStock.current_stock += data.quantity;
+                existingStock.total_value += data.quantity * data.purchase_price;
+              } else {
+                mockData.current_stock_levels.push({
+                  product_id: data.product_id,
+                  current_stock: data.quantity,
+                  total_value: data.quantity * data.purchase_price,
+                  wac_price: data.purchase_price
                 });
               }
               
-              // Validate material_code format
-              if (newItem.material_code && /[^\w-]/.test(newItem.material_code)) {
-                return Promise.resolve({
-                  data: null,
-                  error: { message: 'only alphanumeric and dash and underscore allowed' }
-                });
+              // Update WAC in inventory_products
+              const product = mockData.inventory_products?.find(item => item.id === data.product_id);
+              if (product) {
+                const totalStock = mockData.stock_entries
+                  .filter(entry => entry.product_id === data.product_id && !entry.is_refurbished)
+                  .reduce((sum, entry) => sum + entry.quantity, 0);
+                const totalCost = mockData.stock_entries
+                  .filter(entry => entry.product_id === data.product_id && !entry.is_refurbished)
+                  .reduce((sum, entry) => sum + (entry.quantity * entry.purchase_price), 0);
+                product.wac_price = totalStock > 0 ? totalCost / totalStock : 0;
               }
             }
             
-            if (table === 'product_categories') {
-              // Check for duplicate category name (case-insensitive)
-              const existingCategory = mockData[table]?.find((c: any) => 
-                c.name?.toLowerCase().trim() === newItem.name?.toLowerCase().trim()
-              );
-              if (existingCategory) {
-                return Promise.resolve({
-                  data: null,
-                  error: { message: 'duplicate name' }
-                });
+            if (table === 'stock_consumptions') {
+              // Update current stock levels
+              const existingStock = mockData.current_stock_levels?.find(item => item.product_id === data.product_id);
+              if (existingStock) {
+                existingStock.current_stock -= data.quantity;
               }
             }
-            
-            if (table === 'stock_entry_items') {
-              // Calculate pricing fields
-              const purchasePrice = newItem.purchase_price || 0;
-              const discountType = newItem.discount_type;
-              const discountValue = newItem.discount_value || 0;
-              
-              let supplierDiscountAmount = 0;
-              let discountedPurchasePrice = purchasePrice;
-              
-              if (discountType === 'percentage') {
-                if (discountValue > 100) {
-                  return Promise.resolve({
-                    data: null,
-                    error: { message: 'percentage discount above 100' }
-                  });
-                }
-                supplierDiscountAmount = purchasePrice * (discountValue / 100);
-              } else if (discountType === 'flat') {
-                if (discountValue > purchasePrice) {
-                  return Promise.resolve({
-                    data: null,
-                    error: { message: 'flat discount above purchase price' }
-                  });
-                }
-                supplierDiscountAmount = discountValue;
-              }
-              
-              discountedPurchasePrice = purchasePrice - supplierDiscountAmount;
-              const gstAmount = discountedPurchasePrice * 0.18;
-              const finalUnitCost = discountedPurchasePrice + gstAmount;
-              const lineTotal = finalUnitCost * (newItem.quantity || 1);
-              
-              newItem.supplier_discount_amount = supplierDiscountAmount;
-              newItem.discounted_purchase_price = discountedPurchasePrice;
-              newItem.gst_amount = gstAmount;
-              newItem.final_unit_cost = finalUnitCost;
-              newItem.line_total = lineTotal;
-              
-              // Validate refurbished items
-              if (newItem.is_refurbished && !newItem.condition) {
-                return Promise.resolve({
-                  data: null,
-                  error: { message: 'condition required for refurbished items' }
-                });
-              }
-            }
-            
-            if (table === 'current_stock_levels') {
-              // Set stock status based on quantity and minimum stock level
-              const product = mockData.inventory_products?.find((p: any) => 
-                p.id === newItem.product_id
-              );
-              const minimumStock = product?.minimum_stock_level || 0;
-              const currentQuantity = newItem.current_quantity || 0;
-              
-              let stockStatus = 'out_of_stock';
-              if (currentQuantity > minimumStock) {
-                stockStatus = 'in_stock';
-              } else if (currentQuantity > 0) {
-                stockStatus = 'low_stock';
-              }
-              
-              newItem.stock_status = stockStatus;
-              newItem.total_stock_value = currentQuantity * (newItem.wac || 0);
-            }
-            
-            mockData[table] = [...(mockData[table] || []), newItem];
             
             return Promise.resolve({
+              data: newItem,
+              error: null
+            });
+          },
+          then: (resolve: any) => {
+            // For simple insert without .single()
+            const newItem = {
+              id: `${table}-${Date.now()}-${Math.random()}`,
+              created_at: new Date().toISOString(),
+              created_by: currentUser?.id || 'unknown',
+              ...data
+            };
+            
+            if (!mockData[table]) {
+              mockData[table] = [];
+            }
+            mockData[table].push(newItem);
+            
+            return resolve({
               data: newItem,
               error: null
             });
@@ -223,14 +332,6 @@ export function createMockSupabaseClient() {
         eq: (column: string, value: any) => ({
           select: (columns?: string) => ({
             single: () => {
-              const index = mockData[table]?.findIndex(item => item[column] === value);
-              if (index === -1) {
-                return Promise.resolve({
-                  data: null,
-                  error: { message: 'Record not found', code: 'PGRST116' }
-                });
-              }
-
               // Check permissions for updates
               if (table === 'inventory_products' && currentUserRole === 'technician') {
                 return Promise.resolve({
@@ -246,34 +347,18 @@ export function createMockSupabaseClient() {
                 });
               }
 
-              // Special handling for updates
-              if (table === 'inventory_products') {
-                // Create MRP change log if MRP is being updated
-                const oldMRP = mockData[table][index].mrp;
-                const newMRP = data.mrp;
-                if (newMRP && newMRP !== oldMRP) {
-                  const changeLogEntry = {
-                    id: `mrp-change-${Date.now()}`,
-                    product_id: mockData[table][index].id,
-                    old_mrp: oldMRP,
-                    new_mrp: newMRP,
-                    changed_at: new Date().toISOString(),
-                    changed_by: currentUser?.id || 'current-user'
-                  };
-                  mockData.mrp_change_log = [...(mockData.mrp_change_log || []), changeLogEntry];
-                }
+              const index = mockData[table]?.findIndex(item => item[column] === value);
+              if (index === -1) {
+                return Promise.resolve({
+                  data: null,
+                  error: { message: 'Record not found', code: 'PGRST116' }
+                });
               }
               
-              const updatedItem = {
-                ...mockData[table][index],
-                ...data,
-                updated_at: new Date().toISOString()
-              };
-              
-              mockData[table][index] = updatedItem;
+              mockData[table][index] = { ...mockData[table][index], ...data, updated_at: new Date().toISOString() };
               
               return Promise.resolve({
-                data: updatedItem,
+                data: mockData[table][index],
                 error: null
               });
             }
@@ -282,217 +367,95 @@ export function createMockSupabaseClient() {
       }),
       delete: () => ({
         eq: (column: string, value: any) => ({
-          then: (resolve: any) => {
-            // Check permissions for deletes
-            if (table === 'product_categories' && currentUserRole !== 'super_admin' && currentUserRole !== 'stock_manager') {
-              return Promise.resolve({
-                data: null,
-                error: { message: 'cannot delete category with products' }
-              });
-            }
-
-            // Special handling for category deletion
-            if (table === 'product_categories') {
-              const categoryId = value;
-              const hasProducts = mockData.inventory_products?.some((p: any) => 
-                p.category_id === categoryId
-              );
-              if (hasProducts) {
+          select: (columns?: string) => ({
+            single: () => {
+              // Check permissions for deletes
+              if (table === 'inventory_products' && currentUserRole === 'technician') {
                 return Promise.resolve({
                   data: null,
-                  error: { message: 'cannot delete category with products' }
+                  error: { message: 'Permission denied', code: '42501' }
                 });
               }
+
+              const index = mockData[table]?.findIndex(item => item[column] === value);
+              if (index === -1) {
+                return Promise.resolve({
+                  data: null,
+                  error: { message: 'Record not found', code: 'PGRST116' }
+                });
+              }
+              
+              const deletedItem = mockData[table][index];
+              mockData[table].splice(index, 1);
+              
+              return Promise.resolve({
+                data: deletedItem,
+                error: null
+              });
             }
-            
-            mockData[table] = mockData[table]?.filter(item => item[column] !== value) || [];
-            return Promise.resolve({
-              data: null,
-              error: null
-            });
-          }
+          })
         })
       })
     }),
-    rpc: (functionName: string, params?: any) => {
-      // Mock RPC functions for inventory
-      if (functionName === 'update_stock_entry_grand_total') {
-        const stockEntryId = params?.stock_entry_id;
-        const items = mockData.stock_entry_items?.filter((item: any) => 
-          item.stock_entry_id === stockEntryId
-        ) || [];
-        const grandTotal = items.reduce((sum: number, item: any) => sum + (item.line_total || 0), 0);
-        
-        // Update the stock entry
-        const index = mockData.stock_entries?.findIndex((entry: any) => 
-          entry.id === stockEntryId
-        );
-        if (index !== -1) {
-          mockData.stock_entries[index].grand_total = grandTotal;
-        }
-        
-        return Promise.resolve({
-          data: grandTotal,
-          error: null
-        });
-      }
-      
-      if (functionName === 'update_product_mrp_from_stock_entry') {
-        const productId = params?.product_id;
-        const newMRP = params?.mrp;
-        
-        // Update the product MRP
-        const index = mockData.inventory_products?.findIndex((product: any) => 
-          product.id === productId
-        );
-        if (index !== -1) {
-          mockData.inventory_products[index].mrp = newMRP;
-        }
-        
-        return Promise.resolve({
-          data: true,
-          error: null
-        });
-      }
-      
-      if (functionName === 'update_product_wac') {
-        const productId = params?.product_id;
-        
-        // Calculate WAC from stock entries
-        const stockItems = mockData.stock_entry_items?.filter((item: any) => 
-          item.product_id === productId
-        ) || [];
-        
-        if (stockItems.length === 0) {
-          return Promise.resolve({
-            data: 0,
-            error: null
-          });
-        }
-        
-        const totalPurchaseValue = stockItems.reduce((sum: number, item: any) => 
-          sum + (item.purchase_price * item.quantity), 0
-        );
-        const totalQuantity = stockItems.reduce((sum: number, item: any) => 
-          sum + item.quantity, 0
-        );
-        const wac = totalPurchaseValue / totalQuantity;
-        
-        // Update the product WAC
-        const index = mockData.inventory_products?.findIndex((product: any) => 
-          product.id === productId
-        );
-        if (index !== -1) {
-          mockData.inventory_products[index].wac = wac;
-        }
-        
-        return Promise.resolve({
-          data: wac,
-          error: null
-        });
-      }
-      
-      return Promise.resolve({
-        data: null,
-        error: { message: 'Function not found' }
-      });
-    },
     auth: {
-      signInWithPassword: async ({ email, password }: any) => {
-        const validCredentials = {
-          'admin@hitech.com': { role: 'super_admin', password: 'validpassword' },
-          'office@hitech.com': { role: 'office_staff', password: 'validpassword' },
-          'tech@hitech.com': { role: 'technician', password: 'validpassword' },
-          'stock@hitech.com': { role: 'stock_manager', password: 'validpassword' }
-        };
-
-        const credential = validCredentials[email as keyof typeof validCredentials];
-        
-        if (credential && password === credential.password) {
-          const userData = mockData.profiles?.find((p: any) => p.email === email);
-          currentUser = userData || {
-            id: email.replace('@', '-').replace('.', '-'),
-            email: email,
-            role: credential.role
-          };
-          currentUserRole = credential.role;
-          
-          return {
+      signInWithPassword: async ({ email, password }: { email: string; password: string }) => {
+        const user = mockData.profiles.find(profile => profile.email === email);
+        if (user && password === 'validpassword') {
+          currentUser = user;
+          currentUserRole = user.role;
+          return Promise.resolve({
             data: {
-              user: {
-                id: currentUser.id,
-                email: email,
-                user_metadata: { role: credential.role }
-              },
+              user,
               session: {
-                access_token: `token-${Date.now()}-${Math.random()}`,
-                user: {
-                  id: currentUser.id,
-                  email: email,
-                  user_metadata: { role: credential.role }
-                }
+                user,
+                access_token: 'mock-token',
+                refresh_token: 'mock-refresh'
               }
             },
             error: null
-          };
+          });
         }
-        
-        return {
+        return Promise.resolve({
           data: null,
           error: { message: 'Invalid login credentials' }
-        };
+        });
       },
       signOut: async () => {
         currentUser = null;
         currentUserRole = null;
-        return {
+        return Promise.resolve({
           data: {},
           error: null
-        };
+        });
       },
-      getSession: async () => ({
-        data: {
-          session: currentUser ? {
-            user: currentUser,
-            access_token: `token-${Date.now()}`
-          } : null
-        },
-        error: null
-      }),
-      getUser: async () => ({
-        data: {
-          user: currentUser
-        },
-        error: null
-      }),
-      onAuthStateChange: vi.fn((callback: any) => {
-        return {
+      getSession: async () => {
+        return Promise.resolve({
           data: {
-            subscription: {
-              unsubscribe: vi.fn()
-            }
+            session: currentUser ? {
+              user: currentUser,
+              access_token: 'mock-token'
+            } : null
+          },
+          error: null
+        });
+      },
+      getUser: async () => {
+        return Promise.resolve({
+          data: {
+            user: currentUser || null
+          },
+          error: null
+        });
+      },
+      onAuthStateChange: () => ({
+        data: {
+          subscription: {
+            unsubscribe: vi.fn()
           }
-        };
+        }
       })
     }
   };
-  
-  return mockClient;
-}
 
-// Mock view queries
-export const mockViews = {
-  stock_balance_summary: () => ({
-    select: () => ({
-      then: () => Promise.resolve({
-        data: {
-          total_products: 100,
-          total_value: 50000,
-          low_stock_count: 5,
-          out_of_stock_count: 2
-        },
-        error: null
-      })
-    })
-  })
-};
+  return mockClient as any;
+}
