@@ -778,7 +778,7 @@ export default function NewStockEntryPage() {
           const items = watchItems ?? [];
           if (items.length === 0) return null;
 
-          let totalItems = items.length;
+          const totalItems = items.length;
           let totalQuantity = 0;
           let totalDiscountGiven = 0;
           let totalGstPaid = 0;

@@ -123,9 +123,9 @@ export function PhotoGallery({
     try {
       for (const photo of photos) {
         // Small delay to avoid browser popup/download throttling when opening multiple files.
-        // eslint-disable-next-line no-await-in-loop
+         
         await triggerDownload(photo);
-        // eslint-disable-next-line no-await-in-loop
+         
         await new Promise((resolve) => setTimeout(resolve, 180));
       }
     } finally {

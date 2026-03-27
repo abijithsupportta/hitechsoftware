@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 export default defineConfig({
   test: {
     include: ['tests/**/*.test.ts'],
-    environment: 'node',
+    environment: 'jsdom',
     globals: true,
     passWithNoTests: true,
     setupFiles: ['./tests/setup.ts'],
@@ -16,13 +16,16 @@ export default defineConfig({
       reporter: ['text', 'html'],
       reportsDirectory: './coverage',
     },
-    // Override environment for performance tests
     testTimeout: 10000,
     hookTimeout: 10000,
-    // Use different setup for performance tests
     sequence: {
       shuffle: false,
       concurrent: false,
+    },
+    environmentOptions: {
+      jsdom: {
+        url: 'http://localhost:3000',
+      },
     },
   },
   resolve: {

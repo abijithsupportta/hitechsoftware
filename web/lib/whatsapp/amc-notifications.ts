@@ -310,7 +310,7 @@ export async function getAMCNotificationStats(
   const admin = createAdminClient();
   
   try {
-    let startDate = new Date();
+    const startDate = new Date();
     
     if (period === 'today') {
       startDate.setHours(0, 0, 0, 0);

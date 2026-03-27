@@ -100,7 +100,7 @@ export const formatAMCWhatsAppMessage = (
     phoneNumber: string;
   }
 ): string => {
-  let message = AMC_WHATSAPP_TEMPLATES[template];
+  const message = AMC_WHATSAPP_TEMPLATES[template];
   
   return message
     .replace('[Customer Name]', variables.customerName)
